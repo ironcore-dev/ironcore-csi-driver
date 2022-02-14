@@ -1,0 +1,12 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: onmetal-storageclass-demo
+provisioner: onmetal-csi-driver
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+parameters: 
+  fstype: ext4
+  pool_name: "test-pool"
+  provision_type: "fast"
