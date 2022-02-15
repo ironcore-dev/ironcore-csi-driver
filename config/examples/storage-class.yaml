@@ -8,5 +8,5 @@ volumeBindingMode: Immediate
 allowVolumeExpansion: true
 parameters: 
   fstype: ext4
-  pool_name: "test-pool"
+  storage_pool: "test-pool"
   provision_type: "fast"
