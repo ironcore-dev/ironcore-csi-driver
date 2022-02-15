@@ -1,0 +1,14 @@
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: onmetal-csi-node
+spec:
+  template:
+    spec:
+      containers:  
+        - name: driver
+          env:
+            - name: APP_LOG_LEVEL
+              value: "info"
+            - name: CSI_DRIVER_NAME
+              value: "onmetal-csi-driver"
