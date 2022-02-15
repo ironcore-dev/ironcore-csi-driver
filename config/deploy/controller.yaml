@@ -160,6 +160,8 @@ spec:
           env:
             - name: CSI_ENDPOINT
               value: /var/run/csi/csi.sock
+            - name: PARENT_KUBE_CONFIG
+              value: "/etc/parent-kubeconfig/kubeconfig.yaml"
             - name: APP_LOG_LEVEL
               value: "info"
             - name: CSI_DRIVER_NAME
@@ -177,6 +179,11 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /var/run/csi
+            - name: kubeconfig-volume
+              mountPath: /etc/parent-kubeconfig    
       volumes:
         - name: socket-dir
           emptyDir:
+        - name: kubeconfig-volume
+          secret:
+            secretName: kubeconfig-secret    

@@ -31,7 +31,7 @@ clean:
 	rm -f $(BINARY_NAME)
 
 build:
-	$(GOBUILD) -o $(BINARY_NAME) -v ./cmd/
+	$(GOBUILD) -o $(BINARY_NAME) -v  ./cmd/ 
 
 test: 
 	$(GOTEST) -v ./...
