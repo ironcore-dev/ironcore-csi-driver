@@ -34,5 +34,8 @@ func initial_Configuration() map[string]string {
 	if driverversion, ok := csictx.LookupEnv(context.Background(), "CSI_DRIVER_VERSION"); ok {
 		configParams["driver_version"] = driverversion
 	}
+	if parentKubeconfig, ok := csictx.LookupEnv(context.Background(), "PARENT_KUBE_CONFIG"); ok {
+		configParams["parent_kube_config"] = parentKubeconfig
+	}
 	return configParams
 }
