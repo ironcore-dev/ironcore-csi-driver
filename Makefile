@@ -10,8 +10,8 @@ DOCKER_IMAGE=onmetal-csi-driver
 
 # For Development Build #################################################################
 # Docker.io username and tag
-DOCKER_USER=user1
-DOCKER_IMAGE_TAG=test1
+DOCKER_USER=nikhilbarge
+DOCKER_IMAGE_TAG=latest
 # For Development Build #################################################################
 
 
@@ -53,7 +53,7 @@ moddownload:
 build-linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BINARY_NAME) -v ./cmd/
 
-docker-build:
+docker-build: 
 	docker build -t $(DOCKER_USER)/$(DOCKER_IMAGE):$(DOCKER_IMAGE_TAG) -f Dockerfile .
  
 docker-push:
@@ -62,7 +62,13 @@ docker-push:
 buildlocal: build docker-build clean
 
 all: build docker-build docker-push clean
+ 
+deploy:
+	kustomize build config/deploy | kubectl apply -f -
 
-deploy: all 
-# kustomize code to be added
+undeploy:
+	kustomize build config/deploy | kubectl delete -f -
+
+
+ 
  

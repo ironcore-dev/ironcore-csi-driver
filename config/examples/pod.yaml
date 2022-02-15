@@ -2,7 +2,7 @@ kind: Pod
 apiVersion: v1
 metadata:
   name: pod-demo
-  namespace: infi
+  namespace: onmetal-csi
 spec:
   containers:
     - name: my-frontend

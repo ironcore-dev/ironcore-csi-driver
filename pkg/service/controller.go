@@ -2,15 +2,28 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
-func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (csiResp *csi.CreateVolumeResponse, err error) {
-	return csiResp, nil
+func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+	fmt.Println("create volume request received with volume name", req.GetName())
+	vol := &Volume{
+		ID:          "123",
+		Name:        req.GetName(),
+		StoragePool: req.GetParameters()["storage_pool"],
+	}
+	resp := s.getCsiVolume(vol, req)
+	csiVolResp := &csi.CreateVolumeResponse{
+		Volume: resp,
+	}
+	return csiVolResp, nil
 }
 
 func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (deleteResponce *csi.DeleteVolumeResponse, err error) {
+	fmt.Println("delete volume request received with volume ID", req.GetVolumeId())
 	return deleteResponce, nil
 }
 
@@ -111,4 +124,28 @@ func (s *service) ControllerGetCapabilities(ctx context.Context, req *csi.Contro
 			},
 		},
 	}, nil
+}
+
+type Volume struct {
+	ID          string
+	Name        string
+	StoragePool string
+	CreatedAt   int64
+	Size        int64
+}
+
+func (s *service) getCsiVolume(vol *Volume, req *csi.CreateVolumeRequest) *csi.Volume {
+	volCtx := map[string]string{
+		"ID":           vol.ID,
+		"Name":         vol.Name,
+		"StoragePool":  vol.StoragePool,
+		"CreationTime": time.Unix(int64(vol.CreatedAt), 0).String(),
+	}
+	csiVol := &csi.Volume{
+		VolumeId:      vol.ID,
+		CapacityBytes: vol.Size,
+		VolumeContext: volCtx,
+		ContentSource: req.GetVolumeContentSource(),
+	}
+	return csiVol
 }

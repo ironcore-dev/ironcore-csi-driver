@@ -26,7 +26,7 @@ func init() {
 func LoadRESTConfig(kubeconfig string) (cluster.Cluster, error) {
 	data, err := os.ReadFile(kubeconfig)
 	if err != nil {
-		return nil, fmt.Errorf("could not read kubeconfig %s: %w", kubeconfig, err)
+		return nil, fmt.Errorf("could not read kubeconfig %s: %w ", kubeconfig, err)
 	}
 
 	parentCfg, err := clientcmd.RESTConfigFromKubeConfig(data)

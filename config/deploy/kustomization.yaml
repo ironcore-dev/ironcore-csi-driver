@@ -1,11 +1,12 @@
-resources:
+resources: 
+  - csidriver.yaml
   - node.yaml
   - controller.yaml
-  - csidriver.yaml
 namespace: onmetal-csi
 images:
-- name: nikhilbarge/onmetal-csi-driver
-  newName: rohitk8s/onmetal-csi-driver
+- name: onmetal-csi-driver
+  newName: nikhilbarge/onmetal-csi-driver
+  newTag: latest
 patchesStrategicMerge:
 - controller_setenv_replicas.yaml
 - node_setenv.yaml
