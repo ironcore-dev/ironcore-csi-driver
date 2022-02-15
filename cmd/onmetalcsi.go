@@ -29,7 +29,7 @@ func initial_Configuration() map[string]string {
 		configParams["node_name"] = nodeName
 	}
 	if drivername, ok := csictx.LookupEnv(context.Background(), "CSI_DRIVER_NAME"); ok {
-		configParams["drive_rname"] = drivername
+		configParams["driver_name"] = drivername
 	}
 	if driverversion, ok := csictx.LookupEnv(context.Background(), "CSI_DRIVER_VERSION"); ok {
 		configParams["driver_version"] = driverversion
