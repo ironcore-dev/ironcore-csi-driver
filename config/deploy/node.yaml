@@ -70,7 +70,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true              
-          image: nikhilbarge/onmetal-csi-driver:latest
+          image: onmetal-csi-driver:latest
           imagePullPolicy: Always
           env:
             - name: CSI_ENDPOINT

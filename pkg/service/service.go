@@ -36,16 +36,19 @@ type Service interface {
 }
 
 func New(config map[string]string) Service {
-	parentCluster, err := helper.LoadRESTConfig(config["parent_kube_config"])
-	if err != nil {
-		log.Fatal(err, "unable to load target kubeconfig")
-	}
-	return &service{
+	svc := &service{
 		driver_name:    config["driver_name"],
 		driver_version: config["driver_version"],
 		node_id:        config["node_id"],
-		parentClient:   parentCluster,
 	}
+	if _, ok := config["parent_kube_config"]; ok {
+		parentCluster, err := helper.LoadRESTConfig(config["parent_kube_config"])
+		if err != nil {
+			log.Fatal(err, "unable to load target kubeconfig")
+		}
+		svc.parentClient = parentCluster
+	}
+	return svc
 }
 
 func (s *service) BeforeServe(ctx context.Context, sp *gocsi.StoragePlugin, listner net.Listener) error {
