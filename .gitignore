@@ -20,5 +20,4 @@ vendor/
 # Build artifacts
 onmetal-csi-driver
 
-# other
-go.sum
+ 

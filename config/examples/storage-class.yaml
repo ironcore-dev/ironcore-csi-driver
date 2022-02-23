@@ -7,6 +7,19 @@ reclaimPolicy: Delete
 volumeBindingMode: Immediate
 allowVolumeExpansion: true
 parameters: 
+spec:
+  capabilities:
+    onmetal.de/BPS: 20Mi
+    onmetal.de/IOPS: 10
+    onmetal.de/burstDurationSec: 10
+    onmetal.de/burstFactor: 3
+    onmetal.de/encryption: 1
+    onmetal.de/limitsPerGB: 1
+    onmetal.de/readBPS: 12Mi
+    onmetal.de/readIOPS: 6
+    onmetal.de/writeBPS: 8Mi
+    onmetal.de/writeIOPS: 4
   fstype: ext4
-  storage_pool: "test-pool"
-  provision_type: "fast"
+  storage_pool: "fra3"
+  provision_type: "slow"
+  storage_class_name: "slow"

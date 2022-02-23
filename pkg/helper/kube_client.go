@@ -6,19 +6,20 @@ import (
 
 	"k8s.io/client-go/tools/clientcmd"
 
+	storagev1alpha1 "github.com/onmetal/onmetal-api/apis/storage/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
-
-	storagev1alpha1 "github.com/onmetal/onmetal-api/apis/storage/v1alpha1"
 )
 
 var (
-	scheme = runtime.NewScheme()
+	Scheme = runtime.NewScheme()
 )
 
 func init() {
-	utilruntime.Must(storagev1alpha1.AddToScheme(scheme))
+	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
+	utilruntime.Must(storagev1alpha1.AddToScheme(Scheme))
 }
 
 // will get kubeconfig from configmap with provided name
@@ -34,7 +35,7 @@ func LoadRESTConfig(kubeconfig string) (cluster.Cluster, error) {
 		return nil, err
 	}
 	parentCluster, err := cluster.New(parentCfg, func(o *cluster.Options) {
-		o.Scheme = scheme
+		o.Scheme = Scheme
 	})
 	if err != nil {
 		return nil, err
