@@ -33,17 +33,14 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 	}
 	params := req.GetParameters()
 	fstype := params["fstype"]
-	provision_type := params["provision_type"]
-	//storage_pool := params["storage_pool"]
 	storage_class := params["storage_class_name"]
 
 	vol := &Volume{
-		ID:            req.GetName(),
-		Name:          req.GetName(),
-		StoragePool:   req.GetParameters()["storage_pool"],
-		Size:          volBytes,
-		FsType:        fstype,
-		ProvisionType: provision_type,
+		ID:          req.GetName(),
+		Name:        req.GetName(),
+		StoragePool: req.GetParameters()["storage_pool"],
+		Size:        volBytes,
+		FsType:      fstype,
 	}
 	volResp := s.getCsiVolume(vol, req)
 	csiVolResp.Volume = volResp
@@ -67,6 +64,7 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 			},
 		},
 	}
+
 	fmt.Println("create/update volume claim: ", volumeClaim.Name)
 	if err := s.parentClient.Patch(ctx, volumeClaim, client.Apply, volumeClaimFieldOwner); err != nil {
 		fmt.Println("error while create/update volumeclaim ", err)

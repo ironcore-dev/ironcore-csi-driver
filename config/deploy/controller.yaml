@@ -114,7 +114,7 @@ spec:
           image: quay.io/k8scsi/csi-provisioner:v1.4.0
           args:
             - "--csi-address=$(ADDRESS)"
-            - "--volume-name-prefix=onmetal"
+            - "--volume-name-prefix=csi-onmetal"
             - "--volume-name-uuid-length=10"
             - "--connection-timeout=300s"
             - "--v=5"
