@@ -6,7 +6,7 @@ provisioner: onmetal-csi-driver
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
 allowVolumeExpansion: true
-parameters: 
+parameters:
   fstype: ext4
-  storage_pool: "test-pool"
-  provision_type: "fast"
+  storage_pool: "fra3"
+  storage_class_name: "slow"

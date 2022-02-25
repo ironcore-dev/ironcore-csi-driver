@@ -7,7 +7,7 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/onmetal/onmetal-csi-driver/pkg/helper"
-	"sigs.k8s.io/controller-runtime/pkg/cluster"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/rexray/gocsi"
 )
@@ -23,7 +23,7 @@ type service struct {
 	node_id        string
 
 	// rest client
-	parentClient cluster.Cluster
+	parentClient client.Client
 }
 
 // Service is the CSI Mock service provider.
@@ -46,7 +46,9 @@ func New(config map[string]string) Service {
 		if err != nil {
 			log.Fatal(err, "unable to load target kubeconfig")
 		}
-		svc.parentClient = parentCluster
+		newClient, err := client.New(parentCluster.GetConfig(), client.Options{Scheme: helper.Scheme})
+		svc.parentClient = newClient
+
 	}
 	return svc
 }
