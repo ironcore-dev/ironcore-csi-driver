@@ -21,6 +21,8 @@ type service struct {
 	driver_name    string
 	driver_version string
 	node_id        string
+	node_name      string
+	csi_namespace  string
 
 	// rest client
 	parentClient client.Client
@@ -40,6 +42,8 @@ func New(config map[string]string) Service {
 		driver_name:    config["driver_name"],
 		driver_version: config["driver_version"],
 		node_id:        config["node_id"],
+		node_name:      config["node_name"],
+		csi_namespace:  config["csi_namespace"],
 	}
 	if _, ok := config["parent_kube_config"]; ok {
 		parentCluster, err := helper.LoadRESTConfig(config["parent_kube_config"])
