@@ -176,6 +176,11 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: VOLUMECLAIM_NS
+              valueFrom:
+                configMapKeyRef:
+                  name: csi-configmap
+                  key: namespace
           volumeMounts:
             - name: socket-dir
               mountPath: /var/run/csi

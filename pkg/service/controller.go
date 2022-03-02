@@ -51,7 +51,7 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 			Kind:       "VolumeClaim",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "onmetal-csi",
+			Namespace: s.csi_namespace,
 			Name:      req.GetName() + "-claim",
 		},
 		Spec: storagev1alpha1.VolumeClaimSpec{
