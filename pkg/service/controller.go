@@ -418,8 +418,8 @@ func validateVolumeSize(caprange *csi.CapacityRange) (int64, string, error) {
 func validateDeviceName(machine *computev1alpha1.Machine, vaName string) string {
 	for _, va := range machine.Status.VolumeAttachments {
 		if va.Name == vaName && va.DeviceID != "" {
-			return "/dev/sdb1"
-			// return "/dev/" + va.DeviceID
+			fmt.Println("device from onmetal-api", va.DeviceID)
+			return "/dev/" + va.DeviceID
 		}
 	}
 	return ""
