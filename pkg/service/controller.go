@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	computev1alpha1 "github.com/onmetal/onmetal-api/apis/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/apis/storage/v1alpha1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -102,7 +103,7 @@ func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest
 	fmt.Println("delete volume request received with volume ID", req.GetVolumeId())
 	deleteResponce := &csi.DeleteVolumeResponse{}
 	volumeClaimKey := types.NamespacedName{
-		Namespace: "onmetal-csi",
+		Namespace: s.csi_namespace,
 		Name:      req.GetVolumeId() + "-claim",
 	}
 	vc := &storagev1alpha1.VolumeClaim{}
@@ -129,20 +130,122 @@ func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest
 }
 
 func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (controlePublishResponce *csi.ControllerPublishVolumeResponse, err error) {
-	fmt.Printf("request recieved to publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId())
+	fmt.Println(fmt.Sprintf("request recieved to publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId()))
+	csiResp := &csi.ControllerPublishVolumeResponse{}
+	machine := &computev1alpha1.Machine{}
+	machineKey := types.NamespacedName{
+		Namespace: s.csi_namespace,
+		Name:      s.node_name,
+	}
+	fmt.Println("get machine with provided name and namespace")
+	err = s.parentClient.Get(ctx, client.ObjectKey{Name: machineKey.Name, Namespace: machineKey.Namespace}, machine)
+	if err != nil {
+		fmt.Printf("could not get machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
+		fmt.Println("")
+		return csiResp, status.Errorf(codes.Internal, err.Error())
+	}
+	vaname := req.GetVolumeId() + "-attachment"
+	if !s.isVolumeAttachmetAvailable(machine, vaname) {
+		attachSource := &computev1alpha1.VolumeClaimAttachmentSource{
+			Ref: corev1.LocalObjectReference{
+				Name: "vol_name",
+			},
+		}
+		volAttachment := computev1alpha1.VolumeAttachment{}
+		volAttachment.Name = vaname
+		volAttachment.Priority = 1
+		volAttachment.VolumeAttachmentSource = computev1alpha1.VolumeAttachmentSource{
+			VolumeClaim: attachSource,
+		}
+		machine.Spec.VolumeAttachments = append(machine.Spec.VolumeAttachments, volAttachment)
+		fmt.Println("update machine with volumeattachment")
+		err = s.parentClient.Update(ctx, machine)
+		if err != nil {
+			fmt.Printf("failed to update machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
+			fmt.Println("")
+			return csiResp, status.Errorf(codes.Internal, err.Error())
+		}
+	}
+	updatedMachine := &computev1alpha1.Machine{}
+	fmt.Println("check machine is updated")
+	err = s.parentClient.Get(ctx, machineKey, updatedMachine)
+	if err != nil && !apierrors.IsNotFound(err) {
+		fmt.Printf("could not get machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
+		fmt.Println("")
+		return csiResp, status.Errorf(codes.Internal, err.Error())
+	}
+	if updatedMachine.Status.State != computev1alpha1.MachineStateRunning {
+		time.Sleep(time.Second * 5)
+		fmt.Println("machine is not ready")
+		return csiResp, status.Errorf(codes.Internal, "Machine is not updated")
+	}
+	deviceName := validateDeviceName(updatedMachine, vaname)
+	if deviceName == "" {
+		fmt.Println("unable to get disk to mount")
+		return csiResp, status.Errorf(codes.Internal, "Volume attachment is not available")
+	}
 	volCtx := make(map[string]string)
 	volCtx["node_id"] = req.GetNodeId()
 	volCtx["volume_id"] = req.GetVolumeId()
-	fmt.Println("")
-	return &csi.ControllerPublishVolumeResponse{
-		PublishContext: volCtx,
-	}, nil
+	volCtx["device_name"] = deviceName
+	csiResp.PublishContext = volCtx
+	fmt.Println("successfully published volume")
+	return csiResp, nil
 }
 
 func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	fmt.Printf("request recieved to un-publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId())
-	controleUnPublishResponce := &csi.ControllerUnpublishVolumeResponse{}
-	return controleUnPublishResponce, nil
+	csiResp := &csi.ControllerUnpublishVolumeResponse{}
+	machine := &computev1alpha1.Machine{}
+	machineKey := types.NamespacedName{
+		Namespace: s.csi_namespace,
+		Name:      s.node_name,
+	}
+	fmt.Println("get machine with provided name and namespace")
+	err := s.parentClient.Get(ctx, client.ObjectKey{Name: machineKey.Name, Namespace: machineKey.Namespace}, machine)
+	if err != nil {
+		fmt.Printf("could not get machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
+		fmt.Println("")
+		return csiResp, status.Errorf(codes.Internal, err.Error())
+	}
+	vaname := req.GetVolumeId() + "-attachment"
+	if s.isVolumeAttachmetAvailable(machine, vaname) {
+		fmt.Println("remove machine with volumeattachment")
+		vaList := []computev1alpha1.VolumeAttachment{}
+		for _, va := range machine.Spec.VolumeAttachments {
+			if va.Name != vaname {
+				vaList = append(vaList, va)
+			}
+		}
+		machine.Spec.VolumeAttachments = vaList
+		err = s.parentClient.Update(ctx, machine)
+		if err != nil {
+			fmt.Printf("failed to update machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
+			fmt.Println("")
+			return csiResp, status.Errorf(codes.Internal, err.Error())
+		}
+	}
+	updatedMachine := &computev1alpha1.Machine{}
+	fmt.Println("check machine is updated")
+	err = s.parentClient.Get(ctx, machineKey, updatedMachine)
+	if err != nil && !apierrors.IsNotFound(err) {
+		fmt.Printf("could not get machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
+		fmt.Println("")
+		return csiResp, status.Errorf(codes.Internal, err.Error())
+	}
+	if updatedMachine.Status.State != computev1alpha1.MachineStateRunning {
+		time.Sleep(time.Second * 5)
+		fmt.Println("machine is not ready")
+		return csiResp, status.Errorf(codes.Internal, "Machine is not updated")
+	}
+	deviceName := validateDeviceName(updatedMachine, vaname)
+	if deviceName == vaname {
+		fmt.Println("unable to remove disk from machine")
+		return csiResp, status.Errorf(codes.Internal, "Volume attachment is not available")
+	}
+
+	fmt.Println("successfully un-published volume")
+	return csiResp, nil
 }
 
 func (s *service) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
@@ -246,6 +349,14 @@ type Volume struct {
 	ProvisionType string
 }
 
+func (s *service) isVolumeAttachmetAvailable(machine *computev1alpha1.Machine, vaName string) bool {
+	for _, va := range machine.Spec.VolumeAttachments {
+		if va.Name == vaName {
+			return true
+		}
+	}
+	return false
+}
 func (s *service) getCsiVolume(vol *Volume, req *csi.CreateVolumeRequest) *csi.Volume {
 	volCtx := map[string]string{
 		"volume_id":      vol.ID,
@@ -302,4 +413,14 @@ func validateVolumeSize(caprange *csi.CapacityRange) (int64, string, error) {
 	strsize := strconv.FormatInt(sizeinGB, 10) + "Gi"
 	fmt.Println("strsize", strsize)
 	return sizeinByte, strsize, nil
+}
+
+func validateDeviceName(machine *computev1alpha1.Machine, vaName string) string {
+	for _, va := range machine.Status.VolumeAttachments {
+		if va.Name == vaName && va.DeviceID != "" {
+			fmt.Println("device from onmetal-api", va.DeviceID)
+			return "/dev/" + va.DeviceID
+		}
+	}
+	return ""
 }

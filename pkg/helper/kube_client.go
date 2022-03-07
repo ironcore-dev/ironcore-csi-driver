@@ -6,6 +6,7 @@ import (
 
 	"k8s.io/client-go/tools/clientcmd"
 
+	computev1alpha1 "github.com/onmetal/onmetal-api/apis/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/apis/storage/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -20,6 +21,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
 	utilruntime.Must(storagev1alpha1.AddToScheme(Scheme))
+	utilruntime.Must(computev1alpha1.AddToScheme(Scheme))
 }
 
 // will get kubeconfig from configmap with provided name
