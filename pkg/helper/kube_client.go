@@ -2,8 +2,11 @@ package helper
 
 import (
 	"fmt"
+	"log"
 	"os"
 
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	computev1alpha1 "github.com/onmetal/onmetal-api/apis/compute/v1alpha1"
@@ -17,6 +20,14 @@ import (
 var (
 	Scheme = runtime.NewScheme()
 )
+
+// Incluster kubeconfig
+type kubeclient struct {
+	Client     kubernetes.Interface
+	restconfig *rest.Config
+}
+
+var clientapi kubeclient
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
@@ -43,4 +54,22 @@ func LoadRESTConfig(kubeconfig string) (cluster.Cluster, error) {
 		return nil, err
 	}
 	return parentCluster, nil
+}
+
+// Create incluster kubeclient
+func BuildInclusterClient() (kc *kubeclient, err error) {
+	if clientapi.restconfig == nil {
+		config, err := rest.InClusterConfig()
+		if err != nil {
+			log.Fatalf("BuildClient Error while getting cluster config, error: %v", err)
+			return nil, err
+		}
+		clientset, err := kubernetes.NewForConfig(config)
+		if err != nil {
+			log.Fatalf("BuildClient Error while creating client, error: %v", err)
+			return nil, err
+		}
+		clientapi = kubeclient{Client: clientset, restconfig: config}
+	}
+	return &clientapi, err
 }
