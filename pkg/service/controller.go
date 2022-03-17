@@ -35,7 +35,9 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 	params := req.GetParameters()
 	fstype := params["fstype"]
 	storage_class := params["storage_class_name"]
-
+	if !validateParams(params) {
+		return csiVolResp, status.Errorf(codes.Internal, "required parameters are missing")
+	}
 	vol := &Volume{
 		ID:          req.GetName(),
 		Name:        req.GetName(),
@@ -93,12 +95,18 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 			// 	fmt.Println("")
 			// 	return csiVolResp, status.Errorf(codes.Internal, err.Error())
 			// }
-			return csiVolResp, status.Errorf(codes.Internal, "unable to process request for volume: ", req.GetName(), "claim pahse", vc.Status.Phase)
+			return csiVolResp, status.Errorf(codes.Internal, "unable to process request for volume:"+req.GetName())
 		}
 	}
 	return csiVolResp, nil
 }
 
+func validateParams(params map[string]string) bool {
+	if params["storage_class_name"] == "" {
+		return false
+	}
+	return true
+}
 func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	fmt.Println("delete volume request received with volume ID", req.GetVolumeId())
 	deleteResponce := &csi.DeleteVolumeResponse{}
