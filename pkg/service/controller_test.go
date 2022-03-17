@@ -24,12 +24,12 @@ func TestControllerSuite(t *testing.T) {
 func (suite *ControllerSuite) Test_CreateVolume_InvalidParameter_Fail() {
 	service := service{}
 	var parameterMap map[string]string
-	crtValReq := getCreateValumeRequest("", parameterMap)
+	crtValReq := getCreateVolumeRequest("", parameterMap)
 	_, err := service.CreateVolume(context.Background(), crtValReq)
 	assert.NotNil(suite.T(), err, "Fail to validate parameter for  protocol")
 }
 
-func getCreateValumeRequest(pvName string, parameterMap map[string]string) *csi.CreateVolumeRequest {
+func getCreateVolumeRequest(pvName string, parameterMap map[string]string) *csi.CreateVolumeRequest {
 	capa := csi.VolumeCapability{
 		AccessMode: &csi.VolumeCapability_AccessMode{
 			Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
