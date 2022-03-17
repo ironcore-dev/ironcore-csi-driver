@@ -33,14 +33,14 @@ func TestControllerSuite(t *testing.T) {
 func (suite *ControllerSuite) Test_CreateVolume_InvalidParameter_Fail() {
 	service := service{parentClient: suite.clientMock}
 	var parameterMap map[string]string
-	crtValReq := getCreateValumeRequest("", parameterMap)
+	crtValReq := getCreateVolumeRequest("", parameterMap)
 	_, err := service.CreateVolume(context.Background(), crtValReq)
 	assert.NotNil(suite.T(), err, "Fail to validate parameter for create volume")
 }
 func (suite *ControllerSuite) Test_CreateVolume_Error() {
 	service := service{parentClient: suite.clientMock}
 	var parameterMap map[string]string
-	crtValReq := getCreateValumeRequest("", parameterMap)
+	crtValReq := getCreateVolumeRequest("", parameterMap)
 	suite.clientMock.On("Patch", mock.Anything).Return(errors.New("error while patch volume"))
 	_, err := service.CreateVolume(context.Background(), crtValReq)
 	assert.NotNil(suite.T(), err, "expected error but got success")
@@ -49,7 +49,7 @@ func (suite *ControllerSuite) Test_CreateVolume_Error() {
 func (suite *ControllerSuite) Test_CreateVolume_NotFound() {
 	service := service{parentClient: suite.clientMock}
 	var parameterMap map[string]string
-	crtValReq := getCreateValumeRequest("", parameterMap)
+	crtValReq := getCreateVolumeRequest("", parameterMap)
 	suite.clientMock.On("Patch", mock.Anything).Return(nil)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("volume not found"))
 	_, err := service.CreateVolume(context.Background(), crtValReq)
@@ -61,7 +61,7 @@ func (suite *ControllerSuite) Test_CreateVolume_Pass() {
 	parameterMap["storage_class_name"] = "slow"
 	parameterMap["fstype"] = "ext4"
 	parameterMap["storage_pool"] = "pool1"
-	crtValReq := getCreateValumeRequest("volume1", parameterMap)
+	crtValReq := getCreateVolumeRequest("volume1", parameterMap)
 	volumeClaim := &storagev1alpha1.VolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: storagev1alpha1.GroupVersion.String(),
@@ -94,7 +94,7 @@ func (suite *ControllerSuite) Test_CreateVolume_Pass() {
 	assert.Nil(suite.T(), err, "Fail to create volume")
 }
 
-func getCreateValumeRequest(pvName string, parameterMap map[string]string) *csi.CreateVolumeRequest {
+func getCreateVolumeRequest(pvName string, parameterMap map[string]string) *csi.CreateVolumeRequest {
 	capa := csi.VolumeCapability{
 		AccessMode: &csi.VolumeCapability_AccessMode{
 			Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
