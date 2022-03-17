@@ -7,7 +7,9 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/onmetal/onmetal-api v0.0.10-0.20220218113921-ae34f4b44955
 	github.com/rexray/gocsi v1.2.2
+	github.com/stretchr/testify v1.7.0
 	google.golang.org/grpc v1.40.0
+	k8s.io/api v0.23.4
 	k8s.io/apimachinery v0.23.4
 	k8s.io/client-go v0.23.4
 	k8s.io/mount-utils v0.23.3
@@ -51,12 +53,14 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/onmetal/controller-utils v0.3.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.11.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.28.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/stretchr/objx v0.1.1 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.19.1 // indirect
@@ -78,7 +82,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	inet.af/netaddr v0.0.0-20210903134321-85fa6c94624e // indirect
-	k8s.io/api v0.23.4 // indirect
 	k8s.io/apiextensions-apiserver v0.23.3 // indirect
 	k8s.io/apiserver v0.23.4 // indirect
 	k8s.io/component-base v0.23.4 // indirect
