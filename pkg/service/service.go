@@ -51,6 +51,9 @@ func New(config map[string]string) Service {
 			log.Fatal(err, "unable to load target kubeconfig")
 		}
 		newClient, err := client.New(parentCluster.GetConfig(), client.Options{Scheme: helper.Scheme})
+		if err != nil {
+			log.Fatal(err, "unable to load target kubeconfig")
+		}
 		svc.parentClient = newClient
 
 	}
