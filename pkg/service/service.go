@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
+
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/onmetal/onmetal-csi-driver/pkg/helper"
@@ -26,6 +29,12 @@ type service struct {
 
 	// rest client
 	parentClient client.Client
+}
+
+//onmetal machine annotations
+type annotation struct {
+	onmetal_machine   string
+	onmetal_namespace string
 }
 
 // Service is the CSI Mock service provider.
@@ -52,7 +61,7 @@ func New(config map[string]string) Service {
 		}
 		newClient, err := client.New(parentCluster.GetConfig(), client.Options{Scheme: helper.Scheme})
 		if err != nil {
-			log.Fatal(err, "unable to load target kubeconfig")
+			log.Fatal(err, "unable to load cluster cliet")
 		}
 		svc.parentClient = newClient
 
@@ -62,4 +71,21 @@ func New(config map[string]string) Service {
 
 func (s *service) BeforeServe(ctx context.Context, sp *gocsi.StoragePlugin, listner net.Listener) error {
 	return nil
+}
+
+// Get the onmetal-machine and onmetal-namespace value from node annotations
+func (s *service) NodeGetAnnotations() (a *annotation, err error) {
+	nodeName := s.node_name
+	client, err := helper.BuildInclusterClient()
+	if err != nil {
+		fmt.Println("BuildClient Error", err)
+	}
+	node, err := client.Client.CoreV1().Nodes().Get(context.Background(), nodeName, meta_v1.GetOptions{})
+	if err != nil {
+		fmt.Println("Node Not found!", err)
+	}
+	onmetalMachineName := node.ObjectMeta.Annotations["onmetal-machine"]
+	onmetalMachineNamespace := node.ObjectMeta.Annotations["onmetal-namespace"]
+	onmetal_annotation := annotation{onmetal_machine: onmetalMachineName, onmetal_namespace: onmetalMachineNamespace}
+	return &onmetal_annotation, err
 }

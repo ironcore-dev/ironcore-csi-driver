@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -23,52 +24,46 @@ type NodeMounter struct {
 
 func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	fmt.Println("request recieved for node stage volume ", req.GetVolumeId(), "at", req.GetStagingTargetPath())
-	// fstype := req.GetVolumeContext()["fstype"]
-	// mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
-	// nm := &NodeMounter{
-	// 	ReadOnly:     false,
-	// 	FsType:       fstype,
-	// 	MountOptions: mountOptions,
-	// 	Mounter:      &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
-	// }
-	// targetPath := req.GetStagingTargetPath()
-	// resp := &csi.NodeStageVolumeResponse{}
-	// notMnt, err := nm.Mounter.IsLikelyNotMountPoint(targetPath)
-	// if err != nil && !os.IsNotExist(err) {
-	// 	fmt.Println("unable to verify MountPoint", err)
-	// 	return resp, err
-	// }
-	// if !notMnt {
-	// 	fmt.Printf("volume at %s already mounted", targetPath)
-	// }
+	fstype := req.GetVolumeContext()["fstype"]
+	devicePath := "/host" + req.PublishContext["device_name"]
 
-	// if err := os.MkdirAll(targetPath, 0750); err != nil {
-	// 	fmt.Printf("failed to mkdir %s, error", targetPath)
-	// 	return resp, err
-	// }
+	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
+	nm := &NodeMounter{
+		ReadOnly:     false,
+		FsType:       fstype,
+		MountOptions: mountOptions,
+		Mounter:      &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
+	}
+	targetPath := req.GetStagingTargetPath()
+	resp := &csi.NodeStageVolumeResponse{}
+	notMnt, err := nm.Mounter.IsLikelyNotMountPoint(targetPath)
+	if err != nil && !os.IsNotExist(err) {
+		fmt.Println("unable to verify MountPoint", err)
+		return resp, err
+	}
+	if !notMnt {
+		fmt.Printf("volume at %s already mounted", targetPath)
+	}
 
-	// var options []string
+	if err := os.MkdirAll(targetPath, 0750); err != nil {
+		fmt.Printf("failed to mkdir %s, error", targetPath)
+		return resp, err
+	}
 
-	// if nm.ReadOnly {
-	// 	options = append(options, "ro")
-	// } else {
-	// 	options = append(options, "rw")
-	// }
-	// options = append(options, nm.MountOptions...)
+	var options []string
 
-	// devicePath, err := nm.GetMountDeviceName(targetPath)
-	// if err != nil {
-	// 	msg := fmt.Sprintf("failed to check if volume is already mounted: %v", err)
-	// 	return nil, status.Error(codes.Internal, msg)
-	// }
+	if nm.ReadOnly {
+		options = append(options, "ro")
+	} else {
+		options = append(options, "rw")
+	}
+	options = append(options, nm.MountOptions...)
 
-	// fmt.Println("devicePath--------------->", devicePath)
-	// fmt.Println("options--------------->", options)
-	// fmt.Println("targetpath------------->", targetPath)
-	// fmt.Println("fstype--------------->", nm.FsType)
-	// if err = nm.Mounter.FormatAndMount(devicePath, targetPath, nm.FsType, options); err != nil {
-	// 	return resp, fmt.Errorf("failed to mount volume %s [%s] to %s, error %v", devicePath, nm.FsType, targetPath, err)
-	// }
+	if err = nm.Mounter.FormatAndMount(devicePath, targetPath, nm.FsType, options); err != nil {
+		fmt.Println("failed to stage volume ", err)
+		return resp, fmt.Errorf("failed to mount volume %s [%s] to %s, error %v", devicePath, nm.FsType, targetPath, err)
+	}
+	fmt.Println("Successfully staged the volume")
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
@@ -76,65 +71,77 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 	fmt.Println("request recieved for node publish volume ", req.GetVolumeId(), "at", req.GetTargetPath())
 	resp := &csi.NodePublishVolumeResponse{}
 
-	// volumeID := req.GetVolumeId()
-	// if len(volumeID) == 0 {
-	// 	return nil, status.Error(codes.InvalidArgument, "Volume ID not found")
-	// }
+	volumeID := req.GetVolumeId()
+	if len(volumeID) == 0 {
+		fmt.Println("Unable to get volume id")
+		return nil, status.Error(codes.InvalidArgument, "Volume ID not found")
+	}
 
-	// stagePath := req.GetStagingTargetPath()
-	// if len(stagePath) == 0 {
-	// 	return nil, status.Error(codes.InvalidArgument, "Staging path not found")
-	// }
+	stagePath := req.GetStagingTargetPath()
+	if len(stagePath) == 0 {
+		fmt.Println("Unable to get staging path")
+		return nil, status.Error(codes.InvalidArgument, "Staging path not found")
+	}
 
-	// targetPath := req.GetTargetPath()
-	// if len(targetPath) == 0 {
-	// 	return nil, status.Error(codes.InvalidArgument, "Target path not found")
-	// }
+	targetPath := req.GetTargetPath()
+	if len(targetPath) == 0 {
+		fmt.Println("Unable to get target path")
+		return nil, status.Error(codes.InvalidArgument, "Target path not found")
+	}
 
-	// volCap := req.GetVolumeCapability()
-	// if volCap == nil {
-	// 	return nil, status.Error(codes.InvalidArgument, "Volume capability not provided")
-	// }
-	// mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
-	// mountOptions = append(mountOptions, "bind")
-	// if req.GetReadonly() {
-	// 	mountOptions = append(mountOptions, "ro")
-	// }
+	volCap := req.GetVolumeCapability()
+	if volCap == nil {
+		fmt.Println("Unable to get volume capacity")
+		return nil, status.Error(codes.InvalidArgument, "Volume capability not provided")
+	}
+	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
+	mountOptions = append(mountOptions, "bind")
+	if req.GetReadonly() {
+		mountOptions = append(mountOptions, "ro")
+	} else {
+		mountOptions = append(mountOptions, "rw")
+	}
+	fmt.Println("get mount")
+	if m := volCap.GetMount(); m != nil {
+		for _, f := range m.MountFlags {
+			if f != "bind" && f != "ro" {
+				mountOptions = append(mountOptions, f)
+			}
+		}
+	}
 
-	// if m := volCap.GetMount(); m != nil {
-	// 	for _, f := range m.MountFlags {
-	// 		if f != "bind" && f != "ro" {
-	// 			mountOptions = append(mountOptions, f)
-	// 		}
-	// 	}
-	// }
+	fsType := req.GetVolumeContext()["fstype"]
+	if len(fsType) == 0 {
+		fsType = "ext4"
+	}
+	nm := &NodeMounter{
+		ReadOnly:     false,
+		FsType:       fsType,
+		MountOptions: mountOptions,
+		Mounter:      &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
+	}
 
-	// if err := os.MkdirAll(filepath.Dir(targetPath), 0750); err != nil {
-	// 	fmt.Printf("failed to create directory %s, error", filepath.Dir(targetPath))
-	// 	return resp, err
-	// }
+	notMnt, err := nm.Mounter.IsLikelyNotMountPoint(targetPath)
+	if err != nil && !os.IsNotExist(err) {
+		return resp, status.Errorf(codes.Internal, "Determination of mount point failed: %v", err)
+	}
 
-	// fsType := req.GetVolumeContext()["fstype"]
-	// if len(fsType) == 0 {
-	// 	fsType = "ext4"
-	// }
-	// nm := &NodeMounter{
-	// 	ReadOnly:     false,
-	// 	FsType:       fsType,
-	// 	MountOptions: mountOptions,
-	// 	Mounter:      &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
-	// }
+	if notMnt {
+		fmt.Println("targetPath is  not mountpoint", targetPath)
+		if os.IsNotExist(err) {
+			fmt.Println("make target directory")
+			if err := os.MkdirAll(targetPath, 0750); err != nil {
+				fmt.Printf("failed to create directory %s, error", targetPath)
+				return resp, err
+			}
+		}
 
-	// notMnt, err := nm.Mounter.IsLikelyNotMountPoint(targetPath)
-	// if err != nil && !os.IsNotExist(err) {
-	// 	return resp, status.Errorf(codes.Internal, "Determination of mount point failed: %v", err)
-	// }
-
-	// if notMnt {
-	// 	if err := nm.Mounter.Mount(stagePath, targetPath, nm.FsType, mountOptions); err != nil {
-	// 		return resp, status.Errorf(codes.Internal, "Could not mount %q at %q: %v", stagePath, targetPath, err)
-	// 	}
-	// }
+		if err := nm.Mounter.Mount(stagePath, targetPath, nm.FsType, mountOptions); err != nil {
+			fmt.Println("failed to mount volume. error while publishing volume ", err)
+			return resp, status.Errorf(codes.Internal, "Could not mount %q at %q: %v", stagePath, targetPath, err)
+		}
+	}
+	fmt.Println("Successfully published volume")
 	return resp, nil
 }
 
@@ -161,8 +168,21 @@ func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVol
 	}
 	err = nm.Mounter.Unmount(stagePath)
 	if err != nil {
+		fmt.Println("failed to un-stage volume", err)
 		return nil, status.Errorf(codes.Internal, "Failed to unmount target %q: %v", stagePath, err)
 	}
+	fmt.Println("remove directory after mount")
+	err = os.RemoveAll(stagePath)
+	if err != nil {
+		fmt.Println("error remove mount directory ", err)
+		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", stagePath, err)
+	}
+	err = os.RemoveAll("/host" + stagePath)
+	if err != nil {
+		fmt.Println("error remove mount directory ", err)
+		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", stagePath, err)
+	}
+	fmt.Println("Successfully unstanged volume")
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
@@ -177,13 +197,27 @@ func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublis
 	if len(target) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path not provided")
 	}
+	fmt.Println("volume mount path", target)
 	nm := &NodeMounter{
 		Mounter: &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
 	}
 	err := nm.Mounter.Unmount(target)
 	if err != nil {
+		fmt.Println("failed to unmount volume ", err)
 		return nil, status.Errorf(codes.Internal, "Failed not unmount %q: %v", target, err)
 	}
+	fmt.Println("remove directory after mount")
+	err = os.RemoveAll(target)
+	if err != nil {
+		fmt.Println("error remove mount directory ", err)
+		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", target, err)
+	}
+	err = os.RemoveAll("/host" + target)
+	if err != nil {
+		fmt.Println("error remove mount directory ", err)
+		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", target, err)
+	}
+	fmt.Println("Successfully unpublished volume ", target)
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 func (s *service) NodeGetVolumeStats(
@@ -234,7 +268,6 @@ func (s *service) NodeGetCapabilities(
 }
 
 func (nm *NodeMounter) GetMountDeviceName(mountPath string) (device string, err error) {
-	fmt.Println("mountpath---------------->", mountPath)
 	mountPoints, err := nm.Mounter.List()
 	if err != nil {
 		return device, err
@@ -244,13 +277,11 @@ func (nm *NodeMounter) GetMountDeviceName(mountPath string) (device string, err 
 	if err != nil {
 		target = mountPath
 	}
-	fmt.Println("target---------------->", target)
 	for i := range mountPoints {
 		if mountPoints[i].Path == target {
 			device = mountPoints[i].Device
 			break
 		}
 	}
-	fmt.Println("device---------------->", device)
 	return device, nil
 }

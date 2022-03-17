@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/golang/protobuf v1.5.2
-	github.com/onmetal/onmetal-api v0.0.10-0.20220218113921-ae34f4b44955
+	github.com/onmetal/onmetal-api v0.0.10-0.20220225150941-019bd2a8ccb6
 	github.com/rexray/gocsi v1.2.2
 	github.com/stretchr/testify v1.7.0
 	google.golang.org/grpc v1.40.0
