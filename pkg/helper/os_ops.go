@@ -10,6 +10,7 @@ type OsHelper interface {
 	IsNotExist(err error) bool
 	Remove(name string) error
 	RemoveAll(name string) error
+	Stat(path string) (os.FileInfo, error)
 }
 
 //OsOps OsOps struct
@@ -33,4 +34,8 @@ func (h OsOps) Remove(name string) error {
 
 func (h OsOps) RemoveAll(name string) error {
 	return os.RemoveAll(name)
+}
+
+func (h OsOps) Stat(path string) (os.FileInfo, error) {
+	return os.Stat(path)
 }

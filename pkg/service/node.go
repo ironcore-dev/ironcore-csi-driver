@@ -176,9 +176,13 @@ func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublis
 	if len(target) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path not provided")
 	}
-	fmt.Println("volume mount path", target)
-
-	err := s.mountutil.Unmount(target)
+	fmt.Println("validate mount path", target)
+	_, err := s.osutil.Stat(target)
+	if err != nil {
+		fmt.Println("Unable to unmount volume, err", err)
+		return nil, status.Errorf(codes.Internal, "Unable to unmout %q: %v", target, err)
+	}
+	err = s.mountutil.Unmount(target)
 	if err != nil {
 		fmt.Println("failed to unmount volume ", err)
 		return nil, status.Errorf(codes.Internal, "Failed not unmount %q: %v", target, err)

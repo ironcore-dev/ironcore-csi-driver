@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"os"
 	"testing"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"k8s.io/mount-utils"
-	// mount "k8s.io/mount-utils"
 )
 
 type NodeSuite struct {
@@ -131,6 +131,140 @@ func (suite *NodeSuite) Test_NodePublishVolume_Do_Mount_Failed() {
 	assert.NotNil(suite.T(), err, "expected to fail, but passed")
 }
 
+// Node Un-Publish
+func (suite *NodeSuite) Test_NodeUnpublishVolume_Do_Mount_Failed() {
+	service := service{}
+	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service.osutil = suite.osmock
+	targetPath := "/var/lib/kublet/"
+	volctx := make(map[string]string)
+	volctx["volume_id"] = "vol123"
+	suite.osmock.On("Stat", mock.Anything).Return(fs.ErrNotExist, errors.New("not exists"))
+	suite.mountMock.On("Unmount", mock.Anything).Return(errors.New("unable to mount volume"))
+
+	_, err := service.NodeUnpublishVolume(context.Background(), getNodeUnPublishVolumeRequest(targetPath, volctx["volume_id"]))
+	assert.NotNil(suite.T(), err, "expected to fail, but passed")
+}
+
+func (suite *NodeSuite) Test_NodeUnpublishVolume_Unmount_Fail() {
+	service := service{}
+	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service.osutil = suite.osmock
+	targetPath := "/var/lib/kublet/"
+	volctx := make(map[string]string)
+	volctx["volume_id"] = "vol123"
+	suite.osmock.On("Stat", mock.Anything).Return(nil, nil)
+	suite.mountMock.On("Unmount", mock.Anything).Return(errors.New("unable to unmount volume"))
+
+	_, err := service.NodeUnpublishVolume(context.Background(), getNodeUnPublishVolumeRequest(targetPath, volctx["volume_id"]))
+	assert.NotNil(suite.T(), err, "expected to fail, but passed")
+}
+
+func (suite *NodeSuite) Test_NodeUnpublishVolume_Delete_Fail() {
+	service := service{}
+	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service.osutil = suite.osmock
+	targetPath := "/var/lib/kublet/"
+	volctx := make(map[string]string)
+	volctx["volume_id"] = "vol123"
+	suite.osmock.On("Stat", mock.Anything).Return(nil, nil)
+	suite.mountMock.On("Unmount", mock.Anything).Return(nil)
+	suite.osmock.On("RemoveAll", mock.Anything).Return(errors.New("error while delete"))
+
+	_, err := service.NodeUnpublishVolume(context.Background(), getNodeUnPublishVolumeRequest(targetPath, volctx["volume_id"]))
+	assert.NotNil(suite.T(), err, "expected to fail, but passed")
+}
+
+func (suite *NodeSuite) Test_NodeUnpublishVolume_Unmount_Pass() {
+	service := service{}
+	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service.osutil = suite.osmock
+	targetPath := "/var/lib/kublet/"
+	volctx := make(map[string]string)
+	volctx["volume_id"] = "vol123"
+	suite.osmock.On("Stat", mock.Anything).Return(nil, nil)
+	suite.mountMock.On("Unmount", mock.Anything).Return(nil)
+	suite.osmock.On("RemoveAll", mock.Anything).Return(nil)
+
+	_, err := service.NodeUnpublishVolume(context.Background(), getNodeUnPublishVolumeRequest(targetPath, volctx["volume_id"]))
+	assert.Nil(suite.T(), err, "empty object")
+}
+
+// Node UnStage
+func (suite *NodeSuite) Test_NodeUnstageVolume_MountPoint_Error() {
+	service := service{}
+	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service.osutil = suite.osmock
+	targetPath := "/var/lib/kublet/"
+	volctx := make(map[string]string)
+	volctx["volume_id"] = "vol123"
+	suite.osmock.On("Stat", mock.Anything).Return(fs.ErrNotExist, errors.New("not exists"))
+	suite.mountMock.On("Unmount", mock.Anything).Return(errors.New("unable to mount volume"))
+	suite.mountMock.On("List").Return(nil, errors.New("unable to get mount points"))
+	_, err := service.NodeUnstageVolume(context.Background(), getNodeUnStageVolumeRequest(targetPath, volctx["volume_id"]))
+	assert.NotNil(suite.T(), err, "expected to fail, but passed")
+}
+
+func (suite *NodeSuite) Test_NodeUnstageVolume_MountPoint_NotFound() {
+	service := service{}
+	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service.osutil = suite.osmock
+	targetPath := "/var/lib/kublet/"
+	volctx := make(map[string]string)
+	volctx["volume_id"] = "vol123"
+	suite.osmock.On("Stat", mock.Anything).Return(fs.ErrNotExist, errors.New("not exists"))
+	suite.mountMock.On("Unmount", mock.Anything).Return(errors.New("unable to mount volume"))
+	suite.mountMock.On("List").Return([]mount.MountPoint{}, nil)
+	_, err := service.NodeUnstageVolume(context.Background(), getNodeUnStageVolumeRequest(targetPath, volctx["volume_id"]))
+	assert.NotNil(suite.T(), err, "expected to fail, but passed")
+}
+
+func (suite *NodeSuite) Test_NodeUnstageVolume_Unmount_Failed() {
+	service := service{}
+	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service.osutil = suite.osmock
+	targetPath := "/var/lib/kublet/"
+	volctx := make(map[string]string)
+	volctx["volume_id"] = "vol123"
+	suite.osmock.On("Stat", mock.Anything).Return(fs.ErrNotExist, errors.New("not exists"))
+	suite.mountMock.On("Unmount", mock.Anything).Return(errors.New("unable to mount volume"))
+	suite.mountMock.On("List").Return([]mount.MountPoint{{Device: "/dev/sda1", Path: "/var/lib/kublet/"}}, nil)
+	_, err := service.NodeUnstageVolume(context.Background(), getNodeUnStageVolumeRequest(targetPath, volctx["volume_id"]))
+	assert.NotNil(suite.T(), err, "expected to fail, but passed")
+}
+
+func (suite *NodeSuite) Test_NodeUnstageVolume_Delete_Fail() {
+	service := service{}
+	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service.osutil = suite.osmock
+	targetPath := "/var/lib/kublet/"
+	volctx := make(map[string]string)
+	volctx["volume_id"] = "vol123"
+	suite.osmock.On("Stat", mock.Anything).Return(fs.ErrNotExist, errors.New("not exists"))
+	suite.mountMock.On("Unmount", mock.Anything).Return(nil)
+	suite.mountMock.On("List").Return([]mount.MountPoint{{Device: "/dev/sda1", Path: "/var/lib/kublet/"}}, nil)
+	suite.osmock.On("RemoveAll", mock.Anything).Return(errors.New("error while delete"))
+
+	_, err := service.NodeUnstageVolume(context.Background(), getNodeUnStageVolumeRequest(targetPath, volctx["volume_id"]))
+	assert.NotNil(suite.T(), err, "expected to fail, but passed")
+}
+
+func (suite *NodeSuite) Test_NodeUnstageVolume_Unmount_Pass() {
+	service := service{}
+	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service.osutil = suite.osmock
+	targetPath := "/var/lib/kublet/"
+	volctx := make(map[string]string)
+	volctx["volume_id"] = "vol123"
+	suite.osmock.On("Stat", mock.Anything).Return(fs.ErrNotExist, errors.New("not exists"))
+	suite.mountMock.On("Unmount", mock.Anything).Return(nil)
+	suite.mountMock.On("List").Return([]mount.MountPoint{{Device: "/dev/sda1", Path: "/var/lib/kublet/"}}, nil)
+	suite.osmock.On("RemoveAll", mock.Anything).Return(nil)
+
+	_, err := service.NodeUnstageVolume(context.Background(), getNodeUnStageVolumeRequest(targetPath, volctx["volume_id"]))
+	assert.Nil(suite.T(), err, "empty object")
+}
+
 type MockMounter struct {
 	mount.SafeFormatAndMount
 	mock.Mock
@@ -196,11 +330,9 @@ func (m *MockMounter) MountSensitiveWithoutSystemdWithMountFlags(source string, 
 
 func (m *MockMounter) List() ([]mount.MountPoint, error) {
 	args := m.Called()
-	var err error
-	if args.Get(0) != nil {
-		err = args.Get(0).(error)
-	}
-	return nil, err
+	st, _ := args.Get(0).([]mount.MountPoint)
+	err, _ := args.Get(1).(error)
+	return st, err
 }
 func (m *MockMounter) GetMountRefs(pathname string) ([]string, error) {
 	args := m.Called(pathname)
@@ -247,7 +379,15 @@ func (m *mockOS) Remove(path string) error {
 
 func (m *mockOS) RemoveAll(name string) error {
 	status := m.Called(name)
-	return status.Get(0).(error)
+	st, _ := status.Get(0).(error)
+	return st
+}
+
+func (m *mockOS) Stat(path string) (os.FileInfo, error) {
+	status := m.Called(path)
+	finfo, _ := status.Get(0).(os.FileInfo)
+	st, _ := status.Get(1).(error)
+	return finfo, st
 }
 
 // Test data
@@ -260,9 +400,9 @@ func getNodeStageVolumeRequest(stagetagetPath string, publishContexMap map[strin
 		VolumeCapability:  &csi.VolumeCapability{AccessType: &csi.VolumeCapability_Mount{}},
 	}
 }
-func getNodeUnStageVolumeRequest(tagetPath, stagetagetPath string, publishContexMap map[string]string) *csi.NodeUnstageVolumeRequest {
+func getNodeUnStageVolumeRequest(stagetagetPath string, volumeID string) *csi.NodeUnstageVolumeRequest {
 	return &csi.NodeUnstageVolumeRequest{
-		VolumeId:          publishContexMap["volume_id"],
+		VolumeId:          volumeID,
 		StagingTargetPath: stagetagetPath,
 	}
 }
