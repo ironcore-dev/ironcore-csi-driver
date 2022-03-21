@@ -8,6 +8,7 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/apis/storage/v1alpha1"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -30,6 +31,7 @@ func TestControllerSuite(t *testing.T) {
 	suite.Run(t, new(ControllerSuite))
 }
 
+//CreateVolume test cases
 func (suite *ControllerSuite) Test_CreateVolume_InvalidParameter_Fail() {
 	service := service{parentClient: suite.clientMock}
 	var parameterMap map[string]string
@@ -107,6 +109,55 @@ func getCreateVolumeRequest(pvName string, parameterMap map[string]string) *csi.
 		Parameters:         parameterMap,
 		VolumeCapabilities: arr,
 	}
+}
+
+//DeleteVolume test cases
+func (suite *ControllerSuite) Test_DeleteVolume_InvalidParameter_Fail() {
+	service := service{parentClient: suite.clientMock}
+	delValReq := getDeleteVolumeRequest("", getSecret())
+	_, err := service.DeleteVolume(context.Background(), delValReq)
+	assert.NotNil(suite.T(), err, "Fail to validate parameter for delete volume")
+}
+
+func (suite *ControllerSuite) Test_DeleteVolume_Error() {
+	service := service{parentClient: suite.clientMock}
+	delValReq := getDeleteVolumeRequest("test", getSecret())
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("error while get volumeclaim"))
+	_, err := service.DeleteVolume(context.Background(), delValReq)
+	assert.NotNil(suite.T(), err, "expected error but got success")
+}
+
+func (suite *ControllerSuite) Test_DeleteVolume_NotFound() {
+	service := service{parentClient: suite.clientMock}
+	delValReq := getDeleteVolumeRequest("test", getSecret())
+	//suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(apierrors.NewNotFound(extensions.Resource("volumeclaim"), "test"))
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("volume not found"))
+	_, err := service.DeleteVolume(context.Background(), delValReq)
+	assert.NotNil(suite.T(), err, "expected error but got success")
+}
+
+func (suite *ControllerSuite) Test_DeleteVolume_Pass() {
+	service := service{parentClient: suite.clientMock}
+	delValReq := getDeleteVolumeRequest("test", getSecret())
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	suite.clientMock.On("Delete", mock.Anything).Return(nil)
+	_, err := service.DeleteVolume(context.Background(), delValReq)
+	assert.Nil(suite.T(), err, "Fail to delete volume")
+}
+
+func getDeleteVolumeRequest(volumeId string, secrets map[string]string) *csi.DeleteVolumeRequest {
+	return &csi.DeleteVolumeRequest{
+		VolumeId: volumeId,
+		Secrets:  secrets,
+	}
+}
+
+func getSecret() map[string]string {
+	secretMap := make(map[string]string)
+	secretMap["username"] = "admin"
+	secretMap["password"] = "123456"
+	secretMap["hostname"] = "https://172.17.35.61/"
+	return secretMap
 }
 
 // mocks
