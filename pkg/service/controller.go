@@ -141,13 +141,13 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 	fmt.Println(fmt.Sprintf("request recieved to publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId()))
 	csiResp := &csi.ControllerPublishVolumeResponse{}
 	machine := &computev1alpha1.Machine{}
-	onmetal_annotation, err := s.NodeGetAnnotations() //Get onmetal-machine annotations
-	if err != nil || (onmetal_annotation.onmetal_machine == "" && onmetal_annotation.onmetal_namespace == "") {
+	onmetal_annotation, err := s.kubehelper.NodeGetAnnotations(s.node_name) //Get onmetal-machine annotations
+	if err != nil || (onmetal_annotation.Onmetal_machine == "" && onmetal_annotation.Onmetal_namespace == "") {
 		fmt.Println("onmetal annotations Not Found")
 	}
 	machineKey := types.NamespacedName{
-		Namespace: onmetal_annotation.onmetal_namespace,
-		Name:      onmetal_annotation.onmetal_machine,
+		Namespace: onmetal_annotation.Onmetal_namespace,
+		Name:      onmetal_annotation.Onmetal_machine,
 	}
 	fmt.Println("get machine with provided name and namespace")
 	err = s.parentClient.Get(ctx, client.ObjectKey{Name: machineKey.Name, Namespace: machineKey.Namespace}, machine)

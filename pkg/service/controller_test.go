@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	computev1alpha1 "github.com/onmetal/onmetal-api/apis/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/apis/storage/v1alpha1"
+	"github.com/onmetal/onmetal-csi-driver/pkg/helper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -19,11 +21,18 @@ import (
 
 func (suite *ControllerSuite) SetupTest() {
 	suite.clientMock = new(MockClient)
+	suite.kubehelper = new(KubeHelper)
 }
 
 type ControllerSuite struct {
 	suite.Suite
 	clientMock *MockClient
+	kubehelper *KubeHelper
+}
+
+type KubeHelper struct {
+	helper.KubeHelper
+	mock.Mock
 }
 
 func TestControllerSuite(t *testing.T) {
@@ -94,6 +103,26 @@ func (suite *ControllerSuite) Test_CreateVolume_Pass() {
 	assert.Nil(suite.T(), err, "Fail to create volume")
 }
 
+func (suite *ControllerSuite) Test_ControllerPublishVolume_succsss() {
+	service := service{kubehelper: suite.kubehelper}
+	crtPublishVolumeReq := getCrtControllerPublishVolumeRequest()
+	crtPublishVolumeReq.VolumeId = "100$$nfs"
+	crtPublishVolumeReq.NodeId = "minikube"
+	machine := &computev1alpha1.Machine{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "csi-test",
+			Name:      "csi-test",
+		},
+	}
+	suite.kubehelper.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
+		arg := args.Get(2).(*computev1alpha1.Machine)
+		fmt.Println(arg)
+		*arg = *machine
+	})
+	suite.clientMock.On("Update", mock.Anything).Return(nil)
+	_, err := service.ControllerPublishVolume(context.Background(), crtPublishVolumeReq)
+	assert.Nil(suite.T(), err, "Fail to create volume")
+}
 func getCreateVolumeRequest(pvName string, parameterMap map[string]string) *csi.CreateVolumeRequest {
 	capa := csi.VolumeCapability{
 		AccessMode: &csi.VolumeCapability_AccessMode{
@@ -106,6 +135,12 @@ func getCreateVolumeRequest(pvName string, parameterMap map[string]string) *csi.
 		Name:               pvName,
 		Parameters:         parameterMap,
 		VolumeCapabilities: arr,
+	}
+}
+
+func getCrtControllerPublishVolumeRequest() *csi.ControllerPublishVolumeRequest {
+	return &csi.ControllerPublishVolumeRequest{
+		VolumeId: "100$$2f",
 	}
 }
 

@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	computev1alpha1 "github.com/onmetal/onmetal-api/apis/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/apis/storage/v1alpha1"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -27,6 +29,21 @@ type kubeclient struct {
 	restconfig *rest.Config
 }
 
+//onmetal machine annotations
+type annotation struct {
+	Onmetal_machine   string
+	Onmetal_namespace string
+}
+
+type Helper interface {
+	BuildInclusterClient() (kc *kubeclient, err error)
+	LoadRESTConfig(kubeconfig string) (cluster.Cluster, error)
+	NodeGetAnnotations(Nodename string) (a annotation, err error)
+}
+
+type KubeHelper struct {
+}
+
 var clientapi kubeclient
 
 func init() {
@@ -37,7 +54,7 @@ func init() {
 
 // will get kubeconfig from configmap with provided name
 // will load kubeconfig and return client to new cluster
-func LoadRESTConfig(kubeconfig string) (cluster.Cluster, error) {
+func (k *KubeHelper) LoadRESTConfig(kubeconfig string) (cluster.Cluster, error) {
 	data, err := os.ReadFile(kubeconfig)
 	if err != nil {
 		return nil, fmt.Errorf("could not read kubeconfig %s: %w ", kubeconfig, err)
@@ -57,7 +74,7 @@ func LoadRESTConfig(kubeconfig string) (cluster.Cluster, error) {
 }
 
 // Create incluster kubeclient
-func BuildInclusterClient() (kc *kubeclient, err error) {
+func (k *KubeHelper) BuildInclusterClient() (kc *kubeclient, err error) {
 	if clientapi.restconfig == nil {
 		config, err := rest.InClusterConfig()
 		if err != nil {
@@ -72,4 +89,20 @@ func BuildInclusterClient() (kc *kubeclient, err error) {
 		clientapi = kubeclient{Client: clientset, restconfig: config}
 	}
 	return &clientapi, err
+}
+
+// Get the onmetal-machine and onmetal-namespace value from node annotations
+func (k *KubeHelper) NodeGetAnnotations(Nodename string) (a annotation, err error) {
+	client, err := k.BuildInclusterClient()
+	if err != nil {
+		fmt.Println("BuildClient Error", err)
+	}
+	node, err := client.Client.CoreV1().Nodes().Get(context.Background(), Nodename, meta_v1.GetOptions{})
+	if err != nil {
+		fmt.Println("Node Not found!", err)
+	}
+	onmetalMachineName := node.ObjectMeta.Annotations["onmetal-machine"]
+	onmetalMachineNamespace := node.ObjectMeta.Annotations["onmetal-namespace"]
+	onmetal_annotation := annotation{Onmetal_machine: onmetalMachineName, Onmetal_namespace: onmetalMachineNamespace}
+	return onmetal_annotation, err
 }
