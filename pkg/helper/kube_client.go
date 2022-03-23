@@ -24,27 +24,27 @@ var (
 )
 
 // Incluster kubeconfig
-type kubeclient struct {
+type Kubeclient struct {
 	Client     kubernetes.Interface
 	restconfig *rest.Config
 }
 
 //onmetal machine annotations
-type annotation struct {
+type Annotation struct {
 	Onmetal_machine   string
 	Onmetal_namespace string
 }
 
 type Helper interface {
-	BuildInclusterClient() (kc *kubeclient, err error)
+	BuildInclusterClient() (kc *Kubeclient, err error)
 	LoadRESTConfig(kubeconfig string) (cluster.Cluster, error)
-	NodeGetAnnotations(Nodename string) (a annotation, err error)
+	NodeGetAnnotations(Nodename string, client kubernetes.Interface) (a Annotation, err error)
 }
 
 type KubeHelper struct {
 }
 
-var clientapi kubeclient
+var clientapi Kubeclient
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
@@ -74,35 +74,31 @@ func (k *KubeHelper) LoadRESTConfig(kubeconfig string) (cluster.Cluster, error) 
 }
 
 // Create incluster kubeclient
-func (k *KubeHelper) BuildInclusterClient() (kc *kubeclient, err error) {
+func (k *KubeHelper) BuildInclusterClient() (kc *Kubeclient, err error) {
 	if clientapi.restconfig == nil {
 		config, err := rest.InClusterConfig()
 		if err != nil {
-			log.Fatalf("BuildClient Error while getting cluster config, error: %v", err)
+			log.Printf("BuildClient Error while getting cluster config, error: %v", err)
 			return nil, err
 		}
 		clientset, err := kubernetes.NewForConfig(config)
 		if err != nil {
-			log.Fatalf("BuildClient Error while creating client, error: %v", err)
+			log.Printf("BuildClient Error while creating client, error: %v", err)
 			return nil, err
 		}
-		clientapi = kubeclient{Client: clientset, restconfig: config}
+		clientapi = Kubeclient{Client: clientset, restconfig: config}
 	}
 	return &clientapi, err
 }
 
 // Get the onmetal-machine and onmetal-namespace value from node annotations
-func (k *KubeHelper) NodeGetAnnotations(Nodename string) (a annotation, err error) {
-	client, err := k.BuildInclusterClient()
+func (k *KubeHelper) NodeGetAnnotations(Nodename string, client kubernetes.Interface) (a Annotation, err error) {
+	node, err := client.CoreV1().Nodes().Get(context.Background(), Nodename, meta_v1.GetOptions{})
 	if err != nil {
-		fmt.Println("BuildClient Error", err)
-	}
-	node, err := client.Client.CoreV1().Nodes().Get(context.Background(), Nodename, meta_v1.GetOptions{})
-	if err != nil {
-		fmt.Println("Node Not found!", err)
+		fmt.Println("Node Not found: ", err)
 	}
 	onmetalMachineName := node.ObjectMeta.Annotations["onmetal-machine"]
 	onmetalMachineNamespace := node.ObjectMeta.Annotations["onmetal-namespace"]
-	onmetal_annotation := annotation{Onmetal_machine: onmetalMachineName, Onmetal_namespace: onmetalMachineNamespace}
+	onmetal_annotation := Annotation{Onmetal_machine: onmetalMachineName, Onmetal_namespace: onmetalMachineNamespace}
 	return onmetal_annotation, err
 }

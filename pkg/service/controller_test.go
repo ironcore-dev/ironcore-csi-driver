@@ -7,16 +7,19 @@ import (
 	"testing"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	computev1alpha1 "github.com/onmetal/onmetal-api/apis/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/apis/storage/v1alpha1"
 	"github.com/onmetal/onmetal-csi-driver/pkg/helper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
 )
 
 func (suite *ControllerSuite) SetupTest() {
@@ -28,11 +31,6 @@ type ControllerSuite struct {
 	suite.Suite
 	clientMock *MockClient
 	kubehelper *KubeHelper
-}
-
-type KubeHelper struct {
-	helper.KubeHelper
-	mock.Mock
 }
 
 func TestControllerSuite(t *testing.T) {
@@ -103,26 +101,6 @@ func (suite *ControllerSuite) Test_CreateVolume_Pass() {
 	assert.Nil(suite.T(), err, "Fail to create volume")
 }
 
-func (suite *ControllerSuite) Test_ControllerPublishVolume_succsss() {
-	service := service{kubehelper: suite.kubehelper}
-	crtPublishVolumeReq := getCrtControllerPublishVolumeRequest()
-	crtPublishVolumeReq.VolumeId = "100$$nfs"
-	crtPublishVolumeReq.NodeId = "minikube"
-	machine := &computev1alpha1.Machine{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "csi-test",
-			Name:      "csi-test",
-		},
-	}
-	suite.kubehelper.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
-		arg := args.Get(2).(*computev1alpha1.Machine)
-		fmt.Println(arg)
-		*arg = *machine
-	})
-	suite.clientMock.On("Update", mock.Anything).Return(nil)
-	_, err := service.ControllerPublishVolume(context.Background(), crtPublishVolumeReq)
-	assert.Nil(suite.T(), err, "Fail to create volume")
-}
 func getCreateVolumeRequest(pvName string, parameterMap map[string]string) *csi.CreateVolumeRequest {
 	capa := csi.VolumeCapability{
 		AccessMode: &csi.VolumeCapability_AccessMode{
@@ -136,6 +114,28 @@ func getCreateVolumeRequest(pvName string, parameterMap map[string]string) *csi.
 		Parameters:         parameterMap,
 		VolumeCapabilities: arr,
 	}
+}
+
+func (suite *ControllerSuite) Test_ControllerPublishVolume_Pass() {
+	service := service{kubehelper: suite.kubehelper}
+	crtPublishVolumeReq := getCrtControllerPublishVolumeRequest()
+	crtPublishVolumeReq.VolumeId = "100$$nfs"
+	crtPublishVolumeReq.NodeId = "minikube"
+
+	suite.kubehelper.On("BuildInclusterClient").Return(mock.AnythingOfType("*helper.Kubeclient"), nil)
+
+	fc := fake.NewSimpleClientset(&v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test",
+			Namespace:   "test-csi",
+			Annotations: map[string]string{"onmetal-machine": "test1", "onmetal-namespace": "test2"},
+		},
+	})
+	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("service.node_name"), fc).Return(mock.AnythingOfType("helper.Annotation"), nil)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything).Return(nil)
+	suite.clientMock.On("Update", mock.Anything).Return(nil)
+	_, err := service.ControllerPublishVolume(context.Background(), crtPublishVolumeReq)
+	assert.Nil(suite.T(), err, "Fail to publish volume")
 }
 
 func getCrtControllerPublishVolumeRequest() *csi.ControllerPublishVolumeRequest {
@@ -191,4 +191,26 @@ func (mc *MockClient) Patch(ctx context.Context, obj client.Object, patch client
 	args := mc.Called()
 	err, _ := args.Get(0).(error)
 	return err
+}
+
+type KubeHelper struct {
+	helper.KubeHelper
+	mock.Mock
+}
+
+func (k *KubeHelper) LoadRESTConfig(kubeconfig string) (cluster.Cluster, error) {
+	_ = k.Called()
+	return nil, nil
+}
+
+func (k *KubeHelper) BuildInclusterClient() (*helper.Kubeclient, error) {
+	_ = k.Called()
+	return nil, nil
+}
+
+func (k *KubeHelper) NodeGetAnnotations(Nodename string, client kubernetes.Interface) (a helper.Annotation, err error) {
+	_ = k.Called()
+	a.Onmetal_machine = "test"
+	a.Onmetal_namespace = "test"
+	return a, nil
 }

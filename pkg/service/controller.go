@@ -141,7 +141,13 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 	fmt.Println(fmt.Sprintf("request recieved to publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId()))
 	csiResp := &csi.ControllerPublishVolumeResponse{}
 	machine := &computev1alpha1.Machine{}
-	onmetal_annotation, err := s.kubehelper.NodeGetAnnotations(s.node_name) //Get onmetal-machine annotations
+	kubeClient, err := s.kubehelper.BuildInclusterClient()
+	if err != nil {
+		fmt.Println("error getting kubeclient:", err)
+		return nil, err
+	}
+	fmt.Println("kubeClient.Client:", kubeClient.Client)
+	onmetal_annotation, err := s.kubehelper.NodeGetAnnotations(s.node_name, kubeClient.Client) //Get onmetal-machine annotations
 	if err != nil || (onmetal_annotation.Onmetal_machine == "" && onmetal_annotation.Onmetal_namespace == "") {
 		fmt.Println("onmetal annotations Not Found")
 	}
