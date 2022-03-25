@@ -166,7 +166,7 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 	if !s.isVolumeAttachmetAvailable(machine, vaname) {
 		attachSource := &computev1alpha1.VolumeClaimAttachmentSource{
 			Ref: corev1.LocalObjectReference{
-				Name: "vol_name",
+				Name: req.GetVolumeId() + "-claim",
 			},
 		}
 		volAttachment := computev1alpha1.VolumeAttachment{}

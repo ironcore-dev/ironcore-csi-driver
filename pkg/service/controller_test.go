@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	computev1alpha1 "github.com/onmetal/onmetal-api/apis/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/apis/storage/v1alpha1"
 	"github.com/onmetal/onmetal-csi-driver/pkg/helper"
 	"github.com/stretchr/testify/assert"
@@ -101,29 +102,11 @@ func (suite *ControllerSuite) Test_CreateVolume_Pass() {
 	assert.Nil(suite.T(), err, "Fail to create volume")
 }
 
-func getCreateVolumeRequest(pvName string, parameterMap map[string]string) *csi.CreateVolumeRequest {
-	capa := csi.VolumeCapability{
-		AccessMode: &csi.VolumeCapability_AccessMode{
-			Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
-		},
-	}
-	var arr []*csi.VolumeCapability
-	arr = append(arr, &capa)
-	return &csi.CreateVolumeRequest{
-		Name:               pvName,
-		Parameters:         parameterMap,
-		VolumeCapabilities: arr,
-	}
-}
-
-func (suite *ControllerSuite) Test_ControllerPublishVolume_Pass() {
-	service := service{kubehelper: suite.kubehelper}
+func (suite *ControllerSuite) Test_ControllerPublishVolume_VolAttch_Exist_Pass() {
+	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
 	crtPublishVolumeReq := getCrtControllerPublishVolumeRequest()
-	crtPublishVolumeReq.VolumeId = "100$$nfs"
+	crtPublishVolumeReq.VolumeId = "volume101"
 	crtPublishVolumeReq.NodeId = "minikube"
-
-	suite.kubehelper.On("BuildInclusterClient").Return(mock.AnythingOfType("*helper.Kubeclient"), nil)
-
 	fc := fake.NewSimpleClientset(&v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "test",
@@ -131,17 +114,55 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Pass() {
 			Annotations: map[string]string{"onmetal-machine": "test1", "onmetal-namespace": "test2"},
 		},
 	})
-	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("service.node_name"), fc).Return(mock.AnythingOfType("helper.Annotation"), nil)
+	client := &helper.Kubeclient{Client: fc}
+	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
+	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything).Return(nil)
+	machine := getMachine(crtPublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
+		arg := args.Get(2).(*computev1alpha1.Machine)
+		fmt.Println(arg)
+		*arg = *machine
+	})
 	suite.clientMock.On("Update", mock.Anything).Return(nil)
 	_, err := service.ControllerPublishVolume(context.Background(), crtPublishVolumeReq)
 	assert.Nil(suite.T(), err, "Fail to publish volume")
 }
 
-func getCrtControllerPublishVolumeRequest() *csi.ControllerPublishVolumeRequest {
-	return &csi.ControllerPublishVolumeRequest{
-		VolumeId: "100$$2f",
-	}
+func (suite *ControllerSuite) Test_ControllerPublishVolume_Create_VolAttch_Pass() {
+	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	crtPublishVolumeReq := getCrtControllerPublishVolumeRequest()
+	crtPublishVolumeReq.VolumeId = "volume101"
+	crtPublishVolumeReq.NodeId = "minikube"
+	fc := fake.NewSimpleClientset(&v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test",
+			Namespace:   "test-csi",
+			Annotations: map[string]string{"onmetal-machine": "test1", "onmetal-namespace": "test2"},
+		},
+	})
+	client := &helper.Kubeclient{Client: fc}
+	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
+	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything).Return(nil)
+	machine := getMachine(crtPublishVolumeReq.VolumeId, "sda1", false, computev1alpha1.MachineStateRunning)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
+		arg := args.Get(2).(*computev1alpha1.Machine)
+		fmt.Println(arg)
+		*arg = *machine
+	}).Once()
+
+	machineupdate := getMachine(crtPublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machineupdate).Run(func(args mock.Arguments) {
+		arg := args.Get(2).(*computev1alpha1.Machine)
+		fmt.Println(arg)
+		*arg = *machineupdate
+	}).Once()
+	suite.clientMock.On("Update", mock.Anything).Return(nil)
+	_, err := service.ControllerPublishVolume(context.Background(), crtPublishVolumeReq)
+	assert.Nil(suite.T(), err, "Fail to publish volume")
 }
 
 // mocks
@@ -204,13 +225,72 @@ func (k *KubeHelper) LoadRESTConfig(kubeconfig string) (cluster.Cluster, error) 
 }
 
 func (k *KubeHelper) BuildInclusterClient() (*helper.Kubeclient, error) {
-	_ = k.Called()
-	return nil, nil
+	args := k.Called()
+	client, _ := args.Get(0).(*helper.Kubeclient)
+	return client, nil
 }
 
 func (k *KubeHelper) NodeGetAnnotations(Nodename string, client kubernetes.Interface) (a helper.Annotation, err error) {
-	_ = k.Called()
-	a.Onmetal_machine = "test"
-	a.Onmetal_namespace = "test"
-	return a, nil
+	args := k.Called(Nodename, client)
+	annotation, _ := args.Get(0).(helper.Annotation)
+	return annotation, nil
+}
+
+func getCreateVolumeRequest(pvName string, parameterMap map[string]string) *csi.CreateVolumeRequest {
+	capa := csi.VolumeCapability{
+		AccessMode: &csi.VolumeCapability_AccessMode{
+			Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+		},
+	}
+	var arr []*csi.VolumeCapability
+	arr = append(arr, &capa)
+	return &csi.CreateVolumeRequest{
+		Name:               pvName,
+		Parameters:         parameterMap,
+		VolumeCapabilities: arr,
+	}
+}
+
+func getCrtControllerPublishVolumeRequest() *csi.ControllerPublishVolumeRequest {
+	return &csi.ControllerPublishVolumeRequest{
+		VolumeId: "100$$2f",
+	}
+}
+
+func getMachine(volumeid string, device string, vaexist bool, state computev1alpha1.MachineState) *computev1alpha1.Machine {
+	machine := &computev1alpha1.Machine{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: computev1alpha1.GroupVersion.String(),
+			Kind:       "Machine",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "test1",
+			Name:      "test2",
+		},
+		Spec: computev1alpha1.MachineSpec{},
+		Status: computev1alpha1.MachineStatus{
+			State: state,
+		},
+	}
+	if vaexist {
+		machine.Spec.VolumeAttachments = []computev1alpha1.VolumeAttachment{
+			{
+				Name: volumeid + "-attachment",
+				VolumeAttachmentSource: computev1alpha1.VolumeAttachmentSource{
+					VolumeClaim: &computev1alpha1.VolumeClaimAttachmentSource{
+						Ref: v1.LocalObjectReference{
+							Name: volumeid + "-claim",
+						},
+					},
+				},
+			},
+		}
+		machine.Status.VolumeAttachments = []computev1alpha1.VolumeAttachmentStatus{
+			{
+				Name:     volumeid + "-attachment",
+				DeviceID: device,
+			},
+		}
+	}
+	return machine
 }
