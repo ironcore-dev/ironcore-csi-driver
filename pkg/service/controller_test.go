@@ -165,6 +165,67 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Create_VolAttch_Pass(
 	assert.Nil(suite.T(), err, "Fail to publish volume")
 }
 
+func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Get_Fail() {
+	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("machine not found"))
+	_, err := service.ControllerUnpublishVolume(context.Background(), crtUnpublishVolumeReq)
+	assert.NotNil(suite.T(), err, "Fail to unpublish volume")
+}
+
+func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Update_Fail() {
+	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
+	machine := getMachine(crtUnpublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
+		arg := args.Get(2).(*computev1alpha1.Machine)
+		fmt.Println(arg)
+		*arg = *machine
+	})
+	suite.clientMock.On("Update", mock.Anything).Return(errors.New("failed to update machine"))
+	_, err := service.ControllerUnpublishVolume(context.Background(), crtUnpublishVolumeReq)
+	assert.NotNil(suite.T(), err, "Fail to unpublish volume")
+}
+
+func (suite *ControllerSuite) Test_ControllerUnpublishVolume_State_Fail() {
+	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
+	machine := getMachine(crtUnpublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
+		arg := args.Get(2).(*computev1alpha1.Machine)
+		fmt.Println(arg)
+		*arg = *machine
+	}).Once()
+	suite.clientMock.On("Update", mock.Anything).Return(nil)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
+		arg := args.Get(2).(*computev1alpha1.Machine)
+		fmt.Println(arg)
+		machine.Status.State = computev1alpha1.MachineStatePending
+		*arg = *machine
+	}).Once()
+	_, err := service.ControllerUnpublishVolume(context.Background(), crtUnpublishVolumeReq)
+	assert.NotNil(suite.T(), err, "Fail to unpublish volume")
+}
+
+func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Pass() {
+	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
+	machine := getMachine(crtUnpublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
+		arg := args.Get(2).(*computev1alpha1.Machine)
+		fmt.Println(arg)
+		*arg = *machine
+	}).Once()
+	suite.clientMock.On("Update", mock.Anything).Return(nil)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
+		arg := args.Get(2).(*computev1alpha1.Machine)
+		fmt.Println(arg)
+		*arg = *machine
+	}).Once()
+	_, err := service.ControllerUnpublishVolume(context.Background(), crtUnpublishVolumeReq)
+	assert.Nil(suite.T(), err, "Fail to unpublish volume")
+}
+
 // mocks
 type MockClient struct {
 	client.Client
@@ -293,4 +354,11 @@ func getMachine(volumeid string, device string, vaexist bool, state computev1alp
 		}
 	}
 	return machine
+}
+
+func getCrtControllerUnpublishVolumeRequest() *csi.ControllerUnpublishVolumeRequest {
+	return &csi.ControllerUnpublishVolumeRequest{
+		VolumeId: "volume101",
+		NodeId:   "minikube",
+	}
 }
