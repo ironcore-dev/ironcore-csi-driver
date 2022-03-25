@@ -6,13 +6,13 @@ import (
 	"log"
 	"net"
 
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/onmetal/onmetal-csi-driver/pkg/helper"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/rexray/gocsi"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	mount "k8s.io/mount-utils"
+	utilexec "k8s.io/utils/exec"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -26,7 +26,8 @@ type service struct {
 	node_id        string
 	node_name      string
 	csi_namespace  string
-
+	mountutil      *mount.SafeFormatAndMount
+	osutil         helper.OsHelper
 	// rest client
 	parentClient client.Client
 }
@@ -53,7 +54,10 @@ func New(config map[string]string) Service {
 		node_id:        config["node_id"],
 		node_name:      config["node_name"],
 		csi_namespace:  config["csi_namespace"],
+		mountutil:      &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
+		osutil:         &helper.OsOps{},
 	}
+
 	if _, ok := config["parent_kube_config"]; ok {
 		parentCluster, err := helper.LoadRESTConfig(config["parent_kube_config"])
 		if err != nil {
