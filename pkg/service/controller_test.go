@@ -273,7 +273,7 @@ func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Pass() {
 	}).Once()
 	_, err := service.ControllerUnpublishVolume(context.Background(), crtUnpublishVolumeReq)
 	assert.Nil(suite.T(), err, "Fail to unpublish volume")
-  
+}
 func (suite *ControllerSuite) Test_ControllerPublishVolume_MachineState_Pending_Fail() {
 	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
 	crtPublishVolumeReq := getCrtControllerPublishVolumeRequest()
