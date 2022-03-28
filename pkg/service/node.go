@@ -3,65 +3,52 @@ package service
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	mount "k8s.io/mount-utils"
-	utilexec "k8s.io/utils/exec"
 )
-
-type NodeMounter struct {
-	Mounter      *mount.SafeFormatAndMount
-	ReadOnly     bool
-	FsType       string
-	MountOptions []string
-	TargetPath   string
-	StagePath    string
-}
 
 func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	fmt.Println("request recieved for node stage volume ", req.GetVolumeId(), "at", req.GetStagingTargetPath())
 	fstype := req.GetVolumeContext()["fstype"]
 	devicePath := "/host" + req.PublishContext["device_name"]
-
-	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
-	nm := &NodeMounter{
-		ReadOnly:     false,
-		FsType:       fstype,
-		MountOptions: mountOptions,
-		Mounter:      &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
+	readOnly := false
+	if req.GetVolumeContext()["readOnly"] == "true" {
+		readOnly = true
 	}
+	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
+
 	targetPath := req.GetStagingTargetPath()
 	resp := &csi.NodeStageVolumeResponse{}
-	notMnt, err := nm.Mounter.IsLikelyNotMountPoint(targetPath)
-	if err != nil && !os.IsNotExist(err) {
+	notMnt, err := s.mountutil.IsLikelyNotMountPoint(targetPath)
+	if err != nil && !s.osutil.IsNotExist(err) {
 		fmt.Println("unable to verify MountPoint", err)
 		return resp, err
 	}
 	if !notMnt {
 		fmt.Printf("volume at %s already mounted", targetPath)
+		return resp, nil
 	}
 
-	if err := os.MkdirAll(targetPath, 0750); err != nil {
+	if err := s.osutil.MkdirAll(targetPath, 0750); err != nil {
 		fmt.Printf("failed to mkdir %s, error", targetPath)
 		return resp, err
 	}
 
 	var options []string
 
-	if nm.ReadOnly {
+	if readOnly {
 		options = append(options, "ro")
 	} else {
 		options = append(options, "rw")
 	}
-	options = append(options, nm.MountOptions...)
+	options = append(options, mountOptions...)
 
-	if err = nm.Mounter.FormatAndMount(devicePath, targetPath, nm.FsType, options); err != nil {
+	if err = s.mountutil.FormatAndMount(devicePath, targetPath, fstype, options); err != nil {
 		fmt.Println("failed to stage volume ", err)
-		return resp, fmt.Errorf("failed to mount volume %s [%s] to %s, error %v", devicePath, nm.FsType, targetPath, err)
+		return resp, fmt.Errorf("failed to mount volume %s [%s] to %s, error %v", devicePath, fstype, targetPath, err)
 	}
 	fmt.Println("Successfully staged the volume")
 	return &csi.NodeStageVolumeResponse{}, nil
@@ -110,33 +97,27 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 		}
 	}
 
-	fsType := req.GetVolumeContext()["fstype"]
-	if len(fsType) == 0 {
-		fsType = "ext4"
-	}
-	nm := &NodeMounter{
-		ReadOnly:     false,
-		FsType:       fsType,
-		MountOptions: mountOptions,
-		Mounter:      &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
+	fstype := req.GetVolumeContext()["fstype"]
+	if len(fstype) == 0 {
+		fstype = "ext4"
 	}
 
-	notMnt, err := nm.Mounter.IsLikelyNotMountPoint(targetPath)
-	if err != nil && !os.IsNotExist(err) {
+	notMnt, err := s.mountutil.IsLikelyNotMountPoint(targetPath)
+	if err != nil && !s.osutil.IsNotExist(err) {
 		return resp, status.Errorf(codes.Internal, "Determination of mount point failed: %v", err)
 	}
 
 	if notMnt {
 		fmt.Println("targetPath is  not mountpoint", targetPath)
-		if os.IsNotExist(err) {
+		if s.osutil.IsNotExist(err) {
 			fmt.Println("make target directory")
-			if err := os.MkdirAll(targetPath, 0750); err != nil {
+			if err := s.osutil.MkdirAll(targetPath, 0750); err != nil {
 				fmt.Printf("failed to create directory %s, error", targetPath)
 				return resp, err
 			}
 		}
 
-		if err := nm.Mounter.Mount(stagePath, targetPath, nm.FsType, mountOptions); err != nil {
+		if err := s.mountutil.Mount(stagePath, targetPath, fstype, mountOptions); err != nil {
 			fmt.Println("failed to mount volume. error while publishing volume ", err)
 			return resp, status.Errorf(codes.Internal, "Could not mount %q at %q: %v", stagePath, targetPath, err)
 		}
@@ -156,28 +137,26 @@ func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVol
 	if len(stagePath) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Staging target path not provided")
 	}
-	nm := &NodeMounter{
-		Mounter: &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
-	}
-	devicePath, err := nm.GetMountDeviceName(stagePath)
+
+	devicePath, err := s.GetMountDeviceName(stagePath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if devicePath == "" {
 		return nil, status.Error(codes.Internal, "mount device not found")
 	}
-	err = nm.Mounter.Unmount(stagePath)
+	err = s.mountutil.Unmount(stagePath)
 	if err != nil {
 		fmt.Println("failed to un-stage volume", err)
 		return nil, status.Errorf(codes.Internal, "Failed to unmount target %q: %v", stagePath, err)
 	}
 	fmt.Println("remove directory after mount")
-	err = os.RemoveAll(stagePath)
+	err = s.osutil.RemoveAll(stagePath)
 	if err != nil {
 		fmt.Println("error remove mount directory ", err)
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", stagePath, err)
 	}
-	err = os.RemoveAll("/host" + stagePath)
+	err = s.osutil.RemoveAll("/host" + stagePath)
 	if err != nil {
 		fmt.Println("error remove mount directory ", err)
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", stagePath, err)
@@ -197,22 +176,24 @@ func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublis
 	if len(target) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path not provided")
 	}
-	fmt.Println("volume mount path", target)
-	nm := &NodeMounter{
-		Mounter: &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
+	fmt.Println("validate mount path", target)
+	_, err := s.osutil.Stat(target)
+	if err != nil {
+		fmt.Println("Unable to unmount volume, err", err)
+		return nil, status.Errorf(codes.Internal, "Unable to unmout %q: %v", target, err)
 	}
-	err := nm.Mounter.Unmount(target)
+	err = s.mountutil.Unmount(target)
 	if err != nil {
 		fmt.Println("failed to unmount volume ", err)
 		return nil, status.Errorf(codes.Internal, "Failed not unmount %q: %v", target, err)
 	}
 	fmt.Println("remove directory after mount")
-	err = os.RemoveAll(target)
+	err = s.osutil.RemoveAll(target)
 	if err != nil {
 		fmt.Println("error remove mount directory ", err)
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", target, err)
 	}
-	err = os.RemoveAll("/host" + target)
+	err = s.osutil.RemoveAll("/host" + target)
 	if err != nil {
 		fmt.Println("error remove mount directory ", err)
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", target, err)
@@ -267,8 +248,8 @@ func (s *service) NodeGetCapabilities(
 	}, nil
 }
 
-func (nm *NodeMounter) GetMountDeviceName(mountPath string) (device string, err error) {
-	mountPoints, err := nm.Mounter.List()
+func (s *service) GetMountDeviceName(mountPath string) (device string, err error) {
+	mountPoints, err := s.mountutil.List()
 	if err != nil {
 		return device, err
 	}

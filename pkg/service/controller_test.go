@@ -38,6 +38,7 @@ func TestControllerSuite(t *testing.T) {
 	suite.Run(t, new(ControllerSuite))
 }
 
+//CreateVolume test cases
 func (suite *ControllerSuite) Test_CreateVolume_InvalidParameter_Fail() {
 	service := service{parentClient: suite.clientMock}
 	var parameterMap map[string]string
@@ -63,6 +64,7 @@ func (suite *ControllerSuite) Test_CreateVolume_NotFound() {
 	_, err := service.CreateVolume(context.Background(), crtValReq)
 	assert.NotNil(suite.T(), err, "expected error but got success")
 }
+
 func (suite *ControllerSuite) Test_CreateVolume_Pass() {
 	service := service{parentClient: suite.clientMock}
 	parameterMap := make(map[string]string)
@@ -107,13 +109,7 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_VolAttch_Exist_Pass()
 	crtPublishVolumeReq := getCrtControllerPublishVolumeRequest()
 	crtPublishVolumeReq.VolumeId = "volume101"
 	crtPublishVolumeReq.NodeId = "minikube"
-	fc := fake.NewSimpleClientset(&v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test",
-			Namespace:   "test-csi",
-			Annotations: map[string]string{"onmetal-machine": "test1", "onmetal-namespace": "test2"},
-		},
-	})
+	fc := fake.NewSimpleClientset()
 	client := &helper.Kubeclient{Client: fc}
 	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
 	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
@@ -130,18 +126,70 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_VolAttch_Exist_Pass()
 	assert.Nil(suite.T(), err, "Fail to publish volume")
 }
 
+func (suite *ControllerSuite) Test_ControllerPublishVolume_Machine_NotFound() {
+	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	crtPublishVolumeReq := getCrtControllerPublishVolumeRequest()
+	crtPublishVolumeReq.VolumeId = "volume101"
+	crtPublishVolumeReq.NodeId = "minikube"
+	fc := fake.NewSimpleClientset()
+	client := &helper.Kubeclient{Client: fc}
+	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
+	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("Machine Not Found\n"))
+	suite.clientMock.On("Update", mock.Anything).Return(nil)
+	_, err := service.ControllerPublishVolume(context.Background(), crtPublishVolumeReq)
+	assert.NotNil(suite.T(), err, "expected error but got success")
+}
+
+func (suite *ControllerSuite) Test_ControllerPublishVolume_Device_NotFound() {
+	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	crtPublishVolumeReq := getCrtControllerPublishVolumeRequest()
+	crtPublishVolumeReq.VolumeId = "volume101"
+	crtPublishVolumeReq.NodeId = "minikube"
+	fc := fake.NewSimpleClientset()
+	client := &helper.Kubeclient{Client: fc}
+	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
+	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything).Return(nil)
+	machine := getMachine(crtPublishVolumeReq.VolumeId, "", true, computev1alpha1.MachineStateRunning)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
+		arg := args.Get(2).(*computev1alpha1.Machine)
+		fmt.Println(arg)
+		*arg = *machine
+	})
+	suite.clientMock.On("Update", mock.Anything).Return(errors.New("Device not found\n"))
+	_, err := service.ControllerPublishVolume(context.Background(), crtPublishVolumeReq)
+	assert.NotNil(suite.T(), err, "expected error but got success")
+}
+
+func (suite *ControllerSuite) Test_ControllerPublishVolume_VolumeAttachment_NotFound() {
+	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	crtPublishVolumeReq := getCrtControllerPublishVolumeRequest()
+	crtPublishVolumeReq.VolumeId = "volume101"
+	crtPublishVolumeReq.NodeId = "minikube"
+	fc := fake.NewSimpleClientset()
+	client := &helper.Kubeclient{Client: fc}
+	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
+	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything).Return(nil)
+	machine := getMachine(crtPublishVolumeReq.VolumeId, "sda1", false, computev1alpha1.MachineStateRunning)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
+		arg := args.Get(2).(*computev1alpha1.Machine)
+		*arg = *machine
+	})
+	suite.clientMock.On("Update", mock.Anything).Return(errors.New("Volume attachment not found\n"))
+	_, err := service.ControllerPublishVolume(context.Background(), crtPublishVolumeReq)
+	assert.NotNil(suite.T(), err, "expected error but got success")
+}
 func (suite *ControllerSuite) Test_ControllerPublishVolume_Create_VolAttch_Pass() {
 	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
 	crtPublishVolumeReq := getCrtControllerPublishVolumeRequest()
 	crtPublishVolumeReq.VolumeId = "volume101"
 	crtPublishVolumeReq.NodeId = "minikube"
-	fc := fake.NewSimpleClientset(&v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test",
-			Namespace:   "test-csi",
-			Annotations: map[string]string{"onmetal-machine": "test1", "onmetal-namespace": "test2"},
-		},
-	})
+	fc := fake.NewSimpleClientset()
 	client := &helper.Kubeclient{Client: fc}
 	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
 	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
@@ -165,6 +213,7 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Create_VolAttch_Pass(
 	assert.Nil(suite.T(), err, "Fail to publish volume")
 }
 
+//unpublish-volume-test
 func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Get_Fail() {
 	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
 	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
@@ -224,6 +273,81 @@ func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Pass() {
 	}).Once()
 	_, err := service.ControllerUnpublishVolume(context.Background(), crtUnpublishVolumeReq)
 	assert.Nil(suite.T(), err, "Fail to unpublish volume")
+  
+func (suite *ControllerSuite) Test_ControllerPublishVolume_MachineState_Pending_Fail() {
+	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	crtPublishVolumeReq := getCrtControllerPublishVolumeRequest()
+	crtPublishVolumeReq.VolumeId = "volume101"
+	crtPublishVolumeReq.NodeId = "minikube"
+	fc := fake.NewSimpleClientset()
+	client := &helper.Kubeclient{Client: fc}
+	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
+	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything).Return(nil)
+	machine := getMachine(crtPublishVolumeReq.VolumeId, "sda1", false, computev1alpha1.MachineStateRunning)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
+		arg := args.Get(2).(*computev1alpha1.Machine)
+		*arg = *machine
+	}).Once()
+
+	machineupdate := getMachine(crtPublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStatePending)
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machineupdate).Run(func(args mock.Arguments) {
+		arg := args.Get(2).(*computev1alpha1.Machine)
+		*arg = *machineupdate
+	}).Once()
+	suite.clientMock.On("Update", mock.Anything).Return(errors.New("Machine in pending state\n"))
+	_, err := service.ControllerPublishVolume(context.Background(), crtPublishVolumeReq)
+	assert.NotNil(suite.T(), err, "expected error but got success")
+}
+
+//DeleteVolume test cases
+func (suite *ControllerSuite) Test_DeleteVolume_InvalidParameter_Fail() {
+	service := service{parentClient: suite.clientMock}
+	delValReq := getDeleteVolumeRequest("", getSecret())
+	_, err := service.DeleteVolume(context.Background(), delValReq)
+	assert.NotNil(suite.T(), err, "Fail to validate parameter for delete volume")
+}
+
+func (suite *ControllerSuite) Test_DeleteVolume_Error() {
+	service := service{parentClient: suite.clientMock}
+	delValReq := getDeleteVolumeRequest("test", getSecret())
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("error while get volumeclaim"))
+	_, err := service.DeleteVolume(context.Background(), delValReq)
+	assert.NotNil(suite.T(), err, "expected error but got success")
+}
+
+func (suite *ControllerSuite) Test_DeleteVolume_NotFound() {
+	service := service{parentClient: suite.clientMock}
+	delValReq := getDeleteVolumeRequest("test", getSecret())
+	//suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(apierrors.NewNotFound(extensions.Resource("volumeclaim"), "test"))
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("volume not found"))
+	_, err := service.DeleteVolume(context.Background(), delValReq)
+	assert.NotNil(suite.T(), err, "expected error but got success")
+}
+
+func (suite *ControllerSuite) Test_DeleteVolume_Pass() {
+	service := service{parentClient: suite.clientMock}
+	delValReq := getDeleteVolumeRequest("test", getSecret())
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	suite.clientMock.On("Delete", mock.Anything).Return(nil)
+	_, err := service.DeleteVolume(context.Background(), delValReq)
+	assert.Nil(suite.T(), err, "Fail to delete volume")
+}
+
+func getDeleteVolumeRequest(volumeId string, secrets map[string]string) *csi.DeleteVolumeRequest {
+	return &csi.DeleteVolumeRequest{
+		VolumeId: volumeId,
+		Secrets:  secrets,
+	}
+}
+
+func getSecret() map[string]string {
+	secretMap := make(map[string]string)
+	secretMap["username"] = "admin"
+	secretMap["password"] = "123456"
+	secretMap["hostname"] = "https://172.17.35.61/"
+	return secretMap
 }
 
 // mocks
@@ -314,7 +438,7 @@ func getCreateVolumeRequest(pvName string, parameterMap map[string]string) *csi.
 
 func getCrtControllerPublishVolumeRequest() *csi.ControllerPublishVolumeRequest {
 	return &csi.ControllerPublishVolumeRequest{
-		VolumeId: "100$$2f",
+		VolumeId: "volume102",
 	}
 }
 
