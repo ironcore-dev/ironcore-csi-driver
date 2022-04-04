@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 COPY /scripts/env.sh /env.sh
 RUN chmod +x /env.sh
