@@ -98,7 +98,13 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 }
 
 func validateParams(params map[string]string) bool {
-	return params["storage_class_name"] == ""
+	expectedParams := []string{"storage_class_name"}
+	for _, expPar := range expectedParams {
+		if params[expPar] == "" {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
