@@ -10,7 +10,7 @@ DOCKER_IMAGE=onmetal-csi-driver
 
 # For Development Build #################################################################
 # Docker.io username and tag
-DOCKER_USER=nikhilbarge
+DOCKER_USER=onmetal
 DOCKER_IMAGE_TAG=latest
 # For Development Build #################################################################
 
@@ -57,7 +57,7 @@ build-linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BINARY_NAME) -v ./cmd/
 
 docker-build: 
-	docker build -t $(DOCKER_USER)/$(DOCKER_IMAGE):$(DOCKER_IMAGE_TAG) -f Dockerfile .
+	docker build --ssh default=${HOME}/.ssh/id_rsa -t $(DOCKER_USER)/$(DOCKER_IMAGE):$(DOCKER_IMAGE_TAG) -f Dockerfile .
  
 docker-push:
 	docker push $(DOCKER_USER)/$(DOCKER_IMAGE):$(DOCKER_IMAGE_TAG)
