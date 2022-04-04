@@ -3,7 +3,7 @@ module github.com/onmetal/onmetal-csi-driver
 go 1.17
 
 require (
-	github.com/container-storage-interface/spec v1.2.0
+	github.com/container-storage-interface/spec v1.5.0
 	github.com/golang/protobuf v1.5.2
 	github.com/onmetal/onmetal-api v0.0.10-0.20220225150941-019bd2a8ccb6
 	github.com/rexray/gocsi v1.2.2
