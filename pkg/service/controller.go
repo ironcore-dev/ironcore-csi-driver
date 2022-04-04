@@ -98,10 +98,7 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 }
 
 func validateParams(params map[string]string) bool {
-	if params["storage_class_name"] == "" {
-		return false
-	}
-	return true
+	return params["storage_class_name"] == ""
 }
 
 func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
@@ -136,7 +133,7 @@ func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest
 }
 
 func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (controlePublishResponce *csi.ControllerPublishVolumeResponse, err error) {
-	fmt.Println(fmt.Sprintf("request recieved to publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId()))
+	fmt.Printf("request recieved to publish volume %s at node %s\n", req.GetVolumeId(), req.GetNodeId())
 	csiResp := &csi.ControllerPublishVolumeResponse{}
 	machine := &computev1alpha1.Machine{}
 	kubeClient, err := s.kubehelper.BuildInclusterClient()

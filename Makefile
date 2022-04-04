@@ -35,6 +35,9 @@ build:
 
 test: 
 	$(GOTEST) -v ./...
+
+lint: ## Run golangci-lint against code.
+	golangci-lint run ./...
   
 run:
 	$(GOBUILD) -o $(BINARY_NAME) -v ./...
