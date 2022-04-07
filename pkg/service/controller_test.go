@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -96,7 +95,6 @@ func (suite *ControllerSuite) Test_CreateVolume_Pass() {
 	}
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, volumeClaim).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*storagev1alpha1.VolumeClaim)
-		fmt.Println(arg)
 		*arg = *volumeClaim
 	})
 	suite.clientMock.On("Patch", mock.Anything).Return(nil)
@@ -118,7 +116,6 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_VolAttch_Exist_Pass()
 	machine := getMachine(crtPublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*computev1alpha1.Machine)
-		fmt.Println(arg)
 		*arg = *machine
 	})
 	suite.clientMock.On("Update", mock.Anything).Return(nil)
@@ -156,7 +153,6 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Device_NotFound() {
 	machine := getMachine(crtPublishVolumeReq.VolumeId, "", true, computev1alpha1.MachineStateRunning)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*computev1alpha1.Machine)
-		fmt.Println(arg)
 		*arg = *machine
 	})
 	suite.clientMock.On("Update", mock.Anything).Return(errors.New("Device not found\n"))
@@ -198,14 +194,12 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Create_VolAttch_Pass(
 	machine := getMachine(crtPublishVolumeReq.VolumeId, "sda1", false, computev1alpha1.MachineStateRunning)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*computev1alpha1.Machine)
-		fmt.Println(arg)
 		*arg = *machine
 	}).Once()
 
 	machineupdate := getMachine(crtPublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machineupdate).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*computev1alpha1.Machine)
-		fmt.Println(arg)
 		*arg = *machineupdate
 	}).Once()
 	suite.clientMock.On("Update", mock.Anything).Return(nil)
@@ -228,7 +222,6 @@ func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Update_Fail() {
 	machine := getMachine(crtUnpublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*computev1alpha1.Machine)
-		fmt.Println(arg)
 		*arg = *machine
 	})
 	suite.clientMock.On("Update", mock.Anything).Return(errors.New("failed to update machine"))
@@ -242,13 +235,11 @@ func (suite *ControllerSuite) Test_ControllerUnpublishVolume_State_Fail() {
 	machine := getMachine(crtUnpublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*computev1alpha1.Machine)
-		fmt.Println(arg)
 		*arg = *machine
 	}).Once()
 	suite.clientMock.On("Update", mock.Anything).Return(nil)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*computev1alpha1.Machine)
-		fmt.Println(arg)
 		machine.Status.State = computev1alpha1.MachineStatePending
 		*arg = *machine
 	}).Once()
@@ -262,13 +253,11 @@ func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Pass() {
 	machine := getMachine(crtUnpublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*computev1alpha1.Machine)
-		fmt.Println(arg)
 		*arg = *machine
 	}).Once()
 	suite.clientMock.On("Update", mock.Anything).Return(nil)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*computev1alpha1.Machine)
-		fmt.Println(arg)
 		*arg = *machine
 	}).Once()
 	_, err := service.ControllerUnpublishVolume(context.Background(), crtUnpublishVolumeReq)

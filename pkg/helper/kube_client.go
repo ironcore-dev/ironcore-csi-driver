@@ -3,7 +3,6 @@ package helper
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 
 	"k8s.io/client-go/kubernetes"
@@ -12,6 +11,7 @@ import (
 
 	computev1alpha1 "github.com/onmetal/onmetal-api/apis/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/apis/storage/v1alpha1"
+	log "github.com/onmetal/onmetal-csi-driver/pkg/helper/logger"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -78,12 +78,12 @@ func (k *KubeHelper) BuildInclusterClient() (kc *Kubeclient, err error) {
 	if clientapi.restconfig == nil {
 		config, err := rest.InClusterConfig()
 		if err != nil {
-			log.Printf("BuildClient Error while getting cluster config, error: %v", err)
+			log.Errorf("BuildClient Error while getting cluster config, error: %v", err)
 			return nil, err
 		}
 		clientset, err := kubernetes.NewForConfig(config)
 		if err != nil {
-			log.Printf("BuildClient Error while creating client, error: %v", err)
+			log.Errorf("BuildClient Error while creating client, error: %v", err)
 			return nil, err
 		}
 		clientapi = Kubeclient{Client: clientset, restconfig: config}
@@ -95,7 +95,7 @@ func (k *KubeHelper) BuildInclusterClient() (kc *Kubeclient, err error) {
 func (k *KubeHelper) NodeGetAnnotations(Nodename string, client kubernetes.Interface) (a Annotation, err error) {
 	node, err := client.CoreV1().Nodes().Get(context.Background(), Nodename, meta_v1.GetOptions{})
 	if err != nil {
-		fmt.Println("Node Not found: ", err)
+		log.Errorf("Node Not found:%v", err)
 	}
 	onmetalMachineName := node.ObjectMeta.Annotations["onmetal-machine"]
 	onmetalMachineNamespace := node.ObjectMeta.Annotations["onmetal-namespace"]
