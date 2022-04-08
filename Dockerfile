@@ -86,6 +86,5 @@ COPY --from=debian /lib/x86_64-linux-gnu/libuuid.so.1 /lib/x86_64-linux-gnu/libu
 
 WORKDIR /
 COPY --from=builder /workspace/onmetal-csi-driver .
-USER 65532:65532
 
 ENTRYPOINT ["/onmetal-csi-driver"]
