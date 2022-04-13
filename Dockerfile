@@ -86,8 +86,9 @@ COPY --from=debian /lib/x86_64-linux-gnu/libuuid.so.1 /lib/x86_64-linux-gnu/libu
 
 WORKDIR /
 COPY --from=builder /workspace/onmetal-csi-driver .
-
+USER root:root
 COPY /scripts/env.sh /env.sh
 RUN chmod +x /env.sh
+
 ENTRYPOINT ["/env.sh"]
 # ENTRYPOINT ["/onmetal-csi-driver"]
