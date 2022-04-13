@@ -21,6 +21,7 @@ Create a secret for kubeconfig file in onmetal-csi namespace
 kubectl apply -f config/samples/kube_secret_template.yaml -n onmetal-csi
 ```
 ⚠ please note to encode the kubeconfig file content into base64 before placing it inside config/samples/kube_secret_template.yaml
+
 Create a configmap from literal
 ```shell
 kubectl create configmap csi-configmap --from-literal=namespace=onmetal-csi -n onmetal-csi
