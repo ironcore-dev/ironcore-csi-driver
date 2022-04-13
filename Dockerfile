@@ -5,6 +5,7 @@ ARG GOARCH=''
 ARG GITHUB_PAT=''
 
 WORKDIR /workspace
+ADD . .
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
@@ -44,6 +45,7 @@ RUN clean-install util-linux e2fsprogs mount ca-certificates xfsprogs udev bash
 # Since we're leveraging apt to pull in dependencies, we use `gcr.io/distroless/base` because it includes glibc.
 FROM gcr.io/distroless/base-debian11
 # Copy necessary dependencies into distroless base.
+COPY --from=builder /workspace/onmetal-csi-driver .
 COPY --from=debian /etc/mke2fs.conf /etc/mke2fs.conf
 COPY --from=debian /lib/udev/scsi_id /lib/udev_containerized/scsi_id
 COPY --from=debian /bin/mount /bin/mount
@@ -75,9 +77,7 @@ COPY --from=debian /lib/x86_64-linux-gnu/libreadline.so.5 /lib/x86_64-linux-gnu/
 COPY --from=debian /lib/x86_64-linux-gnu/libselinux.so.1 /lib/x86_64-linux-gnu/libselinux.so.1
 COPY --from=debian /lib/x86_64-linux-gnu/libtinfo.so.6 /lib/x86_64-linux-gnu/libtinfo.so.6
 COPY --from=debian /lib/x86_64-linux-gnu/libuuid.so.1 /lib/x86_64-linux-gnu/libuuid.so.1
-
-WORKDIR /
-COPY --from=builder /workspace/onmetal-csi-driver .
+ 
 USER root  
 ENTRYPOINT ["/onmetal-csi-driver"]
 
