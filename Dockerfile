@@ -39,7 +39,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 FROM k8s.gcr.io/build-image/debian-base:buster-v1.9.0 as debian
 # Install necessary dependencies 
  
-RUN clean-install util-linux e2fsprogs mount ca-certificates udev xfsprogs nvme-cli xxd bash
+RUN clean-install util-linux e2fsprogs mount ca-certificates xfsprogs bash
 
 # Since we're leveraging apt to pull in dependencies, we use `gcr.io/distroless/base` because it includes glibc.
 FROM gcr.io/distroless/base-debian11
@@ -86,9 +86,5 @@ COPY --from=debian /lib/x86_64-linux-gnu/libuuid.so.1 /lib/x86_64-linux-gnu/libu
 
 WORKDIR /
 COPY --from=builder /workspace/onmetal-csi-driver .
-USER root:root
-COPY /scripts/env.sh /env.sh
-RUN chmod +x /env.sh
-
-ENTRYPOINT ["/env.sh"]
-# ENTRYPOINT ["/onmetal-csi-driver"]
+USER root:root  
+ENTRYPOINT ["/onmetal-csi-driver"]
