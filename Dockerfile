@@ -41,7 +41,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
  
 FROM k8s.gcr.io/build-image/debian-base:buster-v1.9.0 as debian
 COPY --from=builder /workspace/onmetal-csi-driver .
-COPY --from=builder /workspace/env .
+COPY --from=builder /workspace/env.sh .
 
 RUN mkdir /onmetal
 ADD /scripts/chroot.sh /onmetal
