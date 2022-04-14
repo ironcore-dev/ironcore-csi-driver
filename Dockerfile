@@ -14,9 +14,6 @@ COPY hack hack
 
 ENV GOPRIVATE='github.com/onmetal/*'
 
-COPY /scripts/env.sh /workspace/env.sh
-RUN chmod +x /workspace/env.sh
-
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
 RUN --mount=type=ssh --mount=type=secret,id=github_pat \
@@ -41,10 +38,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
  
 FROM k8s.gcr.io/build-image/debian-base:buster-v1.9.0 as debian
 
-WORKDIR /
-
 COPY --from=builder /workspace/onmetal-csi-driver .
-COPY --from=builder /workspace/env.sh .
 
 RUN mkdir /onmetal
 ADD /scripts/chroot.sh /onmetal
@@ -70,7 +64,7 @@ RUN    ln -s /onmetal/host-chroot.sh /onmetal/blkid \
 ENV PATH="/onmetal:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 
-ENTRYPOINT ["/env.sh"]
+# ENTRYPOINT ["/env.sh"]
 # RUN clean-install util-linux e2fsprogs mount ca-certificates udev xfsprogs bash 
 
 # FROM gcr.io/distroless/base-debian11
@@ -118,6 +112,6 @@ ENTRYPOINT ["/env.sh"]
 
   
 # USER root  
-# ENTRYPOINT ["/onmetal-csi-driver"]
+ENTRYPOINT ["/onmetal-csi-driver"]
 
 
