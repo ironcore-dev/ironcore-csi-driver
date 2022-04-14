@@ -14,8 +14,7 @@ import (
 func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	log.Infoln("request recieved for node stage volume ", req.GetVolumeId(), "at", req.GetStagingTargetPath())
 	fstype := req.GetVolumeContext()["fstype"]
-	devicePath := req.PublishContext["device_name"]
-	// devicePath := "/host" + req.PublishContext["device_name"]
+	devicePath := "/host" + req.PublishContext["device_name"]
 
 	readOnly := false
 	if req.GetVolumeContext()["readOnly"] == "true" {
@@ -161,8 +160,7 @@ func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVol
 		log.Errorf("error remove mount directory:%v", err)
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", stagePath, err)
 	}
-	// err = s.osutil.RemoveAll("/host" + stagePath)
-	err = s.osutil.RemoveAll(stagePath)
+	err = s.osutil.RemoveAll("/host" + stagePath)
 	if err != nil {
 		log.Errorf("error remove mount directory:%v", err)
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", stagePath, err)
@@ -199,8 +197,7 @@ func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublis
 		log.Errorf("error remove mount directory:%v", err)
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", target, err)
 	}
-	// err = s.osutil.RemoveAll("/host" + target)
-	err = s.osutil.RemoveAll(target)
+	err = s.osutil.RemoveAll("/host" + target)
 	if err != nil {
 		log.Errorf("error remove mount directory:%v", err)
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", target, err)
