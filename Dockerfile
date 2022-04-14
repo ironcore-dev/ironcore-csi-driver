@@ -14,6 +14,8 @@ COPY hack hack
 
 ENV GOPRIVATE='github.com/onmetal/*'
 
+COPY /scripts/env.sh /workspace/env.sh
+RUN chmod +x /workspace/env.sh
 
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
@@ -39,9 +41,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
  
 FROM k8s.gcr.io/build-image/debian-base:buster-v1.9.0 as debian
 COPY --from=builder /workspace/onmetal-csi-driver .
-
-COPY /scripts/env.sh /env.sh
-RUN chmod +x /env.sh
+COPY --from=builder /workspace/env .
 
 RUN mkdir /onmetal
 ADD /scripts/chroot.sh /onmetal
