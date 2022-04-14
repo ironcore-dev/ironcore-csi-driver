@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: pvc-demo
-  namespace: onmetal-csi
+  namespace: csi-test
 spec:
   accessModes:
   - ReadWriteOnce

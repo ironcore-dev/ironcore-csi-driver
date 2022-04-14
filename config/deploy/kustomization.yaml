@@ -5,7 +5,7 @@ resources:
 namespace: onmetal-csi
 images:
 - name: onmetal-csi-driver
-  newName: nikhilbarge/onmetal-csi-driver
+  newName: ghcr.io/onmetal/onmetal-csi-driver
   newTag: latest
 patchesStrategicMerge:
 - controller_setenv_replicas.yaml
