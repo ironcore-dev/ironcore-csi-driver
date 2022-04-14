@@ -23,16 +23,18 @@ func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 
 	targetPath := req.GetStagingTargetPath()
 	resp := &csi.NodeStageVolumeResponse{}
+	log.Infoln("validate mount point")
 	notMnt, err := s.mountutil.IsLikelyNotMountPoint(targetPath)
 	if err != nil && !s.osutil.IsNotExist(err) {
 		log.Errorf("unable to verify MountPoint:%v", err)
 		return resp, err
 	}
+	log.Infoln("check if volume is already mounted")
 	if !notMnt {
 		log.Infof("volume at %s already mounted", targetPath)
 		return resp, nil
 	}
-
+	log.Infoln("create target directory")
 	if err := s.osutil.MkdirAll(targetPath, 0750); err != nil {
 		log.Errorf("failed to mkdir error:%v", err)
 		return resp, err
@@ -46,7 +48,7 @@ func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		options = append(options, "rw")
 	}
 	options = append(options, mountOptions...)
-
+	log.Infoln("format and mount the volume")
 	if err = s.mountutil.FormatAndMount(devicePath, targetPath, fstype, options); err != nil {
 		log.Errorf("failed to stage volume:%v", err)
 		return resp, fmt.Errorf("failed to mount volume %s [%s] to %s, error %v", devicePath, fstype, targetPath, err)
