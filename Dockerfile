@@ -35,14 +35,10 @@ ARG TARGETARCH
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GO111MODULE=on go build -ldflags="-s -w" -a -o onmetal-csi-driver cmd/onmetalcsi.go
-
-# Start from Kubernetes Debian base.
-FROM k8s.gcr.io/build-image/debian-base:buster-v1.9.0 as debian
-# Install necessary dependencies 
  
-RUN clean-install util-linux e2fsprogs mount ca-certificates xfsprogs udev bash
-
-# Since we're leveraging apt to pull in dependencies, we use `gcr.io/distroless/base` because it includes glibc.
+FROM k8s.gcr.io/build-image/debian-base:buster-v1.9.0 as debian
+ 
+RUN clean-install util-linux e2fsprogs mount ca-certificates udev xfsprogs bash 
 FROM gcr.io/distroless/base-debian11
 # Copy necessary dependencies into distroless base.
 COPY --from=builder /workspace/onmetal-csi-driver .
@@ -65,7 +61,14 @@ COPY --from=debian /sbin/xfs_repair /sbin/xfs_repair
 COPY --from=debian /usr/include/xfs /usr/include/xfs
 COPY --from=debian /usr/lib/xfsprogs/xfs* /usr/lib/xfsprogs/
 COPY --from=debian /usr/sbin/xfs* /usr/sbin/
- 
+# Add dependencies for /lib/udev_containerized/google_nvme_id script
+
+COPY --from=debian /bin/bash /bin/bash
+COPY --from=debian /bin/date /bin/date
+COPY --from=debian /bin/grep /bin/grep
+COPY --from=debian /bin/sed /bin/sed
+COPY --from=debian /bin/ln /bin/ln
+
 # Copy x86 shared libraries into distroless base.
 COPY --from=debian /lib/x86_64-linux-gnu/libblkid.so.1 /lib/x86_64-linux-gnu/libblkid.so.1
 COPY --from=debian /lib/x86_64-linux-gnu/libcom_err.so.2 /lib/x86_64-linux-gnu/libcom_err.so.2
@@ -76,8 +79,9 @@ COPY --from=debian /lib/x86_64-linux-gnu/libpcre.so.3 /lib/x86_64-linux-gnu/libp
 COPY --from=debian /lib/x86_64-linux-gnu/libreadline.so.5 /lib/x86_64-linux-gnu/libreadline.so.5
 COPY --from=debian /lib/x86_64-linux-gnu/libselinux.so.1 /lib/x86_64-linux-gnu/libselinux.so.1
 COPY --from=debian /lib/x86_64-linux-gnu/libtinfo.so.6 /lib/x86_64-linux-gnu/libtinfo.so.6
-COPY --from=debian /lib/x86_64-linux-gnu/libuuid.so.1 /lib/x86_64-linux-gnu/libuuid.so.1
- 
+# COPY --from=debian /lib/x86_64-linux-gnu/libuuid.so.1 /lib/x86_64-linux-gnu/libuuid.so.1
+
+  
 USER root  
 ENTRYPOINT ["/onmetal-csi-driver"]
 
