@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM --platform=$BUILDPLATFORM golang:1.17.8 as builde
+FROM --platform=$BUILDPLATFORM golang:1.17.8 as builder
 ARG DEBIAN_FRONTEND=noninteractive
 ARG GOARCH=''
 ARG GITHUB_PAT=''
