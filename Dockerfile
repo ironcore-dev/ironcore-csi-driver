@@ -40,6 +40,9 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GO111MODULE=on go build -ldflags="-s -w" -a -o onmetal-csi-driver cmd/onmetalcsi.go
  
 FROM k8s.gcr.io/build-image/debian-base:buster-v1.9.0 as debian
+
+WORKDIR /
+
 COPY --from=builder /workspace/onmetal-csi-driver .
 COPY --from=builder /workspace/env.sh .
 
