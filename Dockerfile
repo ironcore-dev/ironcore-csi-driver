@@ -4,6 +4,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG GOARCH=''
 ARG GITHUB_PAT=''
 
+WORKDIR /
+ADD . .
+
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
@@ -36,7 +39,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
  
 FROM k8s.gcr.io/build-image/debian-base:buster-v1.9.0 as debian
 
-COPY --from=builder onmetal-csi-driver .
+COPY --from=builder /onmetal-csi-driver .
 
 RUN mkdir /onmetal
 ADD /scripts/chroot.sh /onmetal
