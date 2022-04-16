@@ -43,7 +43,6 @@ FROM ubuntu:18.04
 COPY --from=builder /onmetal-csi-driver /onmetal-csi-driver
 COPY /scripts/env.sh /env.sh
 RUN chmod +x /env.sh
-COPY onmetal-csi-driver /onmetal-csi-driver
 
 RUN mkdir /onmetal
 ADD /scripts/chroot.sh /onmetal
