@@ -63,7 +63,6 @@ COPY --from=debian /sbin/resize2fs /sbin/resize2fs
 COPY --from=debian /sbin/xfs_repair /sbin/xfs_repair
 COPY --from=debian /usr/include/xfs /usr/include/xfs
 COPY --from=debian /usr/lib/xfsprogs/xfs* /usr/lib/xfsprogs/
-COPY --from=debian /usr/lib/mkdir /usr/lib/mkdir
 COPY --from=debian /usr/sbin/xfs* /usr/sbin/
 # Add dependencies for /lib/udev_containerized/google_nvme_id script
 COPY --from=debian /bin/sh /bin/sh
@@ -72,8 +71,7 @@ COPY --from=debian /bin/date /bin/date
 COPY --from=debian /bin/grep /bin/grep
 COPY --from=debian /bin/sed /bin/sed
 COPY --from=debian /bin/ln /bin/ln
-
-RUN mkdir /lib/x86_64-linux-gnu
+ 
 
 # # Copy x86 shared libraries into distroless base.
 COPY --from=debian /lib/x86_64-linux-gnu/libblkid.so.1 /lib/x86_64-linux-gnu/libblkid.so.1
