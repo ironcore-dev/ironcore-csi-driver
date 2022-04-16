@@ -63,6 +63,7 @@ COPY --from=debian /sbin/resize2fs /sbin/resize2fs
 COPY --from=debian /sbin/xfs_repair /sbin/xfs_repair
 COPY --from=debian /usr/include/xfs /usr/include/xfs
 COPY --from=debian /usr/lib/xfsprogs/xfs* /usr/lib/xfsprogs/
+COPY --from=debian /usr/lib/mkdir /usr/lib/mkdir
 COPY --from=debian /usr/sbin/xfs* /usr/sbin/
 # Add dependencies for /lib/udev_containerized/google_nvme_id script
 COPY --from=debian /bin/sh /bin/sh
