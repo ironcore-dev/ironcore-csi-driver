@@ -41,6 +41,8 @@ FROM k8s.gcr.io/build-image/debian-base:buster-v1.9.0 as debian
 RUN clean-install util-linux e2fsprogs mount ca-certificates udev xfsprogs bash 
 
 FROM gcr.io/distroless/base-debian11
+WORKDIR /
+ADD . .
 # Copy necessary dependencies into distroless base.
 COPY --from=builder /onmetal-csi-driver .
 COPY --from=debian /etc/mke2fs.conf /etc/mke2fs.conf
@@ -63,16 +65,17 @@ COPY --from=debian /usr/include/xfs /usr/include/xfs
 COPY --from=debian /usr/lib/xfsprogs/xfs* /usr/lib/xfsprogs/
 COPY --from=debian /usr/sbin/xfs* /usr/sbin/
 # Add dependencies for /lib/udev_containerized/google_nvme_id script
-
+COPY --from=debian /bin/sh /bin/sh
 COPY --from=debian /bin/bash /bin/bash
 COPY --from=debian /bin/date /bin/date
 COPY --from=debian /bin/grep /bin/grep
 COPY --from=debian /bin/sed /bin/sed
 COPY --from=debian /bin/ln /bin/ln
- 
+
+RUN mkdir /lib/x86_64-linux-gnu
 
 # # Copy x86 shared libraries into distroless base.
-# COPY --from=debian /lib/x86_64-linux-gnu/libblkid.so.1 /lib/x86_64-linux-gnu/libblkid.so.1
+COPY --from=debian /lib/x86_64-linux-gnu/libblkid.so.1 /lib/x86_64-linux-gnu/libblkid.so.1
 # COPY --from=debian /lib/x86_64-linux-gnu/libcom_err.so.2 /lib/x86_64-linux-gnu/libcom_err.so.2
 # COPY --from=debian /lib/x86_64-linux-gnu/libext2fs.so.2 /lib/x86_64-linux-gnu/libext2fs.so.2
 # COPY --from=debian /lib/x86_64-linux-gnu/libe2p.so.2 /lib/x86_64-linux-gnu/libe2p.so.2
