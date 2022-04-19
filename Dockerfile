@@ -40,5 +40,4 @@ FROM k8s.gcr.io/build-image/debian-base:buster-v1.9.0 as debian
 COPY --from=builder /workspace/onmetal-csi-driver .
 RUN clean-install util-linux e2fsprogs mount ca-certificates udev xfsprogs bash 
   
-USER root  
 ENTRYPOINT ["/onmetal-csi-driver"]
