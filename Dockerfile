@@ -1,13 +1,11 @@
 # syntax=docker/dockerfile:experimental
-# Build the manager binary
 FROM --platform=$BUILDPLATFORM golang:1.17.8 as builder
 ARG DEBIAN_FRONTEND=noninteractive
 ARG GOARCH=''
 ARG GITHUB_PAT=''
 
-WORKDIR /
+WORKDIR /workspace
 ADD . .
-
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
@@ -37,35 +35,10 @@ ARG TARGETARCH
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GO111MODULE=on go build -ldflags="-s -w" -a -o onmetal-csi-driver cmd/onmetalcsi.go
-
-FROM ubuntu:18.04
-
-COPY --from=builder /onmetal-csi-driver /onmetal-csi-driver
-COPY /scripts/env.sh /env.sh
-RUN chmod +x /env.sh
-
-RUN mkdir /onmetal
-ADD /scripts/chroot.sh /onmetal
-RUN chmod 777 /onmetal/chroot.sh
-RUN    ln -s /onmetal/host-chroot.sh /onmetal/blkid \
-    && ln -s /onmetal/host-chroot.sh /onmetal/blockdev \
-    && ln -s /onmetal/host-chroot.sh /onmetal/iscsiadm \
-    && ln -s /onmetal/host-chroot.sh /onmetal/rpcbind \
-    && ln -s /onmetal/host-chroot.sh /onmetal/lsblk \
-    && ln -s /onmetal/host-chroot.sh /onmetal/lsscsi \
-    && ln -s /onmetal/host-chroot.sh /onmetal/mkfs.ext3 \
-    && ln -s /onmetal/host-chroot.sh /onmetal/mkfs.ext4 \
-    && ln -s /onmetal/host-chroot.sh /onmetal/mkfs.xfs \
-    && ln -s /onmetal/host-chroot.sh /onmetal/fsck \
-    && ln -s /onmetal/host-chroot.sh /onmetal/mount \
-    && ln -s /onmetal/host-chroot.sh /onmetal/multipath \
-    && ln -s /onmetal/host-chroot.sh /onmetal/multipathd \
-    && ln -s /onmetal/host-chroot.sh /onmetal/cat \
-    && ln -s /onmetal/host-chroot.sh /onmetal/mkdir \
-    && ln -s /onmetal/host-chroot.sh /onmetal/rmdir \
-    && ln -s /onmetal/host-chroot.sh /onmetal/umount
-
-ENV PATH="/onmetal:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-
-
-ENTRYPOINT ["/env.sh"]
+ 
+FROM k8s.gcr.io/build-image/debian-base:buster-v1.9.0 as debian
+COPY --from=builder /workspace/onmetal-csi-driver .
+RUN clean-install util-linux e2fsprogs mount ca-certificates udev xfsprogs bash 
+  
+USER root  
+ENTRYPOINT ["/onmetal-csi-driver"]
