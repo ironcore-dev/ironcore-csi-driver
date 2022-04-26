@@ -230,7 +230,7 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 	deviceName := validateDeviceName(volume)
 	if deviceName == "" {
 		log.Errorln("unable to get disk to mount")
-		return csiResp, status.Errorf(codes.Internal, "Volume attachment is not available")
+		return csiResp, status.Errorf(codes.Internal, "Device not available")
 	}
 	volCtx := make(map[string]string)
 	volCtx["node_id"] = req.GetNodeId()
