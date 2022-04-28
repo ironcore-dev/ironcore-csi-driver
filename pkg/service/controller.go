@@ -194,10 +194,43 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 		log.Errorln("machine is not ready")
 		return csiResp, status.Errorf(codes.Internal, "Machine is not updated")
 	}
-	deviceName := validateDeviceName(updatedMachine, vaname)
+	// get disk from volume
+	volumeClaimKey := types.NamespacedName{
+		Namespace: s.csi_namespace,
+		Name:      req.GetVolumeId() + "-claim",
+	}
+	volclaim := &storagev1alpha1.VolumeClaim{}
+	err = s.parentClient.Get(ctx, volumeClaimKey, volclaim)
+	if err != nil && !apierrors.IsNotFound(err) {
+		log.Errorf("could not get volumeclaim with name %s,namespace %s, error:%v", volumeClaimKey.Name, volumeClaimKey.Namespace, err)
+		return csiResp, status.Errorf(codes.Internal, err.Error())
+	}
+	if apierrors.IsNotFound(err) {
+		log.Infoln("volumeclaim is already been deleted")
+		return csiResp, nil
+	}
+	// get disk from volume
+	volumeKey := types.NamespacedName{
+		Namespace: s.csi_namespace,
+		Name:      volclaim.Spec.VolumeRef.Name,
+	}
+	volume := &storagev1alpha1.Volume{}
+	err = s.parentClient.Get(ctx, volumeKey, volume)
+	if err != nil && !apierrors.IsNotFound(err) {
+		log.Errorf("could not get volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
+		return csiResp, status.Errorf(codes.Internal, err.Error())
+	}
+	if apierrors.IsNotFound(err) {
+		log.Infoln("volume is already been deleted")
+		return csiResp, nil
+	}
+	if volume.Status.State != storagev1alpha1.VolumeStateAvailable || volume.Status.Phase != storagev1alpha1.VolumeBound {
+		return csiResp, status.Errorf(codes.Internal, "Volume is not ready or bound")
+	}
+	deviceName := validateDeviceName(volume)
 	if deviceName == "" {
 		log.Errorln("unable to get disk to mount")
-		return csiResp, status.Errorf(codes.Internal, "Volume attachment is not available")
+		return csiResp, status.Errorf(codes.Internal, "Device not available")
 	}
 	volCtx := make(map[string]string)
 	volCtx["node_id"] = req.GetNodeId()
@@ -249,11 +282,6 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 		time.Sleep(time.Second * 5)
 		log.Infoln("machine is not ready")
 		return csiResp, status.Errorf(codes.Internal, "Machine is not updated")
-	}
-	deviceName := validateDeviceName(updatedMachine, vaname)
-	if deviceName == vaname {
-		log.Errorln("unable to remove disk from machine")
-		return csiResp, status.Errorf(codes.Internal, "Volume attachment is not available")
 	}
 
 	log.Infoln("successfully un-published volume")
@@ -427,12 +455,15 @@ func validateVolumeSize(caprange *csi.CapacityRange) (int64, string, error) {
 	return sizeinByte, strsize, nil
 }
 
-func validateDeviceName(machine *computev1alpha1.Machine, vaName string) string {
-	for _, va := range machine.Status.VolumeAttachments {
-		if va.Name == vaName && va.DeviceID != "" {
-			log.Infoln("device from onmetal-api", va.DeviceID)
-			return "/dev/" + va.DeviceID
+func validateDeviceName(volume *storagev1alpha1.Volume) string {
+	if volume.Status.Access != nil && volume.Status.Access.VolumeAttributes != nil {
+		device := volume.Status.Access.VolumeAttributes["wwn"]
+		if device != "" {
+			log.Infoln("device from onmetal-api", device)
+			return "/dev/" + device
+			//return "/dev/disk/by-id/wwn-0x" + device
 		}
 	}
+	log.Infoln("could not found device for given volume", volume.ObjectMeta.Name)
 	return ""
 }
