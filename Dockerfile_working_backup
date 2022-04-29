@@ -38,7 +38,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GO111MODULE=on go build -ldflags="-s -w" -a -o onmetal-csi-driver cmd/onmetalcsi.go
 
-FROM ubuntu:18.04
+FROM ubuntu:22.04
 
 COPY --from=builder /onmetal-csi-driver /onmetal-csi-driver
 COPY /scripts/env.sh /env.sh
