@@ -1,46 +1,30 @@
+![Gardener on Metal Logo](docs/assets/logo.png)
+
 # onmetal-csi-driver
 
-## Overview
+ [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com) 
+[![GitHub License](https://img.shields.io/static/v1?label=License&message=Apache-2.0&color=blue&style=flat-square)](LICENSE)
 
-onmetal-csi-driver implements csi implementation for onmetal-api
+> CSI driver for gardner onmetal
 
-## Installation, Usage and Development
+## Overview 
 
-#### Run it locally on minikube
-Start a local Kubernetes cluster
-```shell
-minikube start
-```
-```shell
-eval $(minikube docker-env) 
-```
-Create a local docker build
-```shell
-make localbuild
-```
-Create a namespace
-```shell
-kubectl create ns onmetal-csi
-```
-Apply kubeconfig secret on -n onmetal-csi 
-```shell
-kubectl apply -f config/examples/kube_secret_template.yaml -n onmetal-csi
-```
-Create a configmap from literal
-```shell
-kubectl create configmap csi-configmap --from-literal=namespace=onmetal-csi -n onmetal-csi
-```
-Add annotations to the node (temporary)
-```shell
-kubectl annotate node minikube onmetal-machine=minikube
-kubectl annotate node minikube onmetal-namespace=onmetal-csi
-```
-Deploy onmetal-csi
-```shell
-make deploy
-```
-Get pods status
-```shell
-kubectl get pods -n onmetal-csi
-```
+The Onmetal Container Storage Interface (CSI) driver is a [CSI specification-compliant](https://github.com/onmetal/onmetal-csi-driver/tree/main/docs) driver used by gardner onmetal to manage the lifecycle of onmetal volumes.
 
+The CSI is a standard for exposing arbitrary block and file storage systems to containerized workloads on Kubernetes. 
+
+This driver provides CSI implementation for gardner onmetal, 
+Persistent volumes (pvc) created using this driver will be linked to exiting onmetal volumes by creating onmeal volumeclaims and mount relevant disks to machine(s) (VMs) created on onmetal.
+
+## Installation, using and developing 
+
+For more details please refer to documentation folder  [/docs](https://github.com/onmetal/onmetal-csi-driver/tree/main/docs)
+
+## Contributing 
+
+We`d love to get a feedback from you. 
+Please report bugs, suggestions or post question by opening a [Github issue](https://github.com/onmetal/onmetal-csi-driver/issues)
+
+## License
+
+[Apache License 2.0](/LICENSE)
