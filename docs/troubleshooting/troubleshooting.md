@@ -50,7 +50,6 @@ CreationTimestamp:  Thu, 19 May 2022 16:41:09 +0530
 
 ### Failed to mount volume
 1. Check whether machine(s) are available in the target cluster.
-
 2. Check whether the machine is in the targeted namespace and the name matches node annotation.
 3. Check whether the disk to mount is available with volume.
 4. Check whether required permissions and features required for mount operation are allowed (kind/minikube cluster may not support mount operation).
