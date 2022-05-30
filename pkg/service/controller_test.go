@@ -70,7 +70,7 @@ func (suite *ControllerSuite) Test_CreateVolume_Pass() {
 	parameterMap["fstype"] = "ext4"
 	parameterMap["storage_pool"] = "pool1"
 	crtValReq := getCreateVolumeRequest("volume1", parameterMap)
-	volumeClaim := getVolumeClaim()
+	volumeClaim := getVolumeClaim("volume1")
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, volumeClaim).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*storagev1alpha1.VolumeClaim)
 		*arg = *volumeClaim
@@ -96,7 +96,7 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_VolAttch_Exist_Pass()
 		arg := args.Get(2).(*computev1alpha1.Machine)
 		*arg = *machine
 	}).Twice()
-	volumeClaim := getVolumeClaim()
+	volumeClaim := getVolumeClaim("volume101")
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, volumeClaim).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*storagev1alpha1.VolumeClaim)
 		*arg = *volumeClaim
@@ -148,7 +148,7 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Device_NotFound() {
 		arg := args.Get(2).(*computev1alpha1.Machine)
 		*arg = *machine
 	}).Twice()
-	volumeClaim := getVolumeClaim()
+	volumeClaim := getVolumeClaim("volume101")
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, volumeClaim).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*storagev1alpha1.VolumeClaim)
 		*arg = *volumeClaim
@@ -211,7 +211,7 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Create_VolAttch_Pass(
 		*arg = *machineupdate
 	}).Once()
 
-	volumeClaim := getVolumeClaim()
+	volumeClaim := getVolumeClaim("volume101")
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, volumeClaim).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*storagev1alpha1.VolumeClaim)
 		*arg = *volumeClaim
@@ -498,7 +498,7 @@ func getCrtControllerUnpublishVolumeRequest() *csi.ControllerUnpublishVolumeRequ
 	}
 }
 
-func getVolumeClaim() *storagev1alpha1.VolumeClaim {
+func getVolumeClaim(volname string) *storagev1alpha1.VolumeClaim {
 	volumeClaim := &storagev1alpha1.VolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: storagev1alpha1.SchemeGroupVersion.String(),
@@ -515,6 +515,9 @@ func getVolumeClaim() *storagev1alpha1.VolumeClaim {
 			Selector: &metav1.LabelSelector{},
 			VolumeClassRef: corev1.LocalObjectReference{
 				Name: "slow",
+			},
+			VolumeRef: &corev1.LocalObjectReference{
+				Name: volname,
 			},
 		},
 		Status: storagev1alpha1.VolumeClaimStatus{
