@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -104,7 +103,10 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_VolAttch_Exist_Pass()
 	}).Once()
 
 	volume := getVolume("sdb1")
-	volume.Status.Phase = storagev1alpha1.VolumeBound
+	volume.Status.Conditions[0] = storagev1alpha1.VolumeCondition{
+		Type:   storagev1alpha1.VolumeConditionType(storagev1alpha1.VolumeClaimBound),
+		Status: corev1.ConditionTrue,
+	}
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, volume).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*storagev1alpha1.Volume)
 		*arg = *volume
@@ -153,8 +155,10 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Device_NotFound() {
 	}).Once()
 
 	volume := getVolume("")
-	volume.Status.Phase = storagev1alpha1.VolumeBound
-
+	volume.Status.Conditions[0] = storagev1alpha1.VolumeCondition{
+		Type:   storagev1alpha1.VolumeConditionType(storagev1alpha1.VolumeClaimBound),
+		Status: corev1.ConditionTrue,
+	}
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, volume).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*storagev1alpha1.Volume)
 		*arg = *volume
@@ -214,7 +218,10 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Create_VolAttch_Pass(
 	}).Once()
 
 	volume := getVolume("sdb1")
-	volume.Status.Phase = storagev1alpha1.VolumeBound
+	volume.Status.Conditions[0] = storagev1alpha1.VolumeCondition{
+		Type:   storagev1alpha1.VolumeConditionType(storagev1alpha1.VolumeClaimBound),
+		Status: corev1.ConditionTrue,
+	}
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, volume).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*storagev1alpha1.Volume)
 		*arg = *volume
@@ -451,7 +458,7 @@ func getCrtControllerPublishVolumeRequest() *csi.ControllerPublishVolumeRequest 
 func getMachine(volumeid string, device string, vaexist bool, state computev1alpha1.MachineState) *computev1alpha1.Machine {
 	machine := &computev1alpha1.Machine{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: computev1alpha1.GroupVersion.String(),
+			APIVersion: computev1alpha1.SchemeGroupVersion.String(),
 			Kind:       "Machine",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -464,19 +471,17 @@ func getMachine(volumeid string, device string, vaexist bool, state computev1alp
 		},
 	}
 	if vaexist {
-		machine.Spec.VolumeAttachments = []computev1alpha1.VolumeAttachment{
+		machine.Spec.Volumes = []computev1alpha1.Volume{
 			{
 				Name: volumeid + "-attachment",
-				VolumeAttachmentSource: computev1alpha1.VolumeAttachmentSource{
-					VolumeClaim: &computev1alpha1.VolumeClaimAttachmentSource{
-						Ref: v1.LocalObjectReference{
-							Name: volumeid + "-claim",
-						},
+				VolumeSource: computev1alpha1.VolumeSource{
+					VolumeClaimRef: &corev1.LocalObjectReference{
+						Name: volumeid + "-claim",
 					},
 				},
 			},
 		}
-		machine.Status.VolumeAttachments = []computev1alpha1.VolumeAttachmentStatus{
+		machine.Status.Volumes = []computev1alpha1.VolumeStatus{
 			{
 				Name:     volumeid + "-attachment",
 				DeviceID: device,
@@ -496,7 +501,7 @@ func getCrtControllerUnpublishVolumeRequest() *csi.ControllerUnpublishVolumeRequ
 func getVolumeClaim() *storagev1alpha1.VolumeClaim {
 	volumeClaim := &storagev1alpha1.VolumeClaim{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: storagev1alpha1.GroupVersion.String(),
+			APIVersion: storagev1alpha1.SchemeGroupVersion.String(),
 			Kind:       "VolumeClaim",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -508,7 +513,7 @@ func getVolumeClaim() *storagev1alpha1.VolumeClaim {
 				"storage": resource.MustParse("1Gi"),
 			},
 			Selector: &metav1.LabelSelector{},
-			StorageClassRef: corev1.LocalObjectReference{
+			VolumeClassRef: corev1.LocalObjectReference{
 				Name: "slow",
 			},
 		},
@@ -525,7 +530,12 @@ func getVolume(device string) *storagev1alpha1.Volume {
 	return &storagev1alpha1.Volume{
 		Status: storagev1alpha1.VolumeStatus{
 			State: storagev1alpha1.VolumeStateAvailable,
-			Phase: storagev1alpha1.VolumeBound,
+			Conditions: []storagev1alpha1.VolumeCondition{
+				{
+					Type:   storagev1alpha1.VolumeConditionType(storagev1alpha1.VolumeClaimBound),
+					Status: corev1.ConditionTrue,
+				},
+			},
 			Access: &storagev1alpha1.VolumeAccess{
 				VolumeAttributes: volumeAttr,
 			},

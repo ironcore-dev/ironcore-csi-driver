@@ -45,10 +45,10 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 	}
 	volResp := s.getCsiVolume(vol, req)
 	csiVolResp.Volume = volResp
-
+	log.Info("added selctor in volumeclaim --test log")
 	volumeClaim := &storagev1alpha1.VolumeClaim{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: storagev1alpha1.GroupVersion.String(),
+			APIVersion: storagev1alpha1.SchemeGroupVersion.String(),
 			Kind:       "VolumeClaim",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -59,10 +59,10 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 			Resources: map[corev1.ResourceName]resource.Quantity{
 				"storage": resource.MustParse(sVolSize),
 			},
-			Selector: &metav1.LabelSelector{},
-			StorageClassRef: corev1.LocalObjectReference{
+			VolumeClassRef: corev1.LocalObjectReference{
 				Name: storage_class,
 			},
+			Selector: &metav1.LabelSelector{},
 		},
 	}
 
@@ -163,18 +163,16 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 	}
 	vaname := req.GetVolumeId() + "-attachment"
 	if !s.isVolumeAttachmetAvailable(machine, vaname) {
-		attachSource := &computev1alpha1.VolumeClaimAttachmentSource{
-			Ref: corev1.LocalObjectReference{
+		attachSource := computev1alpha1.VolumeSource{
+			VolumeClaimRef: &corev1.LocalObjectReference{
 				Name: req.GetVolumeId() + "-claim",
 			},
 		}
-		volAttachment := computev1alpha1.VolumeAttachment{}
+		volAttachment := computev1alpha1.Volume{}
 		volAttachment.Name = vaname
-		volAttachment.Priority = 1
-		volAttachment.VolumeAttachmentSource = computev1alpha1.VolumeAttachmentSource{
-			VolumeClaim: attachSource,
-		}
-		machine.Spec.VolumeAttachments = append(machine.Spec.VolumeAttachments, volAttachment)
+		// volAttachment.Priority = 1
+		volAttachment.VolumeSource = attachSource
+		machine.Spec.Volumes = append(machine.Spec.Volumes, volAttachment)
 		log.Infoln("update machine with volumeattachment")
 		err = s.parentClient.Update(ctx, machine)
 		if err != nil {
@@ -206,7 +204,7 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 	if apierrors.IsNotFound(err) {
-		log.Infoln("volumeclaim is already been deleted")
+		log.Infoln("volumeclaim is found volume claim ", volclaim.Name)
 		return csiResp, nil
 	}
 	// get disk from volume
@@ -221,10 +219,17 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 	if apierrors.IsNotFound(err) {
-		log.Infoln("volume is already been deleted")
+		log.Infoln("volume not found with name ", volumeKey.Name)
 		return csiResp, nil
 	}
-	if volume.Status.State != storagev1alpha1.VolumeStateAvailable || volume.Status.Phase != storagev1alpha1.VolumeBound {
+	condition := &storagev1alpha1.VolumeCondition{}
+	condition = nil
+	for _, vc := range volume.Status.Conditions {
+		if vc.Type == storagev1alpha1.VolumeConditionType(storagev1alpha1.VolumePhaseBound) {
+			condition = &vc
+		}
+	}
+	if volume.Status.State != storagev1alpha1.VolumeStateAvailable || (condition != nil && condition.Status != corev1.ConditionTrue) {
 		return csiResp, status.Errorf(codes.Internal, "Volume is not ready or bound")
 	}
 	deviceName := validateDeviceName(volume)
@@ -258,13 +263,13 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 	vaname := req.GetVolumeId() + "-attachment"
 	if s.isVolumeAttachmetAvailable(machine, vaname) {
 		log.Infoln("remove machine with volumeattachment")
-		vaList := []computev1alpha1.VolumeAttachment{}
-		for _, va := range machine.Spec.VolumeAttachments {
+		vaList := []computev1alpha1.Volume{}
+		for _, va := range machine.Spec.Volumes {
 			if va.Name != vaname {
 				vaList = append(vaList, va)
 			}
 		}
-		machine.Spec.VolumeAttachments = vaList
+		machine.Spec.Volumes = vaList
 		err = s.parentClient.Update(ctx, machine)
 		if err != nil {
 			log.Errorf("failed to update machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
@@ -390,7 +395,7 @@ type Volume struct {
 }
 
 func (s *service) isVolumeAttachmetAvailable(machine *computev1alpha1.Machine, vaName string) bool {
-	for _, va := range machine.Spec.VolumeAttachments {
+	for _, va := range machine.Spec.Volumes {
 		if va.Name == vaName {
 			return true
 		}
