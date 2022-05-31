@@ -9,4 +9,4 @@ allowVolumeExpansion: true
 parameters:
   fstype: ext4
   storage_pool: "fra3"
-  storage_class_name: "slow"
+  storage_class_name: "fast"
