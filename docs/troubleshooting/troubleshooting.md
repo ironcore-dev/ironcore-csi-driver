@@ -1,8 +1,9 @@
 ## Troubleshooting guide for onmetal-csi-driver
 
 ### CSI driver failed to start
-1. Check whether the Kubernetes cluster has required feature-gates enabled for the CSI driver. kind/minikube cluster may not support mount operations.
-2. Check whether the correct kubeconfig is provided, and is accessible from the current cluster.
+1. Check whether the Kubernetes cluster has required feature-gates enabled for the CSI driver. 
+> Note: kind/minikube cluster may not support mount operations.
+2. Check whether the correct kubeconfig is provided and accessible from the current cluster.
 ```
 kubectl --kubeconfig=path_to_kubeconfig_of_target_cluster get nodes
 ```
@@ -13,7 +14,7 @@ NAME       STATUS   ROLES    AGE    VERSION
 minikube   Ready    master   106m   v1.18.1
 
 ```
-3. Check current cluster node is annotated with required annotations.
+3. Check if current cluster node has a required annotations.
 ```
 kubectl describe node node_name | grep -i annotations -A5
 ```
@@ -27,7 +28,7 @@ CreationTimestamp:  Thu, 19 May 2022 16:41:09 +0530
 Taints:             <none>
 Unschedulable:      false
 ```
-To add annotations to the node
+In order to add annotations to the node, run:
 ```
 kubectl annotate node minikube onmetal-machine=minikube
 kubectl annotate node minikube onmetal-namespace=onmetal-csi
