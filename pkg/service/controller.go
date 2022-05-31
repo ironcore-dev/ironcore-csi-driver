@@ -45,7 +45,6 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 	}
 	volResp := s.getCsiVolume(vol, req)
 	csiVolResp.Volume = volResp
-	log.Info("added selctor in volumeclaim --test log")
 	volumeClaim := &storagev1alpha1.VolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: storagev1alpha1.SchemeGroupVersion.String(),
@@ -94,6 +93,7 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 			return csiVolResp, status.Errorf(codes.Internal, "unable to process request for volume:"+req.GetName())
 		}
 	}
+	log.Infoln("successfully created volume", csiVolResp.Volume.VolumeId)
 	return csiVolResp, nil
 }
 
@@ -135,6 +135,7 @@ func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest
 		}
 		log.Infoln("deleted volumeclaim ", volumeClaimKey.Name)
 	}
+	log.Infoln("successfully deleted volume", req.GetVolumeId())
 	return deleteResponse, nil
 }
 
@@ -242,7 +243,7 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 	volCtx["volume_id"] = req.GetVolumeId()
 	volCtx["device_name"] = deviceName
 	csiResp.PublishContext = volCtx
-	log.Infoln("successfully published volume")
+	log.Infoln("successfully published volume", req.GetVolumeId(), "on node", req.GetNodeId())
 	return csiResp, nil
 }
 
@@ -288,8 +289,7 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 		log.Infoln("machine is not ready")
 		return csiResp, status.Errorf(codes.Internal, "Machine is not updated")
 	}
-
-	log.Infoln("successfully un-published volume")
+	log.Infoln("successfully un-published volume", req.GetVolumeId(), "from node", req.GetNodeId())
 	return csiResp, nil
 }
 
@@ -431,7 +431,7 @@ func validateVolumeSize(caprange *csi.CapacityRange) (int64, string, error) {
 	var kiBytesofGiB int64 = 1024 * 1024
 	var bytesofGiB int64 = kiBytesofGiB * bytesofKiB
 	var MinVolumeSize int64 = 1 * bytesofGiB
-	log.Infoln("req size", requiredVolSize)
+	log.Infoln("requested size", requiredVolSize)
 	if requiredVolSize == 0 {
 		requiredVolSize = MinVolumeSize
 	}
@@ -442,21 +442,19 @@ func validateVolumeSize(caprange *csi.CapacityRange) (int64, string, error) {
 	)
 
 	sizeinGB = requiredVolSize / bytesofGiB
-	log.Infoln("sizeinGB", sizeinGB)
 	if sizeinGB == 0 {
 		log.Infoln("Volumen Minimum capacity should be greater 1 GB")
 		sizeinGB = 1
 	}
 
 	sizeinByte = sizeinGB * bytesofGiB
-	log.Infoln("sizeinByte", sizeinByte)
 	if allowedMaxVolSize != 0 {
 		if sizeinByte > allowedMaxVolSize {
 			return 0, "", errors.New("volume size is out of allowed limit")
 		}
 	}
 	strsize := strconv.FormatInt(sizeinGB, 10) + "Gi"
-	log.Infoln("strsize", strsize)
+	log.Infoln("requested size in Gi", strsize)
 	return sizeinByte, strsize, nil
 }
 
