@@ -54,7 +54,7 @@ func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		log.Errorf("failed to stage volume:%v", err)
 		return resp, fmt.Errorf("failed to mount volume %s [%s] to %s, error %v", devicePath, fstype, targetPath, err)
 	}
-	log.Infoln("Successfully staged the volume")
+	log.Infoln("Successfully staged the volume", req.GetVolumeId())
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
@@ -126,7 +126,7 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 			return resp, status.Errorf(codes.Internal, "Could not mount %q at %q: %v", stagePath, targetPath, err)
 		}
 	}
-	log.Infoln("Successfully published volume")
+	log.Infoln("Successfully published volume", req.GetVolumeId())
 	return resp, nil
 }
 
@@ -165,7 +165,7 @@ func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVol
 		log.Errorf("error remove mount directory:%v", err)
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", stagePath, err)
 	}
-	log.Infoln("Successfully unstanged volume")
+	log.Infoln("Successfully un-stanged volume", req.GetVolumeId())
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
@@ -202,7 +202,7 @@ func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublis
 		log.Errorf("error remove mount directory:%v", err)
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", target, err)
 	}
-	log.Infoln("Successfully unpublished volume ", target)
+	log.Infoln("Successfully un-published volume ", req.GetVolumeId())
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 func (s *service) NodeGetVolumeStats(
