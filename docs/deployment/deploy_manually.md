@@ -9,7 +9,7 @@ eval $(minikube docker-env)
 ```
 Create a local docker build
 ```
-make localbuild
+make buildlocal
 ```
 Create a namespace
 ```
