@@ -65,10 +65,9 @@ CreationTimestamp:  Thu, 19 May 2022 16:41:09 +0530
     ```bash
         root@node1:~# kubectl get volume -n onmetal-csi
         NAMESPACE     NAME            VOLUMEPOOLREF       VOLUMECLASS   STATE       PHASE     AGE
-        onmetal-csi   volume-sample   volumepool-sample   fast          Available   Unbound   8m43s
+        onmetal-csi   volume-sample   volumepool-sample   fast          Available   Bound   8m43s
     ```
    Ideal pvc status:
-   status:
     ```bash
         root@node1:~# kubectl get pvc -n onmetal-csi
         NAMESPACE    NAME      STATUS   VOLUME                  CAPACITY  ACCESS MODES   STORAGECLASS                AGE
