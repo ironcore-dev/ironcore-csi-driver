@@ -1,5 +1,5 @@
 # Image URL to use all building/pushing image targets
-IMG ?= onmetal-csi-driver:latest
+IMG ?= localhost:5000/onmetal-csi-driver:latest
 # Go parameters
 GOCMD=go
 GOBUILD=$(GOCMD) build
