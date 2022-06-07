@@ -1,5 +1,5 @@
 # Image URL to use all building/pushing image targets
-IMG ?= localhost:5000/onmetal-csi-driver:latest
+IMG ?= onmetal-csi-driver:latest
 # Go parameters
 GOCMD=go
 GOBUILD=$(GOCMD) build
@@ -91,7 +91,6 @@ deploy:
 
 undeploy:
 	$(KUSTOMIZE) build config/deploy | kubectl delete -f -
-
 
  
  

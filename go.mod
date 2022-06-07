@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/golang/protobuf v1.5.2
-	github.com/onmetal/onmetal-api v0.0.11
+	github.com/onmetal/onmetal-api v0.0.12
 	github.com/rexray/gocsi v1.2.2
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.1
@@ -15,7 +15,7 @@ require (
 	k8s.io/client-go v0.24.0
 	k8s.io/mount-utils v0.23.5
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
-	sigs.k8s.io/controller-runtime v0.12.0
+	sigs.k8s.io/controller-runtime v0.12.2-0.20220525133844-d15de977569f
 )
 
 require (
@@ -58,7 +58,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/onmetal/controller-utils v0.5.7 // indirect
+	github.com/onmetal/controller-utils v0.6.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.12.1 // indirect

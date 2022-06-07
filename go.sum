@@ -403,10 +403,14 @@ github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn
 github.com/onmetal/controller-utils v0.3.2/go.mod h1:zCNJfEgn//oE02LUC4KTHsibltp7D7M0H1MAWXj/8k4=
 github.com/onmetal/controller-utils v0.5.7 h1:aKug1BAq0Xjt92HrBU+f8C4y0ob9yx3iVIcp1W37f4I=
 github.com/onmetal/controller-utils v0.5.7/go.mod h1:PDIjMLuTpnY+BQxmMDToXyeqcPGPQxasDq/jzOdpfVw=
+github.com/onmetal/controller-utils v0.6.0 h1:UvJFSdTOfR6vp2MqBcA9FGl5xV8/egasH3QdvI9g5qs=
+github.com/onmetal/controller-utils v0.6.0/go.mod h1:69wv03AfFUjR2IXV4OisZJzXtbCTtqcB3Mvf8MbKalM=
 github.com/onmetal/onmetal-api v0.0.10-0.20220225150941-019bd2a8ccb6 h1:nsaZ99s3JXvbFf9IDAFkPq4SN6HS2VG0WvGP4Zaf4n4=
 github.com/onmetal/onmetal-api v0.0.10-0.20220225150941-019bd2a8ccb6/go.mod h1:jl4+nnDCKFW7L7U82vUqGNSQrCeuTDu0QHYLetuOcz0=
 github.com/onmetal/onmetal-api v0.0.11 h1:U70E6Ocz+3H2TUbLnfQ0YwIgYDL9HW6zP42zREP5BDs=
 github.com/onmetal/onmetal-api v0.0.11/go.mod h1:V/BW7NUyI0cjHcLV9re+goaPjs29TqGhI/qNCV+MBdQ=
+github.com/onmetal/onmetal-api v0.0.12 h1:390VZ2yHhSpHJPJ+Xlf1mmWl9q7/FZze1yAnP1XX8Z0=
+github.com/onmetal/onmetal-api v0.0.12/go.mod h1:FoPRU0Us22VEGXPvjzef+obdEendBF+GyKnqwtfh5A8=
 github.com/onsi/ginkgo v0.0.0-20170829012221-11459a886d9c/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.4.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
@@ -1104,6 +1108,8 @@ sigs.k8s.io/controller-runtime v0.11.2 h1:H5GTxQl0Mc9UjRJhORusqfJCIjBO8UtUxGggCw
 sigs.k8s.io/controller-runtime v0.11.2/go.mod h1:P6QCzrEjLaZGqHsfd+os7JQ+WFZhvB8MRFsn4dWF7O4=
 sigs.k8s.io/controller-runtime v0.12.0 h1:gA4zphrmHFc7ihmY/+GyyE0BxKD+OYdb5+DjD2azFAQ=
 sigs.k8s.io/controller-runtime v0.12.0/go.mod h1:BKhxlA4l7FPK4AQcsuL4X6vZeWnKDXez/vp1Y8dxTU0=
+sigs.k8s.io/controller-runtime v0.12.2-0.20220525133844-d15de977569f h1:UOMDRmZin4jM/rrCGrb0bIit7gapJItmWl2ZbVxHkB8=
+sigs.k8s.io/controller-runtime v0.12.2-0.20220525133844-d15de977569f/go.mod h1:BKhxlA4l7FPK4AQcsuL4X6vZeWnKDXez/vp1Y8dxTU0=
 sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 h1:fD1pz4yfdADVNfFmcP2aBEtudwUQ1AlLnRBALr33v3s=
 sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6/go.mod h1:p4QtZmO4uMYipTQNzagwnNoseA6OxSUutVw05NhYDRs=
 sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 h1:kDi4JBNAsJWfz1aEXhO8Jg87JJaPNLh5tIzYHgStQ9Y=
