@@ -70,10 +70,10 @@ func (suite *ControllerSuite) Test_CreateVolume_Pass() {
 	parameterMap["fstype"] = "ext4"
 	parameterMap["storage_pool"] = "pool1"
 	crtValReq := getCreateVolumeRequest("volume1", parameterMap)
-	volumeClaim := getVolumeClaim("volume1")
-	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, volumeClaim).Run(func(args mock.Arguments) {
-		arg := args.Get(2).(*storagev1alpha1.VolumeClaim)
-		*arg = *volumeClaim
+	volume := getVolumeAvailable("volume1", "slow", "test-pool", "1")
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, volume).Run(func(args mock.Arguments) {
+		arg := args.Get(2).(*storagev1alpha1.Volume)
+		*arg = *volume
 	})
 	suite.clientMock.On("Patch", mock.Anything).Return(nil)
 	_, err := service.CreateVolume(context.Background(), crtValReq)
@@ -96,17 +96,8 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_VolAttch_Exist_Pass()
 		arg := args.Get(2).(*computev1alpha1.Machine)
 		*arg = *machine
 	}).Twice()
-	volumeClaim := getVolumeClaim("volume101")
-	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, volumeClaim).Run(func(args mock.Arguments) {
-		arg := args.Get(2).(*storagev1alpha1.VolumeClaim)
-		*arg = *volumeClaim
-	}).Once()
 
 	volume := getVolume("sdb1")
-	volume.Status.Conditions[0] = storagev1alpha1.VolumeCondition{
-		Type:   storagev1alpha1.VolumeConditionType(storagev1alpha1.VolumeClaimBound),
-		Status: corev1.ConditionTrue,
-	}
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, volume).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*storagev1alpha1.Volume)
 		*arg = *volume
@@ -148,17 +139,8 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Device_NotFound() {
 		arg := args.Get(2).(*computev1alpha1.Machine)
 		*arg = *machine
 	}).Twice()
-	volumeClaim := getVolumeClaim("volume101")
-	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, volumeClaim).Run(func(args mock.Arguments) {
-		arg := args.Get(2).(*storagev1alpha1.VolumeClaim)
-		*arg = *volumeClaim
-	}).Once()
 
 	volume := getVolume("")
-	volume.Status.Conditions[0] = storagev1alpha1.VolumeCondition{
-		Type:   storagev1alpha1.VolumeConditionType(storagev1alpha1.VolumeClaimBound),
-		Status: corev1.ConditionTrue,
-	}
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, volume).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*storagev1alpha1.Volume)
 		*arg = *volume
@@ -211,17 +193,7 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Create_VolAttch_Pass(
 		*arg = *machineupdate
 	}).Once()
 
-	volumeClaim := getVolumeClaim("volume101")
-	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, volumeClaim).Run(func(args mock.Arguments) {
-		arg := args.Get(2).(*storagev1alpha1.VolumeClaim)
-		*arg = *volumeClaim
-	}).Once()
-
 	volume := getVolume("sdb1")
-	volume.Status.Conditions[0] = storagev1alpha1.VolumeCondition{
-		Type:   storagev1alpha1.VolumeConditionType(storagev1alpha1.VolumeClaimBound),
-		Status: corev1.ConditionTrue,
-	}
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, volume).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*storagev1alpha1.Volume)
 		*arg = *volume
@@ -234,6 +206,11 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Create_VolAttch_Pass(
 //unpublish-volume-test
 func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Get_Fail() {
 	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	fc := fake.NewSimpleClientset()
+	client := &helper.Kubeclient{Client: fc}
+	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
+	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
 	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("machine not found"))
 	_, err := service.ControllerUnpublishVolume(context.Background(), crtUnpublishVolumeReq)
@@ -242,6 +219,12 @@ func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Get_Fail() {
 
 func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Update_Fail() {
 	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	fc := fake.NewSimpleClientset()
+	client := &helper.Kubeclient{Client: fc}
+	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
+	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
+
 	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
 	machine := getMachine(crtUnpublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
@@ -255,6 +238,12 @@ func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Update_Fail() {
 
 func (suite *ControllerSuite) Test_ControllerUnpublishVolume_State_Fail() {
 	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	fc := fake.NewSimpleClientset()
+	client := &helper.Kubeclient{Client: fc}
+	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
+	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
+
 	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
 	machine := getMachine(crtUnpublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
@@ -273,6 +262,12 @@ func (suite *ControllerSuite) Test_ControllerUnpublishVolume_State_Fail() {
 
 func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Pass() {
 	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	fc := fake.NewSimpleClientset()
+	client := &helper.Kubeclient{Client: fc}
+	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
+	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
+
 	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
 	machine := getMachine(crtUnpublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
@@ -325,7 +320,7 @@ func (suite *ControllerSuite) Test_DeleteVolume_InvalidParameter_Fail() {
 func (suite *ControllerSuite) Test_DeleteVolume_Error() {
 	service := service{parentClient: suite.clientMock}
 	delValReq := getDeleteVolumeRequest("test", getSecret())
-	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("error while get volumeclaim"))
+	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("error while get volume"))
 	_, err := service.DeleteVolume(context.Background(), delValReq)
 	assert.NotNil(suite.T(), err, "expected error but got success")
 }
@@ -333,7 +328,7 @@ func (suite *ControllerSuite) Test_DeleteVolume_Error() {
 func (suite *ControllerSuite) Test_DeleteVolume_NotFound() {
 	service := service{parentClient: suite.clientMock}
 	delValReq := getDeleteVolumeRequest("test", getSecret())
-	//suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(apierrors.NewNotFound(extensions.Resource("volumeclaim"), "test"))
+	//suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(apierrors.NewNotFound(extensions.Resource("volume"), "test"))
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("volume not found"))
 	_, err := service.DeleteVolume(context.Background(), delValReq)
 	assert.NotNil(suite.T(), err, "expected error but got success")
@@ -475,8 +470,8 @@ func getMachine(volumeid string, device string, vaexist bool, state computev1alp
 			{
 				Name: volumeid + "-attachment",
 				VolumeSource: computev1alpha1.VolumeSource{
-					VolumeClaimRef: &corev1.LocalObjectReference{
-						Name: volumeid + "-claim",
+					VolumeRef: &corev1.LocalObjectReference{
+						Name: "volume-" + volumeid,
 					},
 				},
 			},
@@ -498,33 +493,33 @@ func getCrtControllerUnpublishVolumeRequest() *csi.ControllerUnpublishVolumeRequ
 	}
 }
 
-func getVolumeClaim(volname string) *storagev1alpha1.VolumeClaim {
-	volumeClaim := &storagev1alpha1.VolumeClaim{
+func getVolumeAvailable(vname, vpool, vclass, vsize string) *storagev1alpha1.Volume {
+	volume := &storagev1alpha1.Volume{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: storagev1alpha1.SchemeGroupVersion.String(),
-			Kind:       "VolumeClaim",
+			Kind:       "Volume",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "namespace1",
-			Name:      "volume1" + "-claim",
+			Name:      vname,
 		},
-		Spec: storagev1alpha1.VolumeClaimSpec{
+		Spec: storagev1alpha1.VolumeSpec{
 			Resources: map[corev1.ResourceName]resource.Quantity{
-				"storage": resource.MustParse("1Gi"),
+				"storage": resource.MustParse(vsize + "Gi"),
 			},
-			Selector: &metav1.LabelSelector{},
 			VolumeClassRef: corev1.LocalObjectReference{
-				Name: "slow",
+				Name: vclass,
 			},
-			VolumeRef: &corev1.LocalObjectReference{
-				Name: volname,
+			VolumePoolRef: &corev1.LocalObjectReference{
+				Name: vpool,
 			},
 		},
-		Status: storagev1alpha1.VolumeClaimStatus{
-			Phase: storagev1alpha1.VolumeClaimPhase(storagev1alpha1.VolumeClaimBound),
+		Status: storagev1alpha1.VolumeStatus{
+			Phase: storagev1alpha1.VolumePhaseUnbound,
+			State: storagev1alpha1.VolumeStateAvailable,
 		},
 	}
-	return volumeClaim
+	return volume
 }
 
 func getVolume(device string) *storagev1alpha1.Volume {
@@ -533,9 +528,10 @@ func getVolume(device string) *storagev1alpha1.Volume {
 	return &storagev1alpha1.Volume{
 		Status: storagev1alpha1.VolumeStatus{
 			State: storagev1alpha1.VolumeStateAvailable,
+			Phase: storagev1alpha1.VolumePhaseBound,
 			Conditions: []storagev1alpha1.VolumeCondition{
 				{
-					Type:   storagev1alpha1.VolumeConditionType(storagev1alpha1.VolumeClaimBound),
+					Type:   storagev1alpha1.VolumeConditionType(storagev1alpha1.VolumePhaseBound),
 					Status: corev1.ConditionTrue,
 				},
 			},

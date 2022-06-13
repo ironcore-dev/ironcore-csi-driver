@@ -1,3 +1,4 @@
+//nolint:ineffassign
 package service
 
 import (
@@ -9,6 +10,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	computev1alpha1 "github.com/onmetal/onmetal-api/apis/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/apis/storage/v1alpha1"
+	"github.com/onmetal/onmetal-csi-driver/pkg/helper"
 	log "github.com/onmetal/onmetal-csi-driver/pkg/helper/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -20,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const volumeClaimFieldOwner = client.FieldOwner("storage.onmetal.de/volumeclaim")
+const volumeFieldOwner = client.FieldOwner("storage.onmetal.de/volume")
 
 func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	log.Infoln("create volume request received with volume name", req.GetName())
@@ -45,52 +47,44 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 	}
 	volResp := s.getCsiVolume(vol, req)
 	csiVolResp.Volume = volResp
-	volumeClaim := &storagev1alpha1.VolumeClaim{
+	volume := &storagev1alpha1.Volume{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: storagev1alpha1.SchemeGroupVersion.String(),
-			Kind:       "VolumeClaim",
+			Kind:       "Volume",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: s.csi_namespace,
-			Name:      req.GetName() + "-claim",
+			Name:      "volume-" + req.GetName(),
 		},
-		Spec: storagev1alpha1.VolumeClaimSpec{
+		Spec: storagev1alpha1.VolumeSpec{
 			Resources: map[corev1.ResourceName]resource.Quantity{
 				"storage": resource.MustParse(sVolSize),
 			},
 			VolumeClassRef: corev1.LocalObjectReference{
 				Name: storage_class,
 			},
-			Selector: &metav1.LabelSelector{},
+			VolumePoolRef: &corev1.LocalObjectReference{
+				Name: vol.StoragePool,
+			},
 		},
 	}
 
-	log.Infoln("create/update volumeclaim: ", volumeClaim.Name)
-	if err := s.parentClient.Patch(ctx, volumeClaim, client.Apply, volumeClaimFieldOwner); err != nil {
-		log.Errorf("error while create/update volumeclaim:%v", err)
+	log.Infoln("create/update volume: ", volume.Name)
+	if err := s.parentClient.Patch(ctx, volume, client.Apply, volumeFieldOwner); err != nil {
+		log.Errorf("error while create/update volume:%v", err)
 		return csiVolResp, status.Errorf(codes.Internal, err.Error())
 	}
-	volumeClaimKey := types.NamespacedName{
-		Namespace: volumeClaim.Namespace,
-		Name:      volumeClaim.Name,
+	volumeKey := types.NamespacedName{
+		Namespace: volume.Namespace,
+		Name:      volume.Name,
 	}
-	if volumeClaim.Status.Phase != storagev1alpha1.VolumeClaimBound {
+	if volume.Status.State != storagev1alpha1.VolumeStateAvailable {
 		time.Sleep(time.Second * 5)
-		vc := &storagev1alpha1.VolumeClaim{}
-		err = s.parentClient.Get(ctx, client.ObjectKey{Name: volumeClaim.Name, Namespace: volumeClaim.Namespace}, vc)
+		vol := &storagev1alpha1.Volume{}
+		err = s.parentClient.Get(ctx, client.ObjectKey{Name: volume.Name, Namespace: volume.Namespace}, vol)
 		if err != nil && !apierrors.IsNotFound(err) {
-			log.Errorf("could not get volumeclaim with name %s,namespace %s, error:%v", volumeClaimKey.Name, volumeClaimKey.Namespace, err)
+			log.Errorf("could not get volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
 			return csiVolResp, status.Errorf(codes.Internal, err.Error())
-		}
-		if vc.Status.Phase != storagev1alpha1.VolumeClaimBound {
-			log.Infoln("volumeclaim is not satishfied")
-			// TODO
-			// err = s.parentClient.Delete(ctx, vc)
-			// if err != nil {
-			// 	log.Errorf("unable to delete volumeclaim with name %s,namespace %s, error:%v", volumeClaimKey.Name, volumeClaimKey.Namespace, err)
-			// 	return csiVolResp, status.Errorf(codes.Internal, err.Error())
-			// }
-			return csiVolResp, status.Errorf(codes.Internal, "unable to process request for volume:"+req.GetName())
 		}
 	}
 	log.Infoln("successfully created volume", csiVolResp.Volume.VolumeId)
@@ -113,27 +107,27 @@ func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest
 		return nil, status.Errorf(codes.Internal, "required parameters are missing")
 	}
 	deleteResponse := &csi.DeleteVolumeResponse{}
-	volumeClaimKey := types.NamespacedName{
+	volumeKey := types.NamespacedName{
 		Namespace: s.csi_namespace,
-		Name:      req.GetVolumeId() + "-claim",
+		Name:      "volume-" + req.GetVolumeId(),
 	}
-	vc := &storagev1alpha1.VolumeClaim{}
-	err := s.parentClient.Get(ctx, volumeClaimKey, vc)
+	vol := &storagev1alpha1.Volume{}
+	err := s.parentClient.Get(ctx, volumeKey, vol)
 	if err != nil && !apierrors.IsNotFound(err) {
-		log.Errorf("could not get volumeclaim with name %s,namespace %s, error:%v", volumeClaimKey.Name, volumeClaimKey.Namespace, err)
+		log.Errorf("could not get volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
 		return deleteResponse, status.Errorf(codes.Internal, err.Error())
 	}
 	if apierrors.IsNotFound(err) {
-		log.Infoln("volumeclaim is already been deleted")
+		log.Infoln("volume is already been deleted")
 		return deleteResponse, nil
 	}
-	if vc != nil {
-		err = s.parentClient.Delete(ctx, vc)
+	if vol != nil {
+		err = s.parentClient.Delete(ctx, vol)
 		if err != nil {
-			log.Errorf("unable to delete volumeclaim with name %s,namespace %s, error:%v", volumeClaimKey.Name, volumeClaimKey.Namespace, err)
+			log.Errorf("unable to delete volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
 			return deleteResponse, status.Errorf(codes.Internal, err.Error())
 		}
-		log.Infoln("deleted volumeclaim ", volumeClaimKey.Name)
+		log.Infoln("deleted volume ", volumeKey.Name)
 	}
 	log.Infoln("successfully deleted volume", req.GetVolumeId())
 	return deleteResponse, nil
@@ -165,8 +159,8 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 	vaname := req.GetVolumeId() + "-attachment"
 	if !s.isVolumeAttachmetAvailable(machine, vaname) {
 		attachSource := computev1alpha1.VolumeSource{
-			VolumeClaimRef: &corev1.LocalObjectReference{
-				Name: req.GetVolumeId() + "-claim",
+			VolumeRef: &corev1.LocalObjectReference{
+				Name: "volume-" + req.GetVolumeId(),
 			},
 		}
 		volAttachment := computev1alpha1.Volume{}
@@ -193,25 +187,11 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 		log.Errorln("machine is not ready")
 		return csiResp, status.Errorf(codes.Internal, "Machine is not updated")
 	}
-	// get disk from volume
-	volumeClaimKey := types.NamespacedName{
-		Namespace: s.csi_namespace,
-		Name:      req.GetVolumeId() + "-claim",
-	}
-	volclaim := &storagev1alpha1.VolumeClaim{}
-	err = s.parentClient.Get(ctx, volumeClaimKey, volclaim)
-	if err != nil && !apierrors.IsNotFound(err) {
-		log.Errorf("could not get volumeclaim with name %s,namespace %s, error:%v", volumeClaimKey.Name, volumeClaimKey.Namespace, err)
-		return csiResp, status.Errorf(codes.Internal, err.Error())
-	}
-	if apierrors.IsNotFound(err) {
-		log.Infoln("volumeclaim is found volume claim ", volclaim.Name)
-		return csiResp, nil
-	}
+
 	// get disk from volume
 	volumeKey := types.NamespacedName{
 		Namespace: s.csi_namespace,
-		Name:      volclaim.Spec.VolumeRef.Name,
+		Name:      "volume-" + req.GetVolumeId(),
 	}
 	volume := &storagev1alpha1.Volume{}
 	err = s.parentClient.Get(ctx, volumeKey, volume)
@@ -223,14 +203,7 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 		log.Infoln("volume not found with name ", volumeKey.Name)
 		return csiResp, nil
 	}
-	condition := &storagev1alpha1.VolumeCondition{}
-	condition = nil
-	for _, vc := range volume.Status.Conditions {
-		if vc.Type == storagev1alpha1.VolumeConditionType(storagev1alpha1.VolumePhaseBound) {
-			condition = &vc
-		}
-	}
-	if volume.Status.State != storagev1alpha1.VolumeStateAvailable || (condition != nil && condition.Status != corev1.ConditionTrue) {
+	if volume.Status.State != storagev1alpha1.VolumeStateAvailable || volume.Status.Phase != storagev1alpha1.VolumePhaseBound {
 		return csiResp, status.Errorf(codes.Internal, "Volume is not ready or bound")
 	}
 	deviceName := validateDeviceName(volume)
@@ -251,12 +224,23 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 	log.Infof("request recieved to un-publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId())
 	csiResp := &csi.ControllerUnpublishVolumeResponse{}
 	machine := &computev1alpha1.Machine{}
-	machineKey := types.NamespacedName{
-		Namespace: s.csi_namespace,
-		Name:      s.node_name,
+	var kubeClient *helper.Kubeclient
+	kubeClient, err := s.kubehelper.BuildInclusterClient()
+	if err != nil {
+		log.Errorf("error getting kubeclient:%v", err)
+		return nil, err
 	}
+	onmetal_annotation, err := s.kubehelper.NodeGetAnnotations(s.node_name, kubeClient.Client) //Get onmetal-machine annotations
+	if err != nil || (onmetal_annotation.Onmetal_machine == "" && onmetal_annotation.Onmetal_namespace == "") {
+		log.Infoln("onmetal annotations Not Found")
+	}
+	machineKey := types.NamespacedName{
+		Name:      onmetal_annotation.Onmetal_machine,
+		Namespace: onmetal_annotation.Onmetal_namespace,
+	}
+
 	log.Infoln("get machine with provided name and namespace")
-	err := s.parentClient.Get(ctx, client.ObjectKey{Name: machineKey.Name, Namespace: machineKey.Namespace}, machine)
+	err = s.parentClient.Get(ctx, client.ObjectKey{Name: machineKey.Name, Namespace: machineKey.Namespace}, machine)
 	if err != nil {
 		log.Errorf("could not get machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
