@@ -22,4 +22,4 @@ jobs:
         with:
           skip-go-installation: true
           version: v1.43.0
-          args: --disable-all -E ineffassign --timeout 3m --verbose
+          args: --disable-all -E deadcode,errcheck,gosimple,govet,staticcheck,structcheck,typecheck,unused,varcheck --timeout 3m --verbose
