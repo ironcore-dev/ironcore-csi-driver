@@ -1,4 +1,3 @@
-//nolint:ineffassign
 package service
 
 import (
@@ -10,7 +9,6 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	computev1alpha1 "github.com/onmetal/onmetal-api/apis/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/apis/storage/v1alpha1"
-	"github.com/onmetal/onmetal-csi-driver/pkg/helper"
 	log "github.com/onmetal/onmetal-csi-driver/pkg/helper/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -224,7 +222,6 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 	log.Infof("request recieved to un-publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId())
 	csiResp := &csi.ControllerUnpublishVolumeResponse{}
 	machine := &computev1alpha1.Machine{}
-	var kubeClient *helper.Kubeclient
 	kubeClient, err := s.kubehelper.BuildInclusterClient()
 	if err != nil {
 		log.Errorf("error getting kubeclient:%v", err)
