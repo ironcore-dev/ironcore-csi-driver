@@ -223,7 +223,7 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 	csiResp := &csi.ControllerUnpublishVolumeResponse{}
 	machine := &computev1alpha1.Machine{}
 
-	kubeClient, err := s.kubehelper.BuildInclusterClient()
+	kubeClient, err := s.kubehelper.BuildInclusterClient() //nolint
 	if err != nil {
 		log.Errorf("error getting kubeclient:%v", err)
 		return nil, err
@@ -236,8 +236,8 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 		log.Infoln("onmetal annotations Not Found")
 	}
 	machineKey := types.NamespacedName{ //nolint
-		Namespace: onmetal_annotation.Onmetal_namespace, //nolint
 		Name:      onmetal_annotation.Onmetal_machine,   //nolint
+		Namespace: onmetal_annotation.Onmetal_namespace, //nolint
 	}
 
 	log.Infoln("get machine with provided name and namespace")
