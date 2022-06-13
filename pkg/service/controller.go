@@ -228,13 +228,16 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 		log.Errorf("error getting kubeclient:%v", err)
 		return nil, err
 	}
+	if kubeClient == nil {
+		return nil, errors.New("unable to get kube client")
+	}
 	onmetal_annotation, err := s.kubehelper.NodeGetAnnotations(s.node_name, kubeClient.Client) //Get onmetal-machine annotations
 	if err != nil || (onmetal_annotation.Onmetal_machine == "" && onmetal_annotation.Onmetal_namespace == "") {
 		log.Infoln("onmetal annotations Not Found")
 	}
-	machineKey := types.NamespacedName{
-		Namespace: onmetal_annotation.Onmetal_namespace,
-		Name:      onmetal_annotation.Onmetal_machine,
+	machineKey := types.NamespacedName{ //nolint
+		Namespace: onmetal_annotation.Onmetal_namespace, //nolint
+		Name:      onmetal_annotation.Onmetal_machine,   //nolint
 	}
 
 	log.Infoln("get machine with provided name and namespace")
