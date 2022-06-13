@@ -222,10 +222,9 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 	log.Infof("request recieved to un-publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId())
 	csiResp := &csi.ControllerUnpublishVolumeResponse{}
 	machine := &computev1alpha1.Machine{}
-	machineKey := types.NamespacedName{
-		Namespace: s.csi_namespace,
-		Name:      s.node_name,
-	}
+	machineKey := types.NamespacedName{}
+	machineKey.Namespace = s.csi_namespace
+	machineKey.Name = s.node_name
 	log.Infoln("get machine with provided name and namespace")
 	err := s.parentClient.Get(ctx, client.ObjectKey{Name: machineKey.Name, Namespace: machineKey.Namespace}, machine)
 	if err != nil {

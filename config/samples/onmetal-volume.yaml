@@ -1,0 +1,11 @@
+apiVersion: storage.api.onmetal.de/v1alpha1
+kind: Volume
+metadata:
+  name: volume-csi
+spec:
+  volumeClassRef:
+    name: slow
+  volumePoolRef:
+    name: fra3
+  resources:
+    storage: 2Gi
