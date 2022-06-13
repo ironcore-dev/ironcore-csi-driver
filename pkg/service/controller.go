@@ -1,3 +1,4 @@
+//nolint:ineffassign
 package service
 
 import (
@@ -222,8 +223,7 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 	log.Infof("request recieved to un-publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId())
 	csiResp := &csi.ControllerUnpublishVolumeResponse{}
 	machine := &computev1alpha1.Machine{}
-
-	kubeClient, err := s.kubehelper.BuildInclusterClient() //nolint
+	kubeClient, err := s.kubehelper.BuildInclusterClient()
 	if err != nil {
 		log.Errorf("error getting kubeclient:%v", err)
 		return nil, err
@@ -235,9 +235,9 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 	if err != nil || (onmetal_annotation.Onmetal_machine == "" && onmetal_annotation.Onmetal_namespace == "") {
 		log.Infoln("onmetal annotations Not Found")
 	}
-	machineKey := types.NamespacedName{ //nolint
-		Name:      onmetal_annotation.Onmetal_machine,   //nolint
-		Namespace: onmetal_annotation.Onmetal_namespace, //nolint
+	machineKey := types.NamespacedName{
+		Name:      onmetal_annotation.Onmetal_machine,
+		Namespace: onmetal_annotation.Onmetal_namespace,
 	}
 
 	log.Infoln("get machine with provided name and namespace")
