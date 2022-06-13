@@ -206,6 +206,11 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Create_VolAttch_Pass(
 //unpublish-volume-test
 func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Get_Fail() {
 	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	fc := fake.NewSimpleClientset()
+	client := &helper.Kubeclient{Client: fc}
+	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
+	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
 	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("machine not found"))
 	_, err := service.ControllerUnpublishVolume(context.Background(), crtUnpublishVolumeReq)
@@ -214,6 +219,12 @@ func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Get_Fail() {
 
 func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Update_Fail() {
 	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	fc := fake.NewSimpleClientset()
+	client := &helper.Kubeclient{Client: fc}
+	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
+	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
+
 	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
 	machine := getMachine(crtUnpublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
@@ -227,6 +238,12 @@ func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Update_Fail() {
 
 func (suite *ControllerSuite) Test_ControllerUnpublishVolume_State_Fail() {
 	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	fc := fake.NewSimpleClientset()
+	client := &helper.Kubeclient{Client: fc}
+	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
+	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
+
 	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
 	machine := getMachine(crtUnpublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
@@ -245,6 +262,12 @@ func (suite *ControllerSuite) Test_ControllerUnpublishVolume_State_Fail() {
 
 func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Pass() {
 	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
+	fc := fake.NewSimpleClientset()
+	client := &helper.Kubeclient{Client: fc}
+	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
+	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
+
 	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
 	machine := getMachine(crtUnpublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(nil, machine).Run(func(args mock.Arguments) {
