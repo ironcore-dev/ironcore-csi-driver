@@ -222,11 +222,23 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 	log.Infof("request recieved to un-publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId())
 	csiResp := &csi.ControllerUnpublishVolumeResponse{}
 	machine := &computev1alpha1.Machine{}
-	machineKey := types.NamespacedName{}
-	machineKey.Namespace = s.csi_namespace
-	machineKey.Name = s.node_name
+
+	kubeClient, err := s.kubehelper.BuildInclusterClient()
+	if err != nil {
+		log.Errorf("error getting kubeclient:%v", err)
+		return nil, err
+	}
+	onmetal_annotation, err := s.kubehelper.NodeGetAnnotations(s.node_name, kubeClient.Client) //Get onmetal-machine annotations
+	if err != nil || (onmetal_annotation.Onmetal_machine == "" && onmetal_annotation.Onmetal_namespace == "") {
+		log.Infoln("onmetal annotations Not Found")
+	}
+	machineKey := types.NamespacedName{
+		Namespace: onmetal_annotation.Onmetal_namespace,
+		Name:      onmetal_annotation.Onmetal_machine,
+	}
+
 	log.Infoln("get machine with provided name and namespace")
-	err := s.parentClient.Get(ctx, client.ObjectKey{Name: machineKey.Name, Namespace: machineKey.Namespace}, machine)
+	err = s.parentClient.Get(ctx, client.ObjectKey{Name: machineKey.Name, Namespace: machineKey.Namespace}, machine)
 	if err != nil {
 		log.Errorf("could not get machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
