@@ -60,7 +60,7 @@ CreationTimestamp:  Thu, 19 May 2022 16:41:09 +0530
         time="2022-05-31T06:02:51Z" level=info msg="create volume request received with volume name csi-onmetal-e022cb7f52"
         time="2022-05-31T06:02:51Z" level=info msg="requested size 1073741824" 
         time="2022-05-31T06:02:51Z" level=info msg="requested size Gi 1Gi"
-        time="2022-05-31T06:02:56Z" level=info msg="volumeclaim is not satishfied"
+        time="2022-05-31T06:02:56Z" level=info msg="volume is not satisfied"
     ```
    Ideal onmetal volume:
     ```bash
