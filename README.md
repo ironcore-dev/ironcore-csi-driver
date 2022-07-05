@@ -9,12 +9,11 @@
 
 ## Overview 
 
-The Onmetal Container Storage Interface (CSI) driver is a [CSI specification-compliant](https://github.com/onmetal/onmetal-csi-driver/tree/main/docs) driver used by Gardener on Metal to manage the lifecycle of onmetal volumes.
+The onmetal Container Storage Interface (CSI) driver is a [CSI specification-compliant](https://github.com/onmetal/onmetal-csi-driver/tree/main/docs) driver used by Gardener on Metal to manage the lifecycle of onmetal volumes.
 
 The CSI is a standard for exposing arbitrary block and file storage systems to containerized workloads on Kubernetes. 
 
-This driver provides CSI implementation for Gardener on Metal,
-Persistent volumes (pvc) created using this driver will be linked to exiting onmetal volumes by creating onmeal volumeclaims and mount relevant disks to machine(s) (VMs) created on onmetal.
+This driver provides CSI implementation for Gardener on Metal. For any Persistent volume (PVC) created using this driver, it will create a new onmetal volume and mount the relevant disks to machine(s) (VMs).
 
 ## Installation, using and developing 
 
@@ -22,8 +21,8 @@ For more details please refer to documentation folder  [/docs](https://github.co
 
 ## Contributing 
 
-We`d love to get a feedback from you. 
-Please report bugs, suggestions or post question by opening a [Github issue](https://github.com/onmetal/onmetal-csi-driver/issues)
+We`d love to get feedback from you. 
+Please report bugs, suggestions or post questions by opening a [Github issue](https://github.com/onmetal/onmetal-csi-driver/issues)
 
 ## License
 
