@@ -80,7 +80,7 @@ CreationTimestamp:  Thu, 19 May 2022 16:41:09 +0530
    example error:
     ```bash
         root@node1:~# kubectl logs -f onmetal-csi-driver-0 -c driver  -n onmetal-csi 
-        time="2022-05-31T06:41:15Z" level=info msg="request recieved to publish volume csi-onmetal-44eb33bc46 at node 192.168.0.108\n"
+        time="2022-05-31T06:41:15Z" level=info msg="request received to publish volume csi-onmetal-44eb33bc46 at node 192.168.0.108\n"
         time="2022-05-31T06:41:15Z" level=info msg="get machine with provided name and namespace"
         time="2022-05-31T06:41:15Z" level=error msg="could not get machine with name node1,namespace onmetal-csi, error:machines.compute.api.onmetal.de \"node1\" not found"
     ```
@@ -88,14 +88,14 @@ CreationTimestamp:  Thu, 19 May 2022 16:41:09 +0530
    example error:
     ```bash
         root@node1:~# kubectl logs -f onmetal-csi-driver-0 -c driver  -n onmetal-csi 
-        time="2022-05-31T06:41:15Z" level=info msg="request recieved to publish volume csi-onmetal-44eb33bc46 at node 192.168.0.108\n"
+        time="2022-05-31T06:41:15Z" level=info msg="request received to publish volume csi-onmetal-44eb33bc46 at node 192.168.0.108\n"
         time="2022-05-31T06:41:15Z" level=info msg="get machine with provided name and namespace"
         time="2022-05-31T06:41:15Z" level=error msg="could not get machine with name node1,namespace onmetal-csi, error:machines.compute.api.onmetal.de \"node1\" not found"
     ```
 3. Check whether the disk to mount is available with volume.
     ```bash
         root@node1:~# kubectl logs -f onmetal-csi-driver-0 -c driver  -n onmetal-csi 
-        time="2022-05-31T06:51:40Z" level=info msg="request recieved to publish volume csi-onmetal-4c50e230e1 at node 192.168.0.108\n"
+        time="2022-05-31T06:51:40Z" level=info msg="request received to publish volume csi-onmetal-4c50e230e1 at node 192.168.0.108\n"
         time="2022-05-31T06:51:40Z" level=info msg="get machine with provided name and namespace"
         time="2022-05-31T06:51:40Z" level=info msg="update machine with volumeattachment"
         time="2022-05-31T06:51:40Z" level=info msg="check machine is updated"

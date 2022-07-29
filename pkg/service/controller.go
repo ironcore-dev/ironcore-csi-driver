@@ -131,8 +131,8 @@ func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest
 	return deleteResponse, nil
 }
 
-func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (controlePublishResponce *csi.ControllerPublishVolumeResponse, err error) {
-	log.Infof("request recieved to publish volume %s at node %s\n", req.GetVolumeId(), req.GetNodeId())
+func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (controlePublishresponse *csi.ControllerPublishVolumeResponse, err error) {
+	log.Infof("request received to publish volume %s at node %s\n", req.GetVolumeId(), req.GetNodeId())
 	csiResp := &csi.ControllerPublishVolumeResponse{}
 	machine := &computev1alpha1.Machine{}
 	kubeClient, err := s.kubehelper.BuildInclusterClient()
@@ -219,7 +219,7 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 }
 
 func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
-	log.Infof("request recieved to un-publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId())
+	log.Infof("request received to un-publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId())
 	csiResp := &csi.ControllerUnpublishVolumeResponse{}
 	machine := &computev1alpha1.Machine{}
 	kubeClient, err := s.kubehelper.BuildInclusterClient()

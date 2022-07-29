@@ -40,9 +40,9 @@ func (suite *NodeSuite) Test_NodeStageVolume_Already_Mounted_Pass() {
 	suite.mountMock.On("IsNotMountPoint", mock.Anything).Return(false, nil)
 	suite.mountMock.On("IsLikelyNotMountPoint", mock.Anything).Return(false, nil)
 	suite.osmock.On("MkdirAll", mock.Anything, mock.Anything).Return(nil)
-	responce, err := service.NodeStageVolume(context.Background(), getNodeStageVolumeRequest(targetPath, volctx))
+	response, err := service.NodeStageVolume(context.Background(), getNodeStageVolumeRequest(targetPath, volctx))
 	assert.Nil(suite.T(), err, "empty object")
-	assert.NotNil(suite.T(), responce, "empty object")
+	assert.NotNil(suite.T(), response, "empty object")
 }
 
 // func (suite *NodeSuite) Test_NodeStageVolume_Do_Mount_Pass() {
@@ -58,9 +58,9 @@ func (suite *NodeSuite) Test_NodeStageVolume_Already_Mounted_Pass() {
 // 	suite.osmock.On("IsNotExist", mock.Anything).Return(true)
 // 	suite.mountMock.On("Mount", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-// 	responce, err := service.NodeStageVolume(context.Background(), getNodeStageVolumeRequest(targetPath, volctx))
+// 	response, err := service.NodeStageVolume(context.Background(), getNodeStageVolumeRequest(targetPath, volctx))
 // 	assert.Nil(suite.T(), err, "empty object")
-// 	assert.NotNil(suite.T(), responce, "empty object")
+// 	assert.NotNil(suite.T(), response, "empty object")
 // }
 
 // func (suite *NodeSuite) Test_NodeStageVolume_Do_Mount_Failed() {
@@ -91,9 +91,9 @@ func (suite *NodeSuite) Test_NodePublishVolume_Already_Mounted_Pass() {
 	suite.mountMock.On("IsNotMountPoint", mock.Anything).Return(false, nil)
 	suite.mountMock.On("IsLikelyNotMountPoint", mock.Anything).Return(false, nil)
 	suite.osmock.On("MkdirAll", mock.Anything, mock.Anything).Return(nil)
-	responce, err := service.NodePublishVolume(context.Background(), getNodePublishVolumeRequest(targetPath, targetPath, volctx))
+	response, err := service.NodePublishVolume(context.Background(), getNodePublishVolumeRequest(targetPath, targetPath, volctx))
 	assert.Nil(suite.T(), err, "empty object")
-	assert.NotNil(suite.T(), responce, "empty object")
+	assert.NotNil(suite.T(), response, "empty object")
 }
 
 func (suite *NodeSuite) Test_NodePublishVolume_Do_Mount_Pass() {
@@ -109,9 +109,9 @@ func (suite *NodeSuite) Test_NodePublishVolume_Do_Mount_Pass() {
 	suite.osmock.On("IsNotExist", mock.Anything).Return(true)
 	suite.mountMock.On("Mount", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-	responce, err := service.NodePublishVolume(context.Background(), getNodePublishVolumeRequest(targetPath, targetPath, volctx))
+	response, err := service.NodePublishVolume(context.Background(), getNodePublishVolumeRequest(targetPath, targetPath, volctx))
 	assert.Nil(suite.T(), err, "empty object")
-	assert.NotNil(suite.T(), responce, "empty object")
+	assert.NotNil(suite.T(), response, "empty object")
 }
 
 func (suite *NodeSuite) Test_NodePublishVolume_Do_Mount_Failed() {
