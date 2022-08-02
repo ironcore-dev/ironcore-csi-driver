@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:experimental
-FROM --platform=$BUILDPLATFORM golang:1.17.8 as builder
+FROM --platform=$BUILDPLATFORM golang:1.18.5 as builder
 ARG DEBIAN_FRONTEND=noninteractive
 ARG GOARCH=''
 ARG GITHUB_PAT=''
