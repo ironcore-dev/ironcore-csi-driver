@@ -12,7 +12,7 @@ import (
 )
 
 func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
-	log.Infoln("request recieved for node stage volume ", req.GetVolumeId(), "at", req.GetStagingTargetPath())
+	log.Infoln("request received for node stage volume ", req.GetVolumeId(), "at", req.GetStagingTargetPath())
 	fstype := req.GetVolumeContext()["fstype"]
 	devicePath := "/host" + req.PublishContext["device_name"]
 
@@ -59,7 +59,7 @@ func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 }
 
 func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
-	log.Infoln("request recieved for node publish volume ", req.GetVolumeId(), "at", req.GetTargetPath())
+	log.Infoln("request received for node publish volume ", req.GetVolumeId(), "at", req.GetTargetPath())
 	resp := &csi.NodePublishVolumeResponse{}
 
 	volumeID := req.GetVolumeId()
@@ -131,7 +131,7 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 }
 
 func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
-	log.Infoln("request recieved for node un-stage volume ", req.GetVolumeId(), "at", req.GetStagingTargetPath())
+	log.Infoln("request received for node un-stage volume ", req.GetVolumeId(), "at", req.GetStagingTargetPath())
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID not found")
@@ -170,7 +170,7 @@ func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVol
 }
 
 func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
-	log.Infoln("request recieved for node unpublish volume ", req.GetVolumeId(), "at", req.GetTargetPath())
+	log.Infoln("request received for node unpublish volume ", req.GetVolumeId(), "at", req.GetTargetPath())
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
@@ -184,7 +184,7 @@ func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublis
 	_, err := s.osutil.Stat(target)
 	if err != nil {
 		log.Errorf("Unable to unmount volume:%v", err)
-		return nil, status.Errorf(codes.Internal, "Unable to unmout %q: %v", target, err)
+		return nil, status.Errorf(codes.Internal, "Unable to unmount %q: %v", target, err)
 	}
 	err = s.mountutil.Unmount(target)
 	if err != nil {
