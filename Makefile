@@ -86,11 +86,11 @@ buildlocal: build docker-build clean
 all: build docker-build docker-push clean
  
 deploy:
-	cd config/controller/manager && $(KUSTOMIZE) edit set image onmetal-csi-driver=${IMG}
-	$(KUSTOMIZE) build config/controller/default | kubectl apply -f -
+	cd config/manager && $(KUSTOMIZE) edit set image onmetal-csi-driver=${IMG}
+	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 undeploy:
-	$(KUSTOMIZE) build config/controller/default | kubectl delete -f -
+	$(KUSTOMIZE) build config/default | kubectl delete -f -
 
  
  
