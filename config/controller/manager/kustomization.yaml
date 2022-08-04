@@ -1,0 +1,11 @@
+resources:
+- csidriver.yaml
+- node.yaml
+- controller.yaml
+namespace: onmetal-csi
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: onmetal-csi-driver
+  newName: onmetal-csi-driver
+  newTag: v1
