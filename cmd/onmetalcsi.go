@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	config := initial_Configuration()
+	config := initialConfiguration()
 	gocsi.Run(
 		context.Background(),
 		service.ServiceName,
@@ -19,7 +19,7 @@ func main() {
 		provider.New(config))
 }
 
-func initial_Configuration() map[string]string {
+func initialConfiguration() map[string]string {
 	configParams := make(map[string]string)
 	if nodeip, ok := csictx.LookupEnv(context.Background(), "NODE_IP_ADDRESS"); ok {
 		configParams["node_ip"] = nodeip

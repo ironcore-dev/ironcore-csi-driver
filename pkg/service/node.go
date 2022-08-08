@@ -217,7 +217,7 @@ func (s *service) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolum
 
 func (s *service) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
 	return &csi.NodeGetInfoResponse{
-		NodeId: s.node_id,
+		NodeId: s.nodeId,
 	}, nil
 }
 

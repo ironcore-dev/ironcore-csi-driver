@@ -19,13 +19,13 @@ const (
 
 type service struct {
 	// parameters
-	driver_name    string
-	driver_version string
-	node_id        string
-	node_name      string
-	csi_namespace  string
-	mountutil      *mount.SafeFormatAndMount
-	osutil         helper.OsHelper
+	driverName    string
+	driverVersion string
+	nodeId        string
+	nodeName      string
+	csiNamespace  string
+	mountutil     *mount.SafeFormatAndMount
+	osutil        helper.OsHelper
 	// rest client
 	parentClient client.Client
 	kubehelper   helper.Helper
@@ -42,14 +42,14 @@ type Service interface {
 
 func New(config map[string]string) Service {
 	svc := &service{
-		driver_name:    config["driver_name"],
-		driver_version: config["driver_version"],
-		node_id:        config["node_id"],
-		node_name:      config["node_name"],
-		csi_namespace:  config["csi_namespace"],
-		kubehelper:     &helper.KubeHelper{},
-		mountutil:      &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
-		osutil:         &helper.OsOps{},
+		driverName:    config["driver_name"],
+		driverVersion: config["driver_version"],
+		nodeId:        config["node_id"],
+		nodeName:      config["node_name"],
+		csiNamespace:  config["csi_namespace"],
+		kubehelper:    &helper.KubeHelper{},
+		mountutil:     &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
+		osutil:        &helper.OsOps{},
 	}
 
 	if _, ok := config["parent_kube_config"]; ok {
