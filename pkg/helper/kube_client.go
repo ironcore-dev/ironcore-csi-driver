@@ -31,8 +31,8 @@ type Kubeclient struct {
 
 //onmetal machine annotations
 type Annotation struct {
-	Onmetal_machine   string
-	Onmetal_namespace string
+	OnmetalMachine   string
+	OnmetalNamespace string
 }
 
 type Helper interface {
@@ -99,6 +99,6 @@ func (k *KubeHelper) NodeGetAnnotations(Nodename string, client kubernetes.Inter
 	}
 	onmetalMachineName := node.ObjectMeta.Annotations["onmetal-machine"]
 	onmetalMachineNamespace := node.ObjectMeta.Annotations["onmetal-namespace"]
-	onmetal_annotation := Annotation{Onmetal_machine: onmetalMachineName, Onmetal_namespace: onmetalMachineNamespace}
-	return onmetal_annotation, err
+	onmetalAnnotation := Annotation{OnmetalMachine: onmetalMachineName, OnmetalNamespace: onmetalMachineNamespace}
+	return onmetalAnnotation, err
 }

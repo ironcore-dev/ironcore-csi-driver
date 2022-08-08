@@ -88,7 +88,7 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_VolAttch_Exist_Pass()
 	fc := fake.NewSimpleClientset()
 	client := &helper.Kubeclient{Client: fc}
 	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
-	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	annotation := helper.Annotation{OnmetalMachine: "test1", OnmetalNamespace: "test2"}
 	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything).Return(nil)
 	machine := getMachine(crtPublishVolumeReq.VolumeId, "sda1", true, computev1alpha1.MachineStateRunning)
@@ -115,7 +115,7 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Machine_NotFound() {
 	fc := fake.NewSimpleClientset()
 	client := &helper.Kubeclient{Client: fc}
 	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
-	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	annotation := helper.Annotation{OnmetalMachine: "test1", OnmetalNamespace: "test2"}
 	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("Machine Not Found\n"))
 	suite.clientMock.On("Update", mock.Anything).Return(nil)
@@ -131,7 +131,7 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Device_NotFound() {
 	fc := fake.NewSimpleClientset()
 	client := &helper.Kubeclient{Client: fc}
 	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
-	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	annotation := helper.Annotation{OnmetalMachine: "test1", OnmetalNamespace: "test2"}
 	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything).Return(nil)
 	machine := getMachine(crtPublishVolumeReq.VolumeId, "", true, computev1alpha1.MachineStateRunning)
@@ -158,7 +158,7 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_VolumeAttachment_NotF
 	fc := fake.NewSimpleClientset()
 	client := &helper.Kubeclient{Client: fc}
 	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
-	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	annotation := helper.Annotation{OnmetalMachine: "test1", OnmetalNamespace: "test2"}
 	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything).Return(nil)
 	machine := getMachine(crtPublishVolumeReq.VolumeId, "sda1", false, computev1alpha1.MachineStateRunning)
@@ -178,7 +178,7 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Create_VolAttch_Pass(
 	fc := fake.NewSimpleClientset()
 	client := &helper.Kubeclient{Client: fc}
 	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
-	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	annotation := helper.Annotation{OnmetalMachine: "test1", OnmetalNamespace: "test2"}
 	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything).Return(nil)
 	machine := getMachine(crtPublishVolumeReq.VolumeId, "sda1", false, computev1alpha1.MachineStateRunning)
@@ -209,7 +209,7 @@ func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Get_Fail() {
 	fc := fake.NewSimpleClientset()
 	client := &helper.Kubeclient{Client: fc}
 	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
-	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	annotation := helper.Annotation{OnmetalMachine: "test1", OnmetalNamespace: "test2"}
 	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
 	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
 	suite.clientMock.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("machine not found"))
@@ -222,7 +222,7 @@ func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Update_Fail() {
 	fc := fake.NewSimpleClientset()
 	client := &helper.Kubeclient{Client: fc}
 	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
-	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	annotation := helper.Annotation{OnmetalMachine: "test1", OnmetalNamespace: "test2"}
 	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
 
 	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
@@ -241,7 +241,7 @@ func (suite *ControllerSuite) Test_ControllerUnpublishVolume_State_Fail() {
 	fc := fake.NewSimpleClientset()
 	client := &helper.Kubeclient{Client: fc}
 	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
-	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	annotation := helper.Annotation{OnmetalMachine: "test1", OnmetalNamespace: "test2"}
 	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
 
 	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
@@ -265,7 +265,7 @@ func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Pass() {
 	fc := fake.NewSimpleClientset()
 	client := &helper.Kubeclient{Client: fc}
 	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
-	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	annotation := helper.Annotation{OnmetalMachine: "test1", OnmetalNamespace: "test2"}
 	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
 
 	crtUnpublishVolumeReq := getCrtControllerUnpublishVolumeRequest()
@@ -290,7 +290,7 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_MachineState_Pending_
 	fc := fake.NewSimpleClientset()
 	client := &helper.Kubeclient{Client: fc}
 	suite.kubehelper.On("BuildInclusterClient").Return(client, nil)
-	annotation := helper.Annotation{Onmetal_machine: "test1", Onmetal_namespace: "test2"}
+	annotation := helper.Annotation{OnmetalMachine: "test1", OnmetalNamespace: "test2"}
 	suite.kubehelper.On("NodeGetAnnotations", mock.AnythingOfType("string"), fc).Return(annotation, nil)
 	suite.clientMock.On("Get", mock.Anything, mock.Anything).Return(nil)
 	machine := getMachine(crtPublishVolumeReq.VolumeId, "sda1", false, computev1alpha1.MachineStateRunning)

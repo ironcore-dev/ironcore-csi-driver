@@ -32,7 +32,7 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 	}
 	params := req.GetParameters()
 	fstype := params["fstype"]
-	storage_class := params["storage_class_name"]
+	storageClass := params["storage_class_name"]
 	if !validateParams(params) {
 		return csiVolResp, status.Errorf(codes.Internal, "required parameters are missing")
 	}
@@ -51,7 +51,7 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 			Kind:       "Volume",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: s.csi_namespace,
+			Namespace: s.csiNamespace,
 			Name:      "volume-" + req.GetName(),
 		},
 		Spec: storagev1alpha1.VolumeSpec{
@@ -59,7 +59,7 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 				"storage": resource.MustParse(sVolSize),
 			},
 			VolumeClassRef: corev1.LocalObjectReference{
-				Name: storage_class,
+				Name: storageClass,
 			},
 			VolumePoolRef: &corev1.LocalObjectReference{
 				Name: vol.StoragePool,
@@ -106,7 +106,7 @@ func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest
 	}
 	deleteResponse := &csi.DeleteVolumeResponse{}
 	volumeKey := types.NamespacedName{
-		Namespace: s.csi_namespace,
+		Namespace: s.csiNamespace,
 		Name:      "volume-" + req.GetVolumeId(),
 	}
 	vol := &storagev1alpha1.Volume{}
@@ -140,13 +140,13 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 		log.Errorf("error getting kubeclient:%v", err)
 		return nil, err
 	}
-	onmetal_annotation, err := s.kubehelper.NodeGetAnnotations(s.node_name, kubeClient.Client) //Get onmetal-machine annotations
-	if err != nil || (onmetal_annotation.Onmetal_machine == "" && onmetal_annotation.Onmetal_namespace == "") {
+	onmetalAnnotation, err := s.kubehelper.NodeGetAnnotations(s.nodeName, kubeClient.Client) //Get onmetal-machine annotations
+	if err != nil || (onmetalAnnotation.OnmetalMachine == "" && onmetalAnnotation.OnmetalNamespace == "") {
 		log.Infoln("onmetal annotations Not Found")
 	}
 	machineKey := types.NamespacedName{
-		Namespace: onmetal_annotation.Onmetal_namespace,
-		Name:      onmetal_annotation.Onmetal_machine,
+		Namespace: onmetalAnnotation.OnmetalNamespace,
+		Name:      onmetalAnnotation.OnmetalMachine,
 	}
 	log.Infoln("get machine with provided name and namespace")
 	err = s.parentClient.Get(ctx, client.ObjectKey{Name: machineKey.Name, Namespace: machineKey.Namespace}, machine)
@@ -188,7 +188,7 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 
 	// get disk from volume
 	volumeKey := types.NamespacedName{
-		Namespace: s.csi_namespace,
+		Namespace: s.csiNamespace,
 		Name:      "volume-" + req.GetVolumeId(),
 	}
 	volume := &storagev1alpha1.Volume{}
@@ -227,13 +227,13 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 		log.Errorf("error getting kubeclient:%v", err)
 		return nil, err
 	}
-	onmetal_annotation, err := s.kubehelper.NodeGetAnnotations(s.node_name, kubeClient.Client) //Get onmetal-machine annotations
-	if err != nil || (onmetal_annotation.Onmetal_machine == "" && onmetal_annotation.Onmetal_namespace == "") {
+	onmetalAnnotation, err := s.kubehelper.NodeGetAnnotations(s.nodeName, kubeClient.Client) //Get onmetal-machine annotations
+	if err != nil || (onmetalAnnotation.OnmetalMachine == "" && onmetalAnnotation.OnmetalNamespace == "") {
 		log.Infoln("onmetal annotations Not Found")
 	}
 	machineKey := types.NamespacedName{
-		Name:      onmetal_annotation.Onmetal_machine,
-		Namespace: onmetal_annotation.Onmetal_namespace,
+		Name:      onmetalAnnotation.OnmetalMachine,
+		Namespace: onmetalAnnotation.OnmetalNamespace,
 	}
 
 	log.Infoln("get machine with provided name and namespace")
