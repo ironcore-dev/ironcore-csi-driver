@@ -25,7 +25,6 @@ type service struct {
 	nodeName      string
 	csiNamespace  string
 	mountutil     *mount.SafeFormatAndMount
-	osutil        helper.OsHelper
 	// rest client
 	parentClient client.Client
 	kubehelper   helper.Helper
@@ -49,7 +48,6 @@ func New(config map[string]string) Service {
 		csiNamespace:  config["csi_namespace"],
 		kubehelper:    &helper.KubeHelper{},
 		mountutil:     &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
-		osutil:        &helper.OsOps{},
 	}
 
 	if _, ok := config["parent_kube_config"]; ok {

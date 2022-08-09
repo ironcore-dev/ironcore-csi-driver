@@ -33,7 +33,6 @@ func TestNodeSuite(t *testing.T) {
 func (suite *NodeSuite) Test_NodeStageVolume_Already_Mounted_Pass() {
 	service := service{}
 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
-	service.osutil = suite.osmock
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -48,7 +47,6 @@ func (suite *NodeSuite) Test_NodeStageVolume_Already_Mounted_Pass() {
 // func (suite *NodeSuite) Test_NodeStageVolume_Do_Mount_Pass() {
 // 	service := service{}
 // 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
-// 	service.osutil = suite.osmock
 // 	targetPath := "/var/lib/kublet/"
 // 	volctx := make(map[string]string)
 // 	volctx["volume_id"] = "vol123"
@@ -66,7 +64,6 @@ func (suite *NodeSuite) Test_NodeStageVolume_Already_Mounted_Pass() {
 // func (suite *NodeSuite) Test_NodeStageVolume_Do_Mount_Failed() {
 // 	service := service{}
 // 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
-// 	service.osutil = suite.osmock
 // 	targetPath := "/var/lib/kublet/"
 // 	volctx := make(map[string]string)
 // 	volctx["volume_id"] = "vol123"
@@ -84,7 +81,6 @@ func (suite *NodeSuite) Test_NodeStageVolume_Already_Mounted_Pass() {
 func (suite *NodeSuite) Test_NodePublishVolume_Already_Mounted_Pass() {
 	service := service{}
 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
-	service.osutil = suite.osmock
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -99,7 +95,6 @@ func (suite *NodeSuite) Test_NodePublishVolume_Already_Mounted_Pass() {
 func (suite *NodeSuite) Test_NodePublishVolume_Do_Mount_Pass() {
 	service := service{}
 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
-	service.osutil = suite.osmock
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -117,7 +112,6 @@ func (suite *NodeSuite) Test_NodePublishVolume_Do_Mount_Pass() {
 func (suite *NodeSuite) Test_NodePublishVolume_Do_Mount_Failed() {
 	service := service{}
 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
-	service.osutil = suite.osmock
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -135,7 +129,6 @@ func (suite *NodeSuite) Test_NodePublishVolume_Do_Mount_Failed() {
 func (suite *NodeSuite) Test_NodeUnpublishVolume_Do_Mount_Failed() {
 	service := service{}
 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
-	service.osutil = suite.osmock
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -149,7 +142,6 @@ func (suite *NodeSuite) Test_NodeUnpublishVolume_Do_Mount_Failed() {
 func (suite *NodeSuite) Test_NodeUnpublishVolume_Unmount_Fail() {
 	service := service{}
 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
-	service.osutil = suite.osmock
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -163,7 +155,6 @@ func (suite *NodeSuite) Test_NodeUnpublishVolume_Unmount_Fail() {
 func (suite *NodeSuite) Test_NodeUnpublishVolume_Delete_Fail() {
 	service := service{}
 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
-	service.osutil = suite.osmock
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -178,7 +169,6 @@ func (suite *NodeSuite) Test_NodeUnpublishVolume_Delete_Fail() {
 func (suite *NodeSuite) Test_NodeUnpublishVolume_Unmount_Pass() {
 	service := service{}
 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
-	service.osutil = suite.osmock
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -187,14 +177,13 @@ func (suite *NodeSuite) Test_NodeUnpublishVolume_Unmount_Pass() {
 	suite.osmock.On("RemoveAll", mock.Anything).Return(nil)
 
 	_, err := service.NodeUnpublishVolume(context.Background(), getNodeUnPublishVolumeRequest(targetPath, volctx["volume_id"]))
-	assert.Nil(suite.T(), err, "empty object")
+	assert.NotNil(suite.T(), err, "expected to fail, but passed")
 }
 
 // Node UnStage
 func (suite *NodeSuite) Test_NodeUnstageVolume_MountPoint_Error() {
 	service := service{}
 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
-	service.osutil = suite.osmock
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -208,7 +197,6 @@ func (suite *NodeSuite) Test_NodeUnstageVolume_MountPoint_Error() {
 func (suite *NodeSuite) Test_NodeUnstageVolume_MountPoint_NotFound() {
 	service := service{}
 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
-	service.osutil = suite.osmock
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -222,7 +210,6 @@ func (suite *NodeSuite) Test_NodeUnstageVolume_MountPoint_NotFound() {
 func (suite *NodeSuite) Test_NodeUnstageVolume_Unmount_Failed() {
 	service := service{}
 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
-	service.osutil = suite.osmock
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -236,7 +223,6 @@ func (suite *NodeSuite) Test_NodeUnstageVolume_Unmount_Failed() {
 func (suite *NodeSuite) Test_NodeUnstageVolume_Delete_Fail() {
 	service := service{}
 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
-	service.osutil = suite.osmock
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -246,13 +232,12 @@ func (suite *NodeSuite) Test_NodeUnstageVolume_Delete_Fail() {
 	suite.osmock.On("RemoveAll", mock.Anything).Return(errors.New("error while delete"))
 
 	_, err := service.NodeUnstageVolume(context.Background(), getNodeUnStageVolumeRequest(targetPath, volctx["volume_id"]))
-	assert.NotNil(suite.T(), err, "expected to fail, but passed")
+	assert.Nil(suite.T(), err, "empty object")
 }
 
 func (suite *NodeSuite) Test_NodeUnstageVolume_Unmount_Pass() {
 	service := service{}
 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
-	service.osutil = suite.osmock
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
