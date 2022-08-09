@@ -190,7 +190,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-            - name: VOLUMECLAIM_NS
+            - name: VOLUME_NS
               valueFrom:
                 configMapKeyRef:
                   name: csi-configmap
