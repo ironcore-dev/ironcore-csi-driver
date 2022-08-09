@@ -37,8 +37,8 @@ func initialConfiguration() map[string]string {
 	if parentKubeconfig, ok := csictx.LookupEnv(context.Background(), "PARENT_KUBE_CONFIG"); ok {
 		configParams["parent_kube_config"] = parentKubeconfig
 	}
-	if volumeCLaimNamespace, ok := csictx.LookupEnv(context.Background(), "VOLUMECLAIM_NS"); ok {
-		configParams["csi_namespace"] = volumeCLaimNamespace
+	if volumeNamespace, ok := csictx.LookupEnv(context.Background(), "VOLUME_NS"); ok {
+		configParams["csi_namespace"] = volumeNamespace
 	}
 	return configParams
 }
