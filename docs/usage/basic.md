@@ -14,7 +14,7 @@ kubectl apply -f onmetal-csi-driver/config/samples/pvc.yaml -n csi-test
 ```
 
 - Check status
-``
+```
 kubectl get sc -A
 kubectl get pvc -A
 ```
