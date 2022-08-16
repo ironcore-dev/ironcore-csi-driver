@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -26,7 +27,7 @@ func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	resp := &csi.NodeStageVolumeResponse{}
 	log.Infoln("validate mount point")
 	notMnt, err := s.mountutil.IsLikelyNotMountPoint(targetPath)
-	if err != nil && !s.osutil.IsNotExist(err) {
+	if err != nil && !os.IsNotExist(err) {
 		log.Errorf("unable to verify MountPoint:%v", err)
 		return resp, err
 	}
@@ -36,7 +37,7 @@ func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		return resp, nil
 	}
 	log.Infoln("create target directory")
-	if err := s.osutil.MkdirAll(targetPath, 0750); err != nil {
+	if err := os.MkdirAll(targetPath, 0750); err != nil {
 		log.Errorf("failed to mkdir error:%v", err)
 		return resp, err
 	}
@@ -107,15 +108,15 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 	}
 
 	notMnt, err := s.mountutil.IsLikelyNotMountPoint(targetPath)
-	if err != nil && !s.osutil.IsNotExist(err) {
+	if err != nil && !os.IsNotExist(err) {
 		return resp, status.Errorf(codes.Internal, "Determination of mount point failed: %v", err)
 	}
 
 	if notMnt {
 		log.Infoln("targetPath is  not mountpoint", targetPath)
-		if s.osutil.IsNotExist(err) {
+		if os.IsNotExist(err) {
 			log.Infoln("make target directory")
-			if err := s.osutil.MkdirAll(targetPath, 0750); err != nil {
+			if err := os.MkdirAll(targetPath, 0750); err != nil {
 				log.Errorf("failed to create directory %s, error", targetPath)
 				return resp, err
 			}
@@ -155,12 +156,12 @@ func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVol
 		return nil, status.Errorf(codes.Internal, "Failed to unmount target %q: %v", stagePath, err)
 	}
 	log.Infoln("remove directory after mount")
-	err = s.osutil.RemoveAll(stagePath)
+	err = os.RemoveAll(stagePath)
 	if err != nil {
 		log.Errorf("error remove mount directory:%v", err)
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", stagePath, err)
 	}
-	err = s.osutil.RemoveAll("/host" + stagePath)
+	err = os.RemoveAll("/host" + stagePath)
 	if err != nil {
 		log.Errorf("error remove mount directory:%v", err)
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", stagePath, err)
@@ -181,7 +182,7 @@ func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublis
 		return nil, status.Error(codes.InvalidArgument, "Target path not provided")
 	}
 	log.Infoln("validate mount path", target)
-	_, err := s.osutil.Stat(target)
+	_, err := os.Stat(target)
 	if err != nil {
 		log.Errorf("Unable to unmount volume:%v", err)
 		return nil, status.Errorf(codes.Internal, "Unable to unmount %q: %v", target, err)
@@ -192,12 +193,12 @@ func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublis
 		return nil, status.Errorf(codes.Internal, "Failed not unmount %q: %v", target, err)
 	}
 	log.Infoln("remove directory after mount")
-	err = s.osutil.RemoveAll(target)
+	err = os.RemoveAll(target)
 	if err != nil {
 		log.Errorf("error remove mount directory:%v", err)
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", target, err)
 	}
-	err = s.osutil.RemoveAll("/host" + target)
+	err = os.RemoveAll("/host" + target)
 	if err != nil {
 		log.Errorf("error remove mount directory:%v", err)
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", target, err)
