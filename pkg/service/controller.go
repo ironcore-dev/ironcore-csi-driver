@@ -76,14 +76,16 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 		Namespace: volume.Namespace,
 		Name:      volume.Name,
 	}
-	if volume.Status.State != storagev1alpha1.VolumeStateAvailable {
-		time.Sleep(time.Second * 5)
-		vol := &storagev1alpha1.Volume{}
-		err = s.parentClient.Get(ctx, client.ObjectKey{Name: volume.Name, Namespace: volume.Namespace}, vol)
-		if err != nil && !apierrors.IsNotFound(err) {
-			log.Errorf("could not get volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
-			return csiVolResp, status.Errorf(codes.Internal, err.Error())
-		}
+	createdVolume := &storagev1alpha1.Volume{}
+	log.Infoln("check volume is created and Available")
+	err = s.parentClient.Get(ctx, client.ObjectKey{Name: volume.Name, Namespace: volume.Namespace}, createdVolume)
+	if err != nil && !apierrors.IsNotFound(err) {
+		log.Errorf("could not get volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
+		return csiVolResp, status.Errorf(codes.Internal, err.Error())
+	}
+	if createdVolume.Status.State != storagev1alpha1.VolumeStateAvailable {
+		log.Errorf("volume with name %s,namespace %s, is successfully created, But State is not 'Available'", volumeKey.Name, volumeKey.Namespace)
+		return csiVolResp, status.Errorf(codes.Internal, "check volume State it's not Available")
 	}
 	log.Infoln("successfully created volume", csiVolResp.Volume.VolumeId)
 	return csiVolResp, nil
@@ -181,7 +183,6 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 	if updatedMachine.Status.State != computev1alpha1.MachineStateRunning {
-		time.Sleep(time.Second * 5)
 		log.Errorln("machine is not ready")
 		return csiResp, status.Errorf(codes.Internal, "Machine is not updated")
 	}
@@ -266,7 +267,6 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 	if updatedMachine.Status.State != computev1alpha1.MachineStateRunning {
-		time.Sleep(time.Second * 5)
 		log.Infoln("machine is not ready")
 		return csiResp, status.Errorf(codes.Internal, "Machine is not updated")
 	}
