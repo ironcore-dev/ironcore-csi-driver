@@ -83,8 +83,8 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 		log.Errorf("could not get volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
 		return csiVolResp, status.Errorf(codes.Internal, err.Error())
 	}
-	if volume.Status.State != storagev1alpha1.VolumeStateAvailable {
-		log.Errorf("volume with name %s,namespace %s, State is not 'Available'", volumeKey.Name, volumeKey.Namespace)
+	if createdVolume.Status.State != storagev1alpha1.VolumeStateAvailable {
+		log.Errorf("volume with name %s,namespace %s, is successfully created, But State is not 'Available'", volumeKey.Name, volumeKey.Namespace)
 		return csiVolResp, status.Errorf(codes.Internal, "check volume State it's not Available")
 	}
 	log.Infoln("successfully created volume", csiVolResp.Volume.VolumeId)
