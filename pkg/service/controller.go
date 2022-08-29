@@ -18,6 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 const volumeFieldOwner = client.FieldOwner("storage.onmetal.de/volume")
@@ -121,14 +122,12 @@ func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest
 		log.Infoln("volume is already been deleted")
 		return deleteResponse, nil
 	}
-	if vol != nil {
-		err = s.parentClient.Delete(ctx, vol)
-		if err != nil {
-			log.Errorf("unable to delete volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
-			return deleteResponse, status.Errorf(codes.Internal, err.Error())
-		}
-		log.Infoln("deleted volume ", volumeKey.Name)
+	err = s.parentClient.Delete(ctx, vol)
+	if err != nil {
+		log.Errorf("unable to delete volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
+		return deleteResponse, status.Errorf(codes.Internal, err.Error())
 	}
+	log.Infoln("deleted volume ", volumeKey.Name)
 	log.Infoln("successfully deleted volume", req.GetVolumeId())
 	return deleteResponse, nil
 }
@@ -137,12 +136,12 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 	log.Infof("request received to publish volume %s at node %s\n", req.GetVolumeId(), req.GetNodeId())
 	csiResp := &csi.ControllerPublishVolumeResponse{}
 	machine := &computev1alpha1.Machine{}
-	kubeClient, err := s.kubehelper.BuildInclusterClient()
+	kubeClient, err := BuildInclusterClient()
 	if err != nil {
 		log.Errorf("error getting kubeclient:%v", err)
 		return nil, err
 	}
-	onmetalAnnotation, err := s.kubehelper.NodeGetAnnotations(s.nodeName, kubeClient.Client) //Get onmetal-machine annotations
+	onmetalAnnotation, err := NodeAnnotations(s.nodeName, kubeClient) //Get onmetal-machine annotations
 	if err != nil || (onmetalAnnotation.OnmetalMachine == "" && onmetalAnnotation.OnmetalNamespace == "") {
 		log.Infoln("onmetal annotations Not Found")
 	}
@@ -223,12 +222,12 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 	log.Infof("request received to un-publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId())
 	csiResp := &csi.ControllerUnpublishVolumeResponse{}
 	machine := &computev1alpha1.Machine{}
-	kubeClient, err := s.kubehelper.BuildInclusterClient()
+	kubeClient, err := BuildInclusterClient()
 	if err != nil {
 		log.Errorf("error getting kubeclient:%v", err)
 		return nil, err
 	}
-	onmetalAnnotation, err := s.kubehelper.NodeGetAnnotations(s.nodeName, kubeClient.Client) //Get onmetal-machine annotations
+	onmetalAnnotation, err := NodeAnnotations(s.nodeName, kubeClient) //Get onmetal-machine annotations
 	if err != nil || (onmetalAnnotation.OnmetalMachine == "" && onmetalAnnotation.OnmetalNamespace == "") {
 		log.Infoln("onmetal annotations Not Found")
 	}
@@ -450,4 +449,37 @@ func validateDeviceName(volume *storagev1alpha1.Volume) string {
 	}
 	log.Infoln("could not found device for given volume", volume.ObjectMeta.Name)
 	return ""
+}
+
+//onmetal machine annotations
+type Annotation struct {
+	OnmetalMachine   string
+	OnmetalNamespace string
+}
+
+func NodeAnnotations(Nodename string, c client.Client) (a Annotation, err error) {
+	node := &corev1.Node{}
+	err = c.Get(context.Background(), client.ObjectKey{Name: Nodename}, node)
+	if err != nil {
+		log.Errorf("Node Not found :%v", err)
+	}
+	onmetalMachineName := node.ObjectMeta.Annotations["onmetal-machine"]
+	onmetalMachineNamespace := node.ObjectMeta.Annotations["onmetal-namespace"]
+	onmetalAnnotation := Annotation{OnmetalMachine: onmetalMachineName, OnmetalNamespace: onmetalMachineNamespace}
+	return onmetalAnnotation, err
+}
+
+func BuildInclusterClient() (c client.Client, err error) {
+	config, err := config.GetConfig()
+	if err != nil {
+		log.Errorf("BuildClient Error while getting cluster config, error: %v", err)
+		return nil, err
+	}
+	clientset, err := client.New(config, client.Options{})
+	if err != nil {
+		log.Errorf("BuildClient Error while creating client, error: %v", err)
+		return nil, err
+	}
+
+	return clientset, err
 }
