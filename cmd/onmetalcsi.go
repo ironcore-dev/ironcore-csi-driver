@@ -5,8 +5,8 @@ import (
 
 	"github.com/onmetal/onmetal-csi-driver/pkg/provider"
 	"github.com/onmetal/onmetal-csi-driver/pkg/service"
-	"github.com/rexray/gocsi"
-	csictx "github.com/rexray/gocsi/context"
+	"github.com/sujeet01/gocsi"
+	csictx "github.com/sujeet01/gocsi/context"
 )
 
 func main() {

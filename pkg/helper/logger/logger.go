@@ -3,8 +3,8 @@ package logger
 import (
 	"context"
 
-	csictx "github.com/rexray/gocsi/context"
 	"github.com/sirupsen/logrus"
+	csictx "github.com/sujeet01/gocsi/context"
 )
 
 var logInstance *logrus.Logger

@@ -17,7 +17,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/rexray/gocsi"
+	"github.com/sujeet01/gocsi"
 	mount "k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -78,7 +78,7 @@ func (s *service) BeforeServe(ctx context.Context, sp *gocsi.StoragePlugin, list
 	return nil
 }
 
-//Initialize kubernetes client
+// Initialize kubernetes client
 var (
 	Scheme = runtime.NewScheme()
 )
