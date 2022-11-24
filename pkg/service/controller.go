@@ -364,6 +364,10 @@ func (s *service) ControllerGetCapabilities(ctx context.Context, req *csi.Contro
 	}, nil
 }
 
+func (s *service) ControllerGetVolume(ctx context.Context, req *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
+	return &csi.ControllerGetVolumeResponse{}, nil
+}
+
 type Volume struct {
 	ID            string
 	Name          string
@@ -451,7 +455,7 @@ func validateDeviceName(volume *storagev1alpha1.Volume) string {
 	return ""
 }
 
-//onmetal machine annotations
+// onmetal machine annotations
 type Annotation struct {
 	OnmetalMachine   string
 	OnmetalNamespace string

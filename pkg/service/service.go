@@ -28,6 +28,17 @@ const (
 	ServiceName = "onmetal-csi-driver"
 )
 
+// Initialize kubernetes client
+var (
+	Scheme = runtime.NewScheme()
+)
+
+func init() {
+	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
+	utilruntime.Must(storagev1alpha1.AddToScheme(Scheme))
+	utilruntime.Must(computev1alpha1.AddToScheme(Scheme))
+}
+
 type service struct {
 	// parameters
 	driverName    string
@@ -74,21 +85,6 @@ func New(config map[string]string) Service {
 	return svc
 }
 
-func (s *service) BeforeServe(ctx context.Context, sp *gocsi.StoragePlugin, listner net.Listener) error {
-	return nil
-}
-
-// Initialize kubernetes client
-var (
-	Scheme = runtime.NewScheme()
-)
-
-func init() {
-	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
-	utilruntime.Must(storagev1alpha1.AddToScheme(Scheme))
-	utilruntime.Must(computev1alpha1.AddToScheme(Scheme))
-}
-
 func LoadRESTConfig(kubeconfig string) (cluster.Cluster, error) {
 	data, err := os.ReadFile(kubeconfig)
 	if err != nil {
@@ -106,4 +102,8 @@ func LoadRESTConfig(kubeconfig string) (cluster.Cluster, error) {
 		return nil, err
 	}
 	return parentCluster, nil
+}
+
+func (s *service) BeforeServe(ctx context.Context, sp *gocsi.StoragePlugin, listner net.Listener) error {
+	return nil
 }

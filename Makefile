@@ -1,5 +1,22 @@
 # Image URL to use all building/pushing image targets
 IMG ?= onmetal-csi-driver:latest
+# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+ENVTEST_K8S_VERSION = 1.24.2
+
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
+## Tool Binaries
+KUSTOMIZE ?= $(LOCALBIN)/kustomize
+#CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+ENVTEST ?= $(LOCALBIN)/setup-envtest
+
+## Tool Versions
+KUSTOMIZE_VERSION ?= v3.8.7
+CONTROLLER_TOOLS_VERSION ?= v0.9.2
+
 # Go parameters
 GOCMD=go
 GOBUILD=$(GOCMD) build
@@ -52,12 +69,9 @@ clean:
 build:
 	$(GOBUILD) -o $(BINARY_NAME) -v  ./cmd/ 
 
-test: 
-	$(GOTEST) -v ./...
-
 lint: ## Run golangci-lint against code.
 	golangci-lint run ./...
-  
+
 run:
 	$(GOBUILD) -o $(BINARY_NAME) -v ./...
 	./$(BINARY_NAME)
@@ -77,14 +91,14 @@ build-linux:
 
 docker-build: 
 	docker build --ssh default=${HOME}/.ssh/id_rsa -t ${IMG} -f Dockerfile .
- 
+
 docker-push:
 	docker push ${IMG}
- 
+
 buildlocal: build docker-build clean
 
 all: build docker-build docker-push clean
- 
+
 deploy:
 	cd config/manager && $(KUSTOMIZE) edit set image onmetal-csi-driver=${IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
@@ -92,5 +106,16 @@ deploy:
 undeploy:
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
 
- 
- 
+fmt: ## Run go fmt against code.
+	go fmt ./...
+
+vet: ## Run go vet against code.
+	go vet ./...
+
+test: fmt vet envtest ## Run tests.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
+
+envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
+$(ENVTEST): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
