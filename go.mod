@@ -7,7 +7,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/onmetal/onmetal-api v0.0.13-0.20221128140537-6f4c572a0217
 	github.com/rexray/gocsi v1.2.2
-	github.com/sirupsen/logrus v1.8.1
+	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.7.1
 	google.golang.org/grpc v1.50.1
 	k8s.io/api v0.24.3
