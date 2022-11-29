@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	computev1alpha1 "github.com/onmetal/onmetal-api/apis/compute/v1alpha1"
-	storagev1alpha1 "github.com/onmetal/onmetal-api/apis/storage/v1alpha1"
+	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
+	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
 	"github.com/onmetal/onmetal-csi-driver/pkg/helper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -36,7 +36,7 @@ func TestControllerSuite(t *testing.T) {
 	suite.Run(t, new(ControllerSuite))
 }
 
-//CreateVolume test cases
+// CreateVolume test cases
 func (suite *ControllerSuite) Test_CreateVolume_InvalidParameter_Fail() {
 	service := service{parentClient: suite.clientMock}
 	var parameterMap map[string]string
@@ -203,7 +203,7 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_Create_VolAttch_Pass(
 	assert.Nil(suite.T(), err, "Fail to publish volume")
 }
 
-//unpublish-volume-test
+// unpublish-volume-test
 func (suite *ControllerSuite) Test_ControllerUnpublishVolume_Get_Fail() {
 	service := service{parentClient: suite.clientMock, kubehelper: suite.kubehelper}
 	fc := fake.NewSimpleClientset()
@@ -309,7 +309,7 @@ func (suite *ControllerSuite) Test_ControllerPublishVolume_MachineState_Pending_
 	assert.NotNil(suite.T(), err, "expected error but got success")
 }
 
-//DeleteVolume test cases
+// DeleteVolume test cases
 func (suite *ControllerSuite) Test_DeleteVolume_InvalidParameter_Fail() {
 	service := service{parentClient: suite.clientMock}
 	delValReq := getDeleteVolumeRequest("", getSecret())
@@ -478,8 +478,8 @@ func getMachine(volumeid string, device string, vaexist bool, state computev1alp
 		}
 		machine.Status.Volumes = []computev1alpha1.VolumeStatus{
 			{
-				Name:     volumeid + "-attachment",
-				DeviceID: device,
+				Name:   volumeid + "-attachment",
+				Device: device,
 			},
 		}
 	}
@@ -507,7 +507,7 @@ func getVolumeAvailable(vname, vpool, vclass, vsize string) *storagev1alpha1.Vol
 			Resources: map[corev1.ResourceName]resource.Quantity{
 				"storage": resource.MustParse(vsize + "Gi"),
 			},
-			VolumeClassRef: corev1.LocalObjectReference{
+			VolumeClassRef: &corev1.LocalObjectReference{
 				Name: vclass,
 			},
 			VolumePoolRef: &corev1.LocalObjectReference{
