@@ -8,7 +8,7 @@ require (
 	github.com/onmetal/onmetal-api v0.0.13-0.20221128140537-6f4c572a0217
 	github.com/rexray/gocsi v1.2.2
 	github.com/sirupsen/logrus v1.9.0
-	github.com/stretchr/testify v1.7.1
+	github.com/stretchr/testify v1.8.1
 	google.golang.org/grpc v1.50.1
 	k8s.io/api v0.24.3
 	k8s.io/apimachinery v0.24.3
@@ -49,7 +49,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/objx v0.2.0 // indirect
+	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802 // indirect
 	go4.org/netipx v0.0.0-20220812043211-3cc044ffd68d // indirect
 	golang.org/x/net v0.1.0 // indirect
