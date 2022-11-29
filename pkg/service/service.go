@@ -8,6 +8,8 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/onmetal/onmetal-csi-driver/pkg/helper"
 	"github.com/rexray/gocsi"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	mount "k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -67,4 +69,8 @@ func New(config map[string]string) Service {
 
 func (s *service) BeforeServe(ctx context.Context, sp *gocsi.StoragePlugin, listner net.Listener) error {
 	return nil
+}
+
+func (s *service) ControllerGetVolume(context.Context, *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ControllerGetVolume not implemented")
 }
