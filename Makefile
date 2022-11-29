@@ -90,7 +90,7 @@ build-linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BINARY_NAME) -v ./cmd/
 
 docker-build: 
-	docker build --ssh default=${HOME}/.ssh/id_rsa -t ${IMG} -f Dockerfile .
+	docker build -t ${IMG} -f Dockerfile .
  
 docker-push:
 	docker push ${IMG}
