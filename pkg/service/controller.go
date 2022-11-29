@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	computev1alpha1 "github.com/onmetal/onmetal-api/apis/compute/v1alpha1"
-	storagev1alpha1 "github.com/onmetal/onmetal-api/apis/storage/v1alpha1"
+	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
+	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
 	log "github.com/onmetal/onmetal-csi-driver/pkg/helper/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -58,7 +58,7 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 			Resources: map[corev1.ResourceName]resource.Quantity{
 				"storage": resource.MustParse(sVolSize),
 			},
-			VolumeClassRef: corev1.LocalObjectReference{
+			VolumeClassRef: &corev1.LocalObjectReference{
 				Name: storageClass,
 			},
 			VolumePoolRef: &corev1.LocalObjectReference{
@@ -121,14 +121,12 @@ func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest
 		log.Infoln("volume is already been deleted")
 		return deleteResponse, nil
 	}
-	if vol != nil {
-		err = s.parentClient.Delete(ctx, vol)
-		if err != nil {
-			log.Errorf("unable to delete volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
-			return deleteResponse, status.Errorf(codes.Internal, err.Error())
-		}
-		log.Infoln("deleted volume ", volumeKey.Name)
+	err = s.parentClient.Delete(ctx, vol)
+	if err != nil {
+		log.Errorf("unable to delete volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
+		return deleteResponse, status.Errorf(codes.Internal, err.Error())
 	}
+	log.Infoln("deleted volume ", volumeKey.Name)
 	log.Infoln("successfully deleted volume", req.GetVolumeId())
 	return deleteResponse, nil
 }
