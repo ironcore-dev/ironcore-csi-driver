@@ -1,24 +1,20 @@
 # syntax=docker/dockerfile:experimental
-FROM --platform=$BUILDPLATFORM golang:1.17.8 as builder
+FROM --platform=$BUILDPLATFORM golang:1.19.3 as builder
+
 ARG DEBIAN_FRONTEND=noninteractive
 ARG GOARCH=''
-ARG GITHUB_PAT=''
 
 WORKDIR /workspace
-ADD . .
+
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
-
-COPY hack hack
-
-ENV GOPRIVATE='github.com/onmetal/*'
 
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg \
-    && go mod download
+    go mod download
 
 # Copy the go source
 COPY cmd/ cmd/
