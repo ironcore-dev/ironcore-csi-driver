@@ -474,12 +474,13 @@ func getMachine(volumeid string, device string, vaexist bool, state computev1alp
 						Name: "volume-" + volumeid,
 					},
 				},
+				Device: &device,
 			},
 		}
 		machine.Status.Volumes = []computev1alpha1.VolumeStatus{
 			{
-				Name:   volumeid + "-attachment",
-				Device: device,
+				Name:  volumeid + "-attachment",
+				Phase: computev1alpha1.VolumePhaseBound,
 			},
 		}
 	}
