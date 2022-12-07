@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -154,15 +155,15 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 		log.Errorf("could not get machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
-	vaname := req.GetVolumeId() + "-attachment"
-	if !s.isVolumeAttachmetAvailable(machine, vaname) {
+	vaName := req.GetVolumeId() + "-attachment"
+	if !s.isVolumeAttachmetAvailable(machine, vaName) {
 		attachSource := computev1alpha1.VolumeSource{
 			VolumeRef: &corev1.LocalObjectReference{
 				Name: "volume-" + req.GetVolumeId(),
 			},
 		}
 		volAttachment := computev1alpha1.Volume{}
-		volAttachment.Name = vaname
+		volAttachment.Name = vaName
 		// volAttachment.Priority = 1
 		volAttachment.VolumeSource = attachSource
 		machine.Spec.Volumes = append(machine.Spec.Volumes, volAttachment)
@@ -203,7 +204,7 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 	if volume.Status.State != storagev1alpha1.VolumeStateAvailable || volume.Status.Phase != storagev1alpha1.VolumePhaseBound {
 		return csiResp, status.Errorf(codes.Internal, "Volume is not ready or bound")
 	}
-	deviceName := validateDeviceName(volume)
+	deviceName := validateDeviceName(volume, updatedMachine, vaName)
 	if deviceName == "" {
 		log.Errorln("unable to get disk to mount")
 		return csiResp, status.Errorf(codes.Internal, "Device not available")
@@ -241,12 +242,12 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 		log.Errorf("could not get machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
-	vaname := req.GetVolumeId() + "-attachment"
-	if s.isVolumeAttachmetAvailable(machine, vaname) {
+	vaName := req.GetVolumeId() + "-attachment"
+	if s.isVolumeAttachmetAvailable(machine, vaName) {
 		log.Infoln("remove machine with volumeattachment")
 		vaList := []computev1alpha1.Volume{}
 		for _, va := range machine.Spec.Volumes {
-			if va.Name != vaname {
+			if va.Name != vaName {
 				vaList = append(vaList, va)
 			}
 		}
@@ -437,13 +438,17 @@ func validateVolumeSize(caprange *csi.CapacityRange) (int64, string, error) {
 	return sizeinByte, strsize, nil
 }
 
-func validateDeviceName(volume *storagev1alpha1.Volume) string {
+func validateDeviceName(volume *storagev1alpha1.Volume, machine *computev1alpha1.Machine, vaName string) string {
 	if volume.Status.Access != nil && volume.Status.Access.VolumeAttributes != nil {
-		device := volume.Status.Access.VolumeAttributes["wwn"]
-		if device != "" {
-			log.Infoln("device from onmetal-api", device)
-			return "/dev/" + device
-			//return "/dev/disk/by-id/wwn-0x" + device
+		wwn := volume.Status.Access.VolumeAttributes["WWN"]
+		for _, va := range machine.Spec.Volumes {
+			if va.Name == vaName && *va.Device != "" {
+				device := *va.Device
+				log.Infoln("Machine is updated with device :", device)
+				device_array := strings.Split(device, "")
+				device_slice := strings.Join(device_array[1:], "")
+				return "/dev/disk/by-id/virtio-v" + device_slice + "-" + wwn
+			}
 		}
 	}
 	log.Infoln("could not found device for given volume", volume.ObjectMeta.Name)
