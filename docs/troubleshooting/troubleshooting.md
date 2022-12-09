@@ -43,6 +43,14 @@ Annotations:        kubeadm.alpha.kubernetes.io/cri-socket: /var/run/dockershim.
 CreationTimestamp:  Thu, 19 May 2022 16:41:09 +0530
 
 ```
+4. Check CSI driver is deployed and Running
+
+ ```bash
+root@node1:~# kubectl get pods -n onmetal-csi
+NAME                    READY   STATUS      RESTARTS        AGE
+onmetal-csi-driver-0    5/5     Running      0              51s
+onmetal-csi-node-mkfs9  2/2     Running      0              29s
+```
 
 ### Error while creating PVC
 1. Check whether volume(s) are available in the target cluster.
