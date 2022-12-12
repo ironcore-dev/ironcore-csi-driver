@@ -30,21 +30,34 @@ kubectl apply -f config/samples/kube_secret_template.yaml -n onmetal-csi
 
 > Please note, you need to encode the kubeconfig file content into base64 before placing it inside config/samples/kube_secret_template.yaml
 
-Create a configmap from literal
+
+Create a configmap
+
 ```
-kubectl create configmap csi-configmap --from-literal=namespace=onmetal-csi -n onmetal-csi
+kubectl create configmap csi-configmap --from-literal=namespace=csi-test -n onmetal-csi
 ```
+> Note: ```namespace=csi-test```
+The namespace value(onmetal-csi) should be same namespace where the machine is running and Volume will be created
+
 Add annotations to the node (temporary)
 ```
-kubectl annotate node minikube onmetal-machine=minikube
-kubectl annotate node minikube onmetal-namespace=onmetal-csi
+kubectl annotate node minikube onmetal-machine=csi-machine
+kubectl annotate node minikube onmetal-namespace=csi-test
 ```
-Deploy onmetal-csi
+
+> Note: ```onmetal-machine``` and ```onmetal-namespace``` value should be the machine and namespace name respectively where the volume will be published, disk will be mounted to.
+
+
+Deploy onmetal-csi-driver
 ```
 make deploy
 ```
-Get pods status
-```
-kubectl get pods -n onmetal-csi
+Validate CSI driver is deployed and Running
+
+```bash
+root@node1:~# kubectl get pods -n onmetal-csi
+NAME                    READY   STATUS      RESTARTS        AGE
+onmetal-csi-driver-0    5/5     Running      0              51s
+onmetal-csi-node-mkfs9  2/2     Running      0              29s
 ```
 
