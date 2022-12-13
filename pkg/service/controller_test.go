@@ -364,7 +364,7 @@ type MockClient struct {
 	mock.Mock
 }
 
-func (mc *MockClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+func (mc *MockClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 	args := mc.Called(ctx, key, obj)
 	err, _ := args.Get(0).(error)
 	return err
