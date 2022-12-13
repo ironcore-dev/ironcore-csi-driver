@@ -62,10 +62,13 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 			VolumeClassRef: &corev1.LocalObjectReference{
 				Name: storageClass,
 			},
-			VolumePoolRef: &corev1.LocalObjectReference{
-				Name: vol.StoragePool,
-			},
 		},
+	}
+
+	if req.GetParameters()["storage_pool"] != "" {
+		volume.Spec.VolumePoolRef = &corev1.LocalObjectReference{
+			Name: vol.StoragePool,
+		}
 	}
 
 	log.Infoln("create/update volume: ", volume.Name)
