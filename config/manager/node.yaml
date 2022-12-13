@@ -74,7 +74,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: CSI_ENDPOINT
-              value: unix:///var/lib/kubelet/plugins/onmetal.gardener.com/csi.sock
+              value: unix:///var/lib/kubelet/plugins/csi.onmetal.de/csi.sock
             - name: X_CSI_MODE
               value: node
             - name: X_CSI_DEBUG
@@ -95,16 +95,16 @@ spec:
                   fieldPath: status.podIP
           volumeMounts:
             - name: driver-path
-              mountPath: /var/lib/kubelet/plugins/onmetal.gardener.com
+              mountPath: /var/lib/kubelet/plugins/csi.onmetal.de
             - name: host-dir
               mountPath: /host
               mountPropagation: "Bidirectional"
         - name: registrar
-          image: quay.io/k8scsi/csi-node-driver-registrar:v2.0.1
+          image: quay.io/k8scsi/csi-node-driver-registrar:v2.5.0
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
-            - --kubelet-registration-path=/var/lib/kubelet/plugins/onmetal.gardener.com/csi.sock
+            - --kubelet-registration-path=/var/lib/kubelet/plugins/csi.onmetal.de/csi.sock
           securityContext:
             privileged: true
           env:
@@ -130,7 +130,7 @@ spec:
             type: DirectoryOrCreate
         - name: driver-path
           hostPath:
-            path: /var/lib/kubelet/plugins/onmetal.gardener.com
+            path: /var/lib/kubelet/plugins/csi.onmetal.de
             type: DirectoryOrCreate
         - name: host-dir
           hostPath:

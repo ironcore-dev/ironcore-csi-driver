@@ -105,10 +105,9 @@ spec:
         app: onmetal-csi-driver
     spec:
       serviceAccount: onmetal-csi-driver
-      hostNetwork: true
       containers:
         - name: attacher
-          image: quay.io/k8scsi/csi-attacher:v3.1.0
+          image: quay.io/k8scsi/csi-attacher:v3.4.0
           securityContext:
             privileged: true
             capabilities:
@@ -124,7 +123,7 @@ spec:
             - name: socket-dir
               mountPath: /var/run/csi
         - name: provisioner
-          image: quay.io/k8scsi/csi-provisioner:v2.1.1
+          image: quay.io/k8scsi/csi-provisioner:v3.1.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--volume-name-prefix=csi-onmetal"
@@ -138,7 +137,7 @@ spec:
             - name: socket-dir
               mountPath: /var/run/csi
         - name: snapshotter
-          image: quay.io/k8scsi/csi-snapshotter:v2.1.5
+          image: quay.io/k8scsi/csi-snapshotter:v5.0.1
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"   
@@ -152,7 +151,7 @@ spec:
             - name: socket-dir
               mountPath: /var/run/csi
         - name: resizer
-          image: quay.io/k8scsi/csi-resizer:v1.1.0
+          image: quay.io/k8scsi/csi-resizer:v1.4.0
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
@@ -174,7 +173,7 @@ spec:
             - name: CSI_ENDPOINT
               value: /var/run/csi/csi.sock
             - name: PARENT_KUBE_CONFIG
-              value: "/etc/parent-kubeconfig/kubeconfig.yaml"
+              value: "/etc/csi.onmetal.de/kubeconfig"
             - name: APP_LOG_LEVEL
               value: "info"
             - name: CSI_DRIVER_NAME
@@ -193,17 +192,17 @@ spec:
                   fieldPath: spec.nodeName
             - name: VOLUME_NS
               valueFrom:
-                configMapKeyRef:
-                  name: csi-configmap
+                secretKeyRef:
+                  name: onmetal-csi
                   key: namespace
           volumeMounts:
             - name: socket-dir
               mountPath: /var/run/csi
             - name: kubeconfig-volume
-              mountPath: /etc/parent-kubeconfig    
+              mountPath: /etc/csi.onmetal.de
       volumes:
         - name: socket-dir
-          emptyDir:
+          emptyDir: {}
         - name: kubeconfig-volume
           secret:
-            secretName: kubeconfig-secret    
+            secretName: onmetal-csi
