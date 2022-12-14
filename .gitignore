@@ -20,5 +20,6 @@ bin/
 # Build artifacts
 onmetal-csi-driver
 
-.idea/
-bin/
+/.idea/
+/*.iml
+/bin/

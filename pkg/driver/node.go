@@ -1,4 +1,4 @@
-package service
+package driver
 
 import (
 	"context"
@@ -7,12 +7,13 @@ import (
 	"path/filepath"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	log "github.com/onmetal/onmetal-csi-driver/pkg/helper/logger"
+	log "github.com/onmetal/onmetal-csi-driver/pkg/util/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	corev1 "k8s.io/api/core/v1"
 )
 
-func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+func (d *driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	log.Infoln("request received for node stage volume ", req.GetVolumeId(), "at", req.GetStagingTargetPath())
 	fstype := req.GetVolumeContext()["fstype"]
 	devicePath := "/host" + req.PublishContext["device_name"]
@@ -26,7 +27,7 @@ func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	targetPath := req.GetStagingTargetPath()
 	resp := &csi.NodeStageVolumeResponse{}
 	log.Infoln("validate mount point")
-	notMnt, err := s.mountutil.IsLikelyNotMountPoint(targetPath)
+	notMnt, err := d.mountUtil.IsLikelyNotMountPoint(targetPath)
 	if err != nil && !os.IsNotExist(err) {
 		log.Errorf("unable to verify MountPoint:%v", err)
 		return resp, err
@@ -51,7 +52,7 @@ func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	}
 	options = append(options, mountOptions...)
 	log.Infoln("format and mount the volume")
-	if err = s.mountutil.FormatAndMount(devicePath, targetPath, fstype, options); err != nil {
+	if err = d.mountUtil.FormatAndMount(devicePath, targetPath, fstype, options); err != nil {
 		log.Errorf("failed to stage volume:%v", err)
 		return resp, fmt.Errorf("failed to mount volume %s [%s] to %s, error %v", devicePath, fstype, targetPath, err)
 	}
@@ -59,7 +60,7 @@ func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
-func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
+func (d *driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	log.Infoln("request received for node publish volume ", req.GetVolumeId(), "at", req.GetTargetPath())
 	resp := &csi.NodePublishVolumeResponse{}
 
@@ -107,7 +108,7 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 		fstype = "ext4"
 	}
 
-	notMnt, err := s.mountutil.IsLikelyNotMountPoint(targetPath)
+	notMnt, err := d.mountUtil.IsLikelyNotMountPoint(targetPath)
 	if err != nil && !os.IsNotExist(err) {
 		return resp, status.Errorf(codes.Internal, "Determination of mount point failed: %v", err)
 	}
@@ -122,7 +123,7 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 			}
 		}
 
-		if err := s.mountutil.Mount(stagePath, targetPath, fstype, mountOptions); err != nil {
+		if err := d.mountUtil.Mount(stagePath, targetPath, fstype, mountOptions); err != nil {
 			log.Errorf("failed to mount volume. error while publishing volume:%v", err)
 			return resp, status.Errorf(codes.Internal, "Could not mount %q at %q: %v", stagePath, targetPath, err)
 		}
@@ -131,7 +132,7 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 	return resp, nil
 }
 
-func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+func (d *driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	log.Infoln("request received for node un-stage volume ", req.GetVolumeId(), "at", req.GetStagingTargetPath())
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
@@ -143,14 +144,14 @@ func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVol
 		return nil, status.Error(codes.InvalidArgument, "Staging target path not provided")
 	}
 
-	devicePath, err := s.GetMountDeviceName(stagePath)
+	devicePath, err := d.GetMountDeviceName(stagePath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if devicePath == "" {
 		return nil, status.Error(codes.Internal, "mount device not found")
 	}
-	err = s.mountutil.Unmount(stagePath)
+	err = d.mountUtil.Unmount(stagePath)
 	if err != nil {
 		log.Errorf("failed to un-stage volume:%v", err)
 		return nil, status.Errorf(codes.Internal, "Failed to unmount target %q: %v", stagePath, err)
@@ -170,7 +171,7 @@ func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVol
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
-func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
+func (d *driver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	log.Infoln("request received for node unpublish volume ", req.GetVolumeId(), "at", req.GetTargetPath())
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
@@ -187,7 +188,7 @@ func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublis
 		log.Errorf("Unable to unmount volume:%v", err)
 		return nil, status.Errorf(codes.Internal, "Unable to unmount %q: %v", target, err)
 	}
-	err = s.mountutil.Unmount(target)
+	err = d.mountUtil.Unmount(target)
 	if err != nil {
 		log.Infoln("failed to unmount volume ", err)
 		return nil, status.Errorf(codes.Internal, "Failed not unmount %q: %v", target, err)
@@ -206,23 +207,32 @@ func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublis
 	log.Infoln("Successfully un-published volume ", req.GetVolumeId())
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
-func (s *service) NodeGetVolumeStats(
+func (d *driver) NodeGetVolumeStats(
 	ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
 	return &csi.NodeGetVolumeStatsResponse{}, nil
 
 }
 
-func (s *service) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+func (d *driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
 	return &csi.NodeExpandVolumeResponse{}, nil
 }
 
-func (s *service) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
+func (d *driver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
+
+	zone, err := d.kubeHelper.NodeGetZone(ctx, d.nodeName)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("[NodeGetInfo] Unable to retrieve availability zone of node %v", err))
+	}
+
+	topology := &csi.Topology{Segments: map[string]string{corev1.LabelTopologyZone: zone}}
+
 	return &csi.NodeGetInfoResponse{
-		NodeId: s.nodeId,
+		NodeId:             d.nodeId,
+		AccessibleTopology: topology,
 	}, nil
 }
 
-func (s *service) NodeGetCapabilities(
+func (d *driver) NodeGetCapabilities(
 	ctx context.Context,
 	req *csi.NodeGetCapabilitiesRequest) (
 	*csi.NodeGetCapabilitiesResponse, error) {
@@ -253,8 +263,8 @@ func (s *service) NodeGetCapabilities(
 	}, nil
 }
 
-func (s *service) GetMountDeviceName(mountPath string) (device string, err error) {
-	mountPoints, err := s.mountutil.List()
+func (d *driver) GetMountDeviceName(mountPath string) (device string, err error) {
+	mountPoints, err := d.mountUtil.List()
 	if err != nil {
 		return device, err
 	}

@@ -1,12 +1,12 @@
 package provider
 
 import (
-	"github.com/onmetal/onmetal-csi-driver/pkg/service"
+	"github.com/onmetal/onmetal-csi-driver/pkg/driver"
 	"github.com/rexray/gocsi"
 )
 
 func New(config map[string]string) gocsi.StoragePluginProvider {
-	srvc := service.New(config)
+	srvc := driver.New(config)
 	return &gocsi.StoragePlugin{
 		Controller:  srvc,
 		Node:        srvc,

@@ -1,8 +1,9 @@
-package service
+package driver
 
 import (
 	"context"
 	"errors"
+	"github.com/onmetal/onmetal-csi-driver/pkg/util"
 	"strconv"
 	"strings"
 	"time"
@@ -10,7 +11,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
-	log "github.com/onmetal/onmetal-csi-driver/pkg/helper/logger"
+	log "github.com/onmetal/onmetal-csi-driver/pkg/util/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
@@ -23,7 +24,7 @@ import (
 
 const volumeFieldOwner = client.FieldOwner("storage.onmetal.de/volume")
 
-func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	log.Infoln("create volume request received with volume name", req.GetName())
 	capacity := req.GetCapacityRange()
 	csiVolResp := &csi.CreateVolumeResponse{}
@@ -44,7 +45,7 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 		Size:        volBytes,
 		FsType:      fstype,
 	}
-	volResp := s.getCsiVolume(vol, req)
+	volResp := d.getCsiVolume(vol, req)
 	csiVolResp.Volume = volResp
 	volume := &storagev1alpha1.Volume{
 		TypeMeta: metav1.TypeMeta{
@@ -52,7 +53,7 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 			Kind:       "Volume",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: s.csiNamespace,
+			Namespace: d.csiNamespace,
 			Name:      "volume-" + req.GetName(),
 		},
 		Spec: storagev1alpha1.VolumeSpec{
@@ -72,7 +73,7 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 	}
 
 	log.Infoln("create/update volume: ", volume.Name)
-	if err := s.parentClient.Patch(ctx, volume, client.Apply, volumeFieldOwner); err != nil {
+	if err := d.kubeHelper.OnMetalClient.Patch(ctx, volume, client.Apply, volumeFieldOwner); err != nil {
 		log.Errorf("error while create/update volume:%v", err)
 		return csiVolResp, status.Errorf(codes.Internal, err.Error())
 	}
@@ -82,7 +83,7 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 	}
 	createdVolume := &storagev1alpha1.Volume{}
 	log.Infoln("check volume is created and Available")
-	err = s.parentClient.Get(ctx, client.ObjectKey{Name: volume.Name, Namespace: volume.Namespace}, createdVolume)
+	err = d.kubeHelper.OnMetalClient.Get(ctx, client.ObjectKey{Name: volume.Name, Namespace: volume.Namespace}, createdVolume)
 	if err != nil && !apierrors.IsNotFound(err) {
 		log.Errorf("could not get volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
 		return csiVolResp, status.Errorf(codes.Internal, err.Error())
@@ -105,18 +106,18 @@ func validateParams(params map[string]string) bool {
 	return true
 }
 
-func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
+func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	log.Infoln("delete volume request received with volume ID", req.GetVolumeId())
 	if req.GetVolumeId() == "" {
 		return nil, status.Errorf(codes.Internal, "required parameters are missing")
 	}
 	deleteResponse := &csi.DeleteVolumeResponse{}
 	volumeKey := types.NamespacedName{
-		Namespace: s.csiNamespace,
+		Namespace: d.csiNamespace,
 		Name:      "volume-" + req.GetVolumeId(),
 	}
 	vol := &storagev1alpha1.Volume{}
-	err := s.parentClient.Get(ctx, volumeKey, vol)
+	err := d.kubeHelper.OnMetalClient.Get(ctx, volumeKey, vol)
 	if err != nil && !apierrors.IsNotFound(err) {
 		log.Errorf("could not get volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
 		return deleteResponse, status.Errorf(codes.Internal, err.Error())
@@ -125,7 +126,7 @@ func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest
 		log.Infoln("volume is already been deleted")
 		return deleteResponse, nil
 	}
-	err = s.parentClient.Delete(ctx, vol)
+	err = d.kubeHelper.OnMetalClient.Delete(ctx, vol)
 	if err != nil {
 		log.Errorf("unable to delete volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
 		return deleteResponse, status.Errorf(codes.Internal, err.Error())
@@ -135,31 +136,37 @@ func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest
 	return deleteResponse, nil
 }
 
-func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (controlePublishresponse *csi.ControllerPublishVolumeResponse, err error) {
+func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (controlePublishresponse *csi.ControllerPublishVolumeResponse, err error) {
 	log.Infof("request received to publish volume %s at node %s\n", req.GetVolumeId(), req.GetNodeId())
+
 	csiResp := &csi.ControllerPublishVolumeResponse{}
-	machine := &computev1alpha1.Machine{}
-	kubeClient, err := s.kubehelper.BuildInclusterClient()
+	providerID, err := d.kubeHelper.NodeGetProviderID(ctx, req.GetNodeId())
 	if err != nil {
-		log.Errorf("error getting kubeclient:%v", err)
-		return nil, err
+		log.Errorf("could not get ProviderID from node %s, error:%v", req.GetNodeId(), err)
+		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
-	onmetalAnnotation, err := s.kubehelper.NodeGetAnnotations(s.nodeName, kubeClient.Client) //Get onmetal-machine annotations
-	if err != nil || (onmetalAnnotation.OnmetalMachine == "" && onmetalAnnotation.OnmetalNamespace == "") {
-		log.Infoln("onmetal annotations Not Found")
+
+	namespace, err := util.GetNamespaceFromProviderID(providerID)
+	if err != nil {
+		log.Errorf("could not get Namespace from ProviderID %s for node %s, error:%v", providerID, req.GetNodeId(), err)
+		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
-	machineKey := types.NamespacedName{
-		Namespace: onmetalAnnotation.OnmetalNamespace,
-		Name:      onmetalAnnotation.OnmetalMachine,
+
+	machine := &computev1alpha1.Machine{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      req.GetNodeId(),
+			Namespace: namespace,
+		},
 	}
+
 	log.Infoln("get machine with provided name and namespace")
-	err = s.parentClient.Get(ctx, client.ObjectKey{Name: machineKey.Name, Namespace: machineKey.Namespace}, machine)
+	err = d.kubeHelper.OnMetalClient.Get(ctx, client.ObjectKeyFromObject(machine), machine)
 	if err != nil {
-		log.Errorf("could not get machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
+		log.Errorf("could not get machine with name %s,namespace %s, error:%v", machine.Name, machine.Namespace, err)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 	vaName := req.GetVolumeId() + "-attachment"
-	if !s.isVolumeAttachmetAvailable(machine, vaName) {
+	if !d.isVolumeAttachmetAvailable(machine, vaName) {
 		attachSource := computev1alpha1.VolumeSource{
 			VolumeRef: &corev1.LocalObjectReference{
 				Name: "volume-" + req.GetVolumeId(),
@@ -171,17 +178,17 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 		volAttachment.VolumeSource = attachSource
 		machine.Spec.Volumes = append(machine.Spec.Volumes, volAttachment)
 		log.Infoln("update machine with volumeattachment")
-		err = s.parentClient.Update(ctx, machine)
+		err = d.kubeHelper.OnMetalClient.Update(ctx, machine)
 		if err != nil {
-			log.Errorf("failed to update machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
+			log.Errorf("failed to update machine with name %s,namespace %s, error:%v", machine.Name, machine.Namespace, err)
 			return csiResp, status.Errorf(codes.Internal, err.Error())
 		}
 	}
 	updatedMachine := &computev1alpha1.Machine{}
 	log.Infoln("check machine is updated")
-	err = s.parentClient.Get(ctx, machineKey, updatedMachine)
+	err = d.kubeHelper.OnMetalClient.Get(ctx, client.ObjectKeyFromObject(machine), updatedMachine)
 	if err != nil && !apierrors.IsNotFound(err) {
-		log.Errorf("could not get machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
+		log.Errorf("could not get machine with name %s,namespace %s, error:%v", machine.Name, machine.Namespace, err)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 	if updatedMachine.Status.State != computev1alpha1.MachineStateRunning {
@@ -191,11 +198,11 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 
 	// get disk from volume
 	volumeKey := types.NamespacedName{
-		Namespace: s.csiNamespace,
+		Namespace: d.csiNamespace,
 		Name:      "volume-" + req.GetVolumeId(),
 	}
 	volume := &storagev1alpha1.Volume{}
-	err = s.parentClient.Get(ctx, volumeKey, volume)
+	err = d.kubeHelper.OnMetalClient.Get(ctx, volumeKey, volume)
 	if err != nil && !apierrors.IsNotFound(err) {
 		log.Errorf("could not get volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
@@ -221,32 +228,36 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 	return csiResp, nil
 }
 
-func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
+func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	log.Infof("request received to un-publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId())
 	csiResp := &csi.ControllerUnpublishVolumeResponse{}
-	machine := &computev1alpha1.Machine{}
-	kubeClient, err := s.kubehelper.BuildInclusterClient()
+	providerID, err := d.kubeHelper.NodeGetProviderID(ctx, req.GetNodeId())
 	if err != nil {
-		log.Errorf("error getting kubeclient:%v", err)
-		return nil, err
+		log.Errorf("could not get ProviderID from node %s, error:%v", req.GetNodeId(), err)
+		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
-	onmetalAnnotation, err := s.kubehelper.NodeGetAnnotations(s.nodeName, kubeClient.Client) //Get onmetal-machine annotations
-	if err != nil || (onmetalAnnotation.OnmetalMachine == "" && onmetalAnnotation.OnmetalNamespace == "") {
-		log.Infoln("onmetal annotations Not Found")
+
+	namespace, err := util.GetNamespaceFromProviderID(providerID)
+	if err != nil {
+		log.Errorf("could not get Namespace from ProviderID %s for node %s, error:%v", providerID, req.GetNodeId(), err)
+		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
-	machineKey := types.NamespacedName{
-		Name:      onmetalAnnotation.OnmetalMachine,
-		Namespace: onmetalAnnotation.OnmetalNamespace,
+
+	machine := &computev1alpha1.Machine{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      req.GetNodeId(),
+			Namespace: namespace,
+		},
 	}
 
 	log.Infoln("get machine with provided name and namespace")
-	err = s.parentClient.Get(ctx, client.ObjectKey{Name: machineKey.Name, Namespace: machineKey.Namespace}, machine)
+	err = d.kubeHelper.OnMetalClient.Get(ctx, client.ObjectKeyFromObject(machine), machine)
 	if err != nil {
-		log.Errorf("could not get machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
+		log.Errorf("could not get machine with name %s,namespace %s, error:%v", machine.Name, machine.Namespace, err)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 	vaName := req.GetVolumeId() + "-attachment"
-	if s.isVolumeAttachmetAvailable(machine, vaName) {
+	if d.isVolumeAttachmetAvailable(machine, vaName) {
 		log.Infoln("remove machine with volumeattachment")
 		vaList := []computev1alpha1.Volume{}
 		for _, va := range machine.Spec.Volumes {
@@ -255,17 +266,17 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 			}
 		}
 		machine.Spec.Volumes = vaList
-		err = s.parentClient.Update(ctx, machine)
+		err = d.kubeHelper.OnMetalClient.Update(ctx, machine)
 		if err != nil {
-			log.Errorf("failed to update machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
+			log.Errorf("failed to update machine with name %s,namespace %s, error:%v", machine.Name, machine.Namespace, err)
 			return csiResp, status.Errorf(codes.Internal, err.Error())
 		}
 	}
 	updatedMachine := &computev1alpha1.Machine{}
 	log.Infoln("check machine is updated")
-	err = s.parentClient.Get(ctx, machineKey, updatedMachine)
+	err = d.kubeHelper.OnMetalClient.Get(ctx, client.ObjectKeyFromObject(machine), updatedMachine)
 	if err != nil && !apierrors.IsNotFound(err) {
-		log.Errorf("could not get machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
+		log.Errorf("could not get machine with name %s,namespace %s, error:%v", machine.Name, machine.Namespace, err)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 	if updatedMachine.Status.State != computev1alpha1.MachineStateRunning {
@@ -276,35 +287,35 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 	return csiResp, nil
 }
 
-func (s *service) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
+func (d *driver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
 	return &csi.ListVolumesResponse{}, nil
 }
 
-func (s *service) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
+func (d *driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
 	return &csi.ListSnapshotsResponse{}, nil
 }
 
-func (s *service) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (capacityResponse *csi.GetCapacityResponse, err error) {
+func (d *driver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (capacityResponse *csi.GetCapacityResponse, err error) {
 	return &csi.GetCapacityResponse{}, nil
 }
 
-func (s *service) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (createSnapshot *csi.CreateSnapshotResponse, err error) {
+func (d *driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (createSnapshot *csi.CreateSnapshotResponse, err error) {
 	return createSnapshot, nil
 }
 
-func (s *service) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (deleteSnapshot *csi.DeleteSnapshotResponse, err error) {
+func (d *driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (deleteSnapshot *csi.DeleteSnapshotResponse, err error) {
 	return deleteSnapshot, nil
 }
 
-func (s *service) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (expandVolume *csi.ControllerExpandVolumeResponse, err error) {
+func (d *driver) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (expandVolume *csi.ControllerExpandVolumeResponse, err error) {
 	return expandVolume, nil
 }
 
-func (s *service) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+func (d *driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	return &csi.ValidateVolumeCapabilitiesResponse{}, nil
 }
 
-func (s *service) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
+func (d *driver) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: []*csi.ControllerServiceCapability{
 			{
@@ -377,7 +388,7 @@ type Volume struct {
 	ProvisionType string
 }
 
-func (s *service) isVolumeAttachmetAvailable(machine *computev1alpha1.Machine, vaName string) bool {
+func (d *driver) isVolumeAttachmetAvailable(machine *computev1alpha1.Machine, vaName string) bool {
 	for _, va := range machine.Spec.Volumes {
 		if va.Name == vaName {
 			return true
@@ -385,7 +396,7 @@ func (s *service) isVolumeAttachmetAvailable(machine *computev1alpha1.Machine, v
 	}
 	return false
 }
-func (s *service) getCsiVolume(vol *Volume, req *csi.CreateVolumeRequest) *csi.Volume {
+func (d *driver) getCsiVolume(vol *Volume, req *csi.CreateVolumeRequest) *csi.Volume {
 	volCtx := map[string]string{
 		"volume_id":      vol.ID,
 		"volume_name":    vol.Name,

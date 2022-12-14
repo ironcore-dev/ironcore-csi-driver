@@ -1,4 +1,4 @@
-package service
+package driver
 
 import (
 	"context"
@@ -31,8 +31,8 @@ func TestNodeSuite(t *testing.T) {
 
 // Node Stage
 func (suite *NodeSuite) Test_NodeStageVolume_Already_Mounted_Pass() {
-	service := service{}
-	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service := driver{}
+	service.mountUtil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -45,8 +45,8 @@ func (suite *NodeSuite) Test_NodeStageVolume_Already_Mounted_Pass() {
 }
 
 // func (suite *NodeSuite) Test_NodeStageVolume_Do_Mount_Pass() {
-// 	service := service{}
-// 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+// 	driver := driver{}
+// 	driver.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
 // 	targetPath := "/var/lib/kublet/"
 // 	volctx := make(map[string]string)
 // 	volctx["volume_id"] = "vol123"
@@ -56,14 +56,14 @@ func (suite *NodeSuite) Test_NodeStageVolume_Already_Mounted_Pass() {
 // 	suite.osmock.On("IsNotExist", mock.Anything).Return(true)
 // 	suite.mountMock.On("Mount", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-// 	response, err := service.NodeStageVolume(context.Background(), getNodeStageVolumeRequest(targetPath, volctx))
+// 	response, err := driver.NodeStageVolume(context.Background(), getNodeStageVolumeRequest(targetPath, volctx))
 // 	assert.Nil(suite.T(), err, "empty object")
 // 	assert.NotNil(suite.T(), response, "empty object")
 // }
 
 // func (suite *NodeSuite) Test_NodeStageVolume_Do_Mount_Failed() {
-// 	service := service{}
-// 	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+// 	driver := driver{}
+// 	driver.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
 // 	targetPath := "/var/lib/kublet/"
 // 	volctx := make(map[string]string)
 // 	volctx["volume_id"] = "vol123"
@@ -73,14 +73,14 @@ func (suite *NodeSuite) Test_NodeStageVolume_Already_Mounted_Pass() {
 // 	suite.osmock.On("IsNotExist", mock.Anything).Return(true)
 // 	suite.mountMock.On("Mount", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("unable to mount volume"))
 
-// 	_, err := service.NodeStageVolume(context.Background(), getNodeStageVolumeRequest(targetPath, volctx))
+// 	_, err := driver.NodeStageVolume(context.Background(), getNodeStageVolumeRequest(targetPath, volctx))
 // 	assert.NotNil(suite.T(), err, "expected to fail, but passed")
 // }
 
 // Node Publish
 func (suite *NodeSuite) Test_NodePublishVolume_Already_Mounted_Pass() {
-	service := service{}
-	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service := driver{}
+	service.mountUtil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -93,8 +93,8 @@ func (suite *NodeSuite) Test_NodePublishVolume_Already_Mounted_Pass() {
 }
 
 func (suite *NodeSuite) Test_NodePublishVolume_Do_Mount_Pass() {
-	service := service{}
-	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service := driver{}
+	service.mountUtil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -110,8 +110,8 @@ func (suite *NodeSuite) Test_NodePublishVolume_Do_Mount_Pass() {
 }
 
 func (suite *NodeSuite) Test_NodePublishVolume_Do_Mount_Failed() {
-	service := service{}
-	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service := driver{}
+	service.mountUtil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -127,8 +127,8 @@ func (suite *NodeSuite) Test_NodePublishVolume_Do_Mount_Failed() {
 
 // Node Un-Publish
 func (suite *NodeSuite) Test_NodeUnpublishVolume_Do_Mount_Failed() {
-	service := service{}
-	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service := driver{}
+	service.mountUtil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -140,8 +140,8 @@ func (suite *NodeSuite) Test_NodeUnpublishVolume_Do_Mount_Failed() {
 }
 
 func (suite *NodeSuite) Test_NodeUnpublishVolume_Unmount_Fail() {
-	service := service{}
-	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service := driver{}
+	service.mountUtil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -153,8 +153,8 @@ func (suite *NodeSuite) Test_NodeUnpublishVolume_Unmount_Fail() {
 }
 
 func (suite *NodeSuite) Test_NodeUnpublishVolume_Delete_Fail() {
-	service := service{}
-	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service := driver{}
+	service.mountUtil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -167,8 +167,8 @@ func (suite *NodeSuite) Test_NodeUnpublishVolume_Delete_Fail() {
 }
 
 func (suite *NodeSuite) Test_NodeUnpublishVolume_Unmount_Pass() {
-	service := service{}
-	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service := driver{}
+	service.mountUtil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -182,8 +182,8 @@ func (suite *NodeSuite) Test_NodeUnpublishVolume_Unmount_Pass() {
 
 // Node UnStage
 func (suite *NodeSuite) Test_NodeUnstageVolume_MountPoint_Error() {
-	service := service{}
-	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service := driver{}
+	service.mountUtil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -195,8 +195,8 @@ func (suite *NodeSuite) Test_NodeUnstageVolume_MountPoint_Error() {
 }
 
 func (suite *NodeSuite) Test_NodeUnstageVolume_MountPoint_NotFound() {
-	service := service{}
-	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service := driver{}
+	service.mountUtil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -208,8 +208,8 @@ func (suite *NodeSuite) Test_NodeUnstageVolume_MountPoint_NotFound() {
 }
 
 func (suite *NodeSuite) Test_NodeUnstageVolume_Unmount_Failed() {
-	service := service{}
-	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service := driver{}
+	service.mountUtil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -221,8 +221,8 @@ func (suite *NodeSuite) Test_NodeUnstageVolume_Unmount_Failed() {
 }
 
 func (suite *NodeSuite) Test_NodeUnstageVolume_Delete_Fail() {
-	service := service{}
-	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service := driver{}
+	service.mountUtil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
@@ -236,8 +236,8 @@ func (suite *NodeSuite) Test_NodeUnstageVolume_Delete_Fail() {
 }
 
 func (suite *NodeSuite) Test_NodeUnstageVolume_Unmount_Pass() {
-	service := service{}
-	service.mountutil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
+	service := driver{}
+	service.mountUtil = &mount.SafeFormatAndMount{Interface: suite.mountMock}
 	targetPath := "/var/lib/kublet/"
 	volctx := make(map[string]string)
 	volctx["volume_id"] = "vol123"
