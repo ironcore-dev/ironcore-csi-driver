@@ -68,5 +68,5 @@ func GetNamespaceFromProviderID(providerID string) (string, error) {
 		return "", errors.New("ProviderID is not valid")
 	}
 
-	return providerIDParts[3], nil
+	return providerIDParts[2], nil
 }

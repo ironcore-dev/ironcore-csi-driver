@@ -10,13 +10,13 @@ import (
 	"github.com/rexray/gocsi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	mount "k8s.io/mount-utils"
+	"k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
 )
 
 const (
-	DriverName  = "csi.onmetal.de"
-	topologyKey = "topology." + DriverName + "/zone"
+	Name        = "csi.onmetal.de"
+	topologyKey = "topology." + Name + "/zone"
 )
 
 type driver struct {
@@ -59,7 +59,7 @@ func New(config map[string]string) Driver {
 	return d
 }
 
-func (d *driver) BeforeServe(ctx context.Context, sp *gocsi.StoragePlugin, listner net.Listener) error {
+func (d *driver) BeforeServe(_ context.Context, _ *gocsi.StoragePlugin, _ net.Listener) error {
 	return nil
 }
 

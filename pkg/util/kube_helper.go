@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/component-helpers/node/topology"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
@@ -64,7 +63,21 @@ func (k *KubeHelper) NodeGetZone(ctx context.Context, nodeName string) (string, 
 	if err != nil {
 		log.Errorf("Node Not found:%v", err)
 	}
-	return topology.GetZoneKey(node), err
+
+	labels := node.Labels
+	if labels == nil {
+		return "", nil
+	}
+
+	// TODO: "failure-domain.beta..." names are deprecated, but will
+	// stick around a long time due to existing on old extant objects like PVs.
+	// Maybe one day we can stop considering them (see #88493).
+	zone, ok := labels[corev1.LabelFailureDomainBetaZone]
+	if !ok {
+		zone, _ = labels[corev1.LabelTopologyZone]
+	}
+
+	return zone, nil
 }
 
 func (k *KubeHelper) NodeGetProviderID(ctx context.Context, nodeName string) (string, error) {

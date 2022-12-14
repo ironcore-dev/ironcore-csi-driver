@@ -32,16 +32,27 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	if err != nil {
 		return csiVolResp, status.Errorf(codes.Internal, err.Error())
 	}
+
 	params := req.GetParameters()
 	fstype := params["fstype"]
 	storageClass := params["storage_class_name"]
 	if !validateParams(params) {
 		return csiVolResp, status.Errorf(codes.Internal, "required parameters are missing")
 	}
+
+	storagePool := req.GetParameters()["storage_pool"]
+	// if no storage_pool was provided try to use the topology information if provided
+	if storagePool == "" {
+		if req.GetAccessibilityRequirements() != nil {
+			storagePool = getAZFromTopology(req.GetAccessibilityRequirements())
+		}
+	}
+
+	log.Infof("storage pool %s is used for volume %s", storagePool, req.GetName())
 	vol := &Volume{
 		ID:          req.GetName(),
 		Name:        req.GetName(),
-		StoragePool: req.GetParameters()["storage_pool"],
+		StoragePool: storagePool,
 		Size:        volBytes,
 		FsType:      fstype,
 	}
@@ -63,13 +74,10 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 			VolumeClassRef: &corev1.LocalObjectReference{
 				Name: storageClass,
 			},
+			VolumePoolRef: &corev1.LocalObjectReference{
+				Name: storagePool,
+			},
 		},
-	}
-
-	if req.GetParameters()["storage_pool"] != "" {
-		volume.Spec.VolumePoolRef = &corev1.LocalObjectReference{
-			Name: vol.StoragePool,
-		}
 	}
 
 	log.Infoln("create/update volume: ", volume.Name)
@@ -77,33 +85,20 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		log.Errorf("error while create/update volume:%v", err)
 		return csiVolResp, status.Errorf(codes.Internal, err.Error())
 	}
-	volumeKey := types.NamespacedName{
-		Namespace: volume.Namespace,
-		Name:      volume.Name,
-	}
+
 	createdVolume := &storagev1alpha1.Volume{}
 	log.Infoln("check volume is created and Available")
 	err = d.kubeHelper.OnMetalClient.Get(ctx, client.ObjectKey{Name: volume.Name, Namespace: volume.Namespace}, createdVolume)
 	if err != nil && !apierrors.IsNotFound(err) {
-		log.Errorf("could not get volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
+		log.Errorf("could not get volume with name %s,namespace %s, error:%v", volume.Name, volume.Namespace, err)
 		return csiVolResp, status.Errorf(codes.Internal, err.Error())
 	}
 	if createdVolume.Status.State != storagev1alpha1.VolumeStateAvailable {
-		log.Errorf("volume with name %s,namespace %s, is successfully created, But State is not 'Available'", volumeKey.Name, volumeKey.Namespace)
+		log.Errorf("volume with name %s,namespace %s, is successfully created, But State is not 'Available'", volume.Name, volume.Namespace)
 		return csiVolResp, status.Errorf(codes.Internal, "check volume State it's not Available")
 	}
 	log.Infoln("successfully created volume", csiVolResp.Volume.VolumeId)
 	return csiVolResp, nil
-}
-
-func validateParams(params map[string]string) bool {
-	expectedParams := []string{"storage_class_name"}
-	for _, expPar := range expectedParams {
-		if params[expPar] == "" {
-			return false
-		}
-	}
-	return true
 }
 
 func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
@@ -259,7 +254,7 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 	vaName := req.GetVolumeId() + "-attachment"
 	if d.isVolumeAttachmetAvailable(machine, vaName) {
 		log.Infoln("remove machine with volumeattachment")
-		vaList := []computev1alpha1.Volume{}
+		var vaList []computev1alpha1.Volume
 		for _, va := range machine.Spec.Volumes {
 			if va.Name != vaName {
 				vaList = append(vaList, va)
@@ -287,35 +282,35 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 	return csiResp, nil
 }
 
-func (d *driver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
+func (d *driver) ListVolumes(_ context.Context, _ *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
 	return &csi.ListVolumesResponse{}, nil
 }
 
-func (d *driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
+func (d *driver) ListSnapshots(_ context.Context, _ *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
 	return &csi.ListSnapshotsResponse{}, nil
 }
 
-func (d *driver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (capacityResponse *csi.GetCapacityResponse, err error) {
+func (d *driver) GetCapacity(_ context.Context, _ *csi.GetCapacityRequest) (capacityResponse *csi.GetCapacityResponse, err error) {
 	return &csi.GetCapacityResponse{}, nil
 }
 
-func (d *driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (createSnapshot *csi.CreateSnapshotResponse, err error) {
+func (d *driver) CreateSnapshot(_ context.Context, _ *csi.CreateSnapshotRequest) (createSnapshot *csi.CreateSnapshotResponse, err error) {
 	return createSnapshot, nil
 }
 
-func (d *driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (deleteSnapshot *csi.DeleteSnapshotResponse, err error) {
+func (d *driver) DeleteSnapshot(_ context.Context, _ *csi.DeleteSnapshotRequest) (deleteSnapshot *csi.DeleteSnapshotResponse, err error) {
 	return deleteSnapshot, nil
 }
 
-func (d *driver) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (expandVolume *csi.ControllerExpandVolumeResponse, err error) {
+func (d *driver) ControllerExpandVolume(_ context.Context, _ *csi.ControllerExpandVolumeRequest) (expandVolume *csi.ControllerExpandVolumeResponse, err error) {
 	return expandVolume, nil
 }
 
-func (d *driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+func (d *driver) ValidateVolumeCapabilities(_ context.Context, _ *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	return &csi.ValidateVolumeCapabilitiesResponse{}, nil
 }
 
-func (d *driver) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
+func (d *driver) ControllerGetCapabilities(_ context.Context, _ *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: []*csi.ControllerServiceCapability{
 			{
@@ -396,12 +391,13 @@ func (d *driver) isVolumeAttachmetAvailable(machine *computev1alpha1.Machine, va
 	}
 	return false
 }
+
 func (d *driver) getCsiVolume(vol *Volume, req *csi.CreateVolumeRequest) *csi.Volume {
 	volCtx := map[string]string{
 		"volume_id":      vol.ID,
 		"volume_name":    vol.Name,
 		"storage_pool":   vol.StoragePool,
-		"creation_time":  time.Unix(int64(vol.CreatedAt), 0).String(),
+		"creation_time":  time.Unix(vol.CreatedAt, 0).String(),
 		"fstype":         vol.FsType,
 		"provision_type": vol.ProvisionType,
 	}
@@ -414,17 +410,27 @@ func (d *driver) getCsiVolume(vol *Volume, req *csi.CreateVolumeRequest) *csi.Vo
 	return csiVol
 }
 
+func validateParams(params map[string]string) bool {
+	expectedParams := []string{"storage_class_name"}
+	for _, expPar := range expectedParams {
+		if params[expPar] == "" {
+			return false
+		}
+	}
+	return true
+}
+
 func validateVolumeSize(caprange *csi.CapacityRange) (int64, string, error) {
-	requiredVolSize := int64(caprange.GetRequiredBytes())
-	allowedMaxVolSize := int64(caprange.GetLimitBytes())
+	requiredVolSize := caprange.GetRequiredBytes()
+	allowedMaxVolSize := caprange.GetLimitBytes()
 	if requiredVolSize < 0 || allowedMaxVolSize < 0 {
 		return 0, "", errors.New("not valid volume size")
 	}
 
-	var bytesofKiB int64 = 1024
-	var kiBytesofGiB int64 = 1024 * 1024
-	var bytesofGiB int64 = kiBytesofGiB * bytesofKiB
-	var MinVolumeSize int64 = 1 * bytesofGiB
+	var bytesKiB int64 = 1024
+	var kiBytesGiB int64 = 1024 * 1024
+	var bytesGiB = kiBytesGiB * bytesKiB
+	var MinVolumeSize = 1 * bytesGiB
 	log.Infoln("requested size", requiredVolSize)
 	if requiredVolSize == 0 {
 		requiredVolSize = MinVolumeSize
@@ -435,13 +441,13 @@ func validateVolumeSize(caprange *csi.CapacityRange) (int64, string, error) {
 		sizeinByte int64
 	)
 
-	sizeinGB = requiredVolSize / bytesofGiB
+	sizeinGB = requiredVolSize / bytesGiB
 	if sizeinGB == 0 {
 		log.Infoln("Volumen Minimum capacity should be greater 1 GB")
 		sizeinGB = 1
 	}
 
-	sizeinByte = sizeinGB * bytesofGiB
+	sizeinByte = sizeinGB * bytesGiB
 	if allowedMaxVolSize != 0 {
 		if sizeinByte > allowedMaxVolSize {
 			return 0, "", errors.New("volume size is out of allowed limit")
@@ -459,12 +465,29 @@ func validateDeviceName(volume *storagev1alpha1.Volume, machine *computev1alpha1
 			if va.Name == vaName && *va.Device != "" {
 				device := *va.Device
 				log.Infoln("Machine is updated with device :", device)
-				device_array := strings.Split(device, "")
-				device_slice := strings.Join(device_array[1:], "")
-				return "/dev/disk/by-id/virtio-v" + device_slice + "-" + wwn
+				deviceArray := strings.Split(device, "")
+				deviceSlice := strings.Join(deviceArray[1:], "")
+				return "/dev/disk/by-id/virtio-v" + deviceSlice + "-" + wwn
 			}
 		}
 	}
 	log.Infoln("could not found device for given volume", volume.ObjectMeta.Name)
+	return ""
+}
+
+func getAZFromTopology(requirement *csi.TopologyRequirement) string {
+	for _, topology := range requirement.GetPreferred() {
+		zone, exists := topology.GetSegments()[topologyKey]
+		if exists {
+			return zone
+		}
+	}
+
+	for _, topology := range requirement.GetRequisite() {
+		zone, exists := topology.GetSegments()[topologyKey]
+		if exists {
+			return zone
+		}
+	}
 	return ""
 }
