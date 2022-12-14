@@ -13,8 +13,8 @@ func main() {
 	config := initialConfiguration()
 	gocsi.Run(
 		context.Background(),
-		driver.ServiceName,
-		"A Onmetal CSI Driver Plugin",
+		driver.DriverName,
+		"onMetal CSI Driver Plugin",
 		"",
 		provider.New(config))
 }

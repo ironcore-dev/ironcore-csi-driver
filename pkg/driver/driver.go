@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	ServiceName = "onmetal-csi-driver"
+	DriverName  = "csi.onmetal.de"
+	topologyKey = "topology." + DriverName + "/zone"
 )
 
 type driver struct {

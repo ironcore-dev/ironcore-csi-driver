@@ -10,7 +10,6 @@ import (
 	log "github.com/onmetal/onmetal-csi-driver/pkg/util/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	corev1 "k8s.io/api/core/v1"
 )
 
 func (d *driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
@@ -224,7 +223,7 @@ func (d *driver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (
 		return nil, status.Error(codes.Internal, fmt.Sprintf("[NodeGetInfo] Unable to retrieve availability zone of node %v", err))
 	}
 
-	topology := &csi.Topology{Segments: map[string]string{corev1.LabelTopologyZone: zone}}
+	topology := &csi.Topology{Segments: map[string]string{topologyKey: zone}}
 
 	return &csi.NodeGetInfoResponse{
 		NodeId:             d.nodeId,
