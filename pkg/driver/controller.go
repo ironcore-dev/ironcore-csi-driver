@@ -49,15 +49,6 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	}
 
 	log.Infof("storage pool %s is used for volume %s", storagePool, req.GetName())
-	vol := &Volume{
-		ID:          req.GetName(),
-		Name:        req.GetName(),
-		StoragePool: storagePool,
-		Size:        volBytes,
-		FsType:      fstype,
-	}
-	volResp := d.getCsiVolume(vol, req)
-	csiVolResp.Volume = volResp
 	volume := &storagev1alpha1.Volume{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: storagev1alpha1.SchemeGroupVersion.String(),
@@ -93,6 +84,18 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		log.Errorf("could not get volume with name %s,namespace %s, error:%v", volume.Name, volume.Namespace, err)
 		return csiVolResp, status.Errorf(codes.Internal, err.Error())
 	}
+
+	vol := &Volume{
+		ID:          req.GetName(),
+		Name:        req.GetName(),
+		StoragePool: storagePool,
+		Size:        volBytes,
+		FsType:      fstype,
+		CreatedAt:   createdVolume.CreationTimestamp.Unix(),
+	}
+	volResp := d.getCsiVolume(vol, req)
+	csiVolResp.Volume = volResp
+
 	if createdVolume.Status.State != storagev1alpha1.VolumeStateAvailable {
 		log.Errorf("volume with name %s,namespace %s, is successfully created, But State is not 'Available'", volume.Name, volume.Namespace)
 		return csiVolResp, status.Errorf(codes.Internal, "check volume State it's not Available")
