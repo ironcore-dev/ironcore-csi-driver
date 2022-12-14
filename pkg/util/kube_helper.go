@@ -3,16 +3,16 @@ package util
 import (
 	"context"
 	"fmt"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
 	log "github.com/onmetal/onmetal-csi-driver/pkg/util/logger"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -74,7 +74,7 @@ func (k *KubeHelper) NodeGetZone(ctx context.Context, nodeName string) (string, 
 	// Maybe one day we can stop considering them (see #88493).
 	zone, ok := labels[corev1.LabelFailureDomainBetaZone]
 	if !ok {
-		zone, _ = labels[corev1.LabelTopologyZone]
+		zone = labels[corev1.LabelTopologyZone]
 	}
 
 	return zone, nil

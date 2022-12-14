@@ -3,7 +3,6 @@ package driver
 import (
 	"context"
 	"errors"
-	"github.com/onmetal/onmetal-csi-driver/pkg/util"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
+	"github.com/onmetal/onmetal-csi-driver/pkg/util"
 	log "github.com/onmetal/onmetal-csi-driver/pkg/util/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
