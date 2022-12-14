@@ -15,7 +15,7 @@ import (
 func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	log.Infoln("request received for node stage volume ", req.GetVolumeId(), "at", req.GetStagingTargetPath())
 	fstype := req.GetVolumeContext()["fstype"]
-	devicePath := "/host" + req.PublishContext["device_name"]
+	devicePath := req.PublishContext["device_name"]
 
 	readOnly := false
 	if req.GetVolumeContext()["readOnly"] == "true" {
@@ -60,7 +60,7 @@ func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 }
 
 func (d *driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
-	log.Infoln("request received for node publish volume ", req.GetVolumeId(), "at", req.GetTargetPath())
+	log.Infof("request received for node publish volume %s at %s", req.GetVolumeId(), req.GetTargetPath())
 	resp := &csi.NodePublishVolumeResponse{}
 
 	volumeID := req.GetVolumeId()
@@ -113,7 +113,7 @@ func (d *driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 	}
 
 	if notMnt {
-		log.Infoln("targetPath is  not mountpoint", targetPath)
+		log.Infoln("targetPath is not mountpoint", targetPath)
 		if os.IsNotExist(err) {
 			log.Infoln("make target directory")
 			if err := os.MkdirAll(targetPath, 0750); err != nil {
@@ -161,7 +161,7 @@ func (d *driver) NodeUnstageVolume(_ context.Context, req *csi.NodeUnstageVolume
 		log.Errorf("error remove mount directory:%v", err)
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", stagePath, err)
 	}
-	err = os.RemoveAll("/host" + stagePath)
+	err = os.RemoveAll(stagePath)
 	if err != nil {
 		log.Errorf("error remove mount directory:%v", err)
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", stagePath, err)
@@ -171,38 +171,43 @@ func (d *driver) NodeUnstageVolume(_ context.Context, req *csi.NodeUnstageVolume
 }
 
 func (d *driver) NodeUnpublishVolume(_ context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
-	log.Infoln("request received for node unpublish volume ", req.GetVolumeId(), "at", req.GetTargetPath())
+	log.Infof("request received for node unpublish volume %s at %s ", req.GetVolumeId(), req.GetTargetPath())
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
 	}
 
-	target := req.GetTargetPath()
-	if len(target) == 0 {
+	targetPath := req.GetTargetPath()
+	if len(targetPath) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path not provided")
 	}
-	log.Infoln("validate mount path", target)
-	_, err := os.Stat(target)
+	log.Infoln("validate mount path", targetPath)
+	_, err := os.Stat(targetPath)
 	if err != nil {
-		log.Errorf("Unable to unmount volume:%v", err)
-		return nil, status.Errorf(codes.Internal, "Unable to unmount %q: %v", target, err)
+		log.Errorf("Unable to stat volume: %v", err)
+		return nil, status.Errorf(codes.Internal, "Unable to stat %q: %v", targetPath, err)
 	}
-	err = d.mountUtil.Unmount(target)
-	if err != nil {
-		log.Infoln("failed to unmount volume ", err)
-		return nil, status.Errorf(codes.Internal, "Failed not unmount %q: %v", target, err)
+
+	notMnt, err := d.mountUtil.IsLikelyNotMountPoint(targetPath)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, status.Errorf(codes.Internal, "Determination of mount point failed: %v", err)
 	}
+
+	if !notMnt {
+		err = d.mountUtil.Unmount(targetPath)
+		if err != nil {
+			log.Infoln("failed to unmount volume ", err)
+			return nil, status.Errorf(codes.Internal, "Failed not unmount %q: %v", targetPath, err)
+		}
+	}
+
 	log.Infoln("remove directory after mount")
-	err = os.RemoveAll(target)
+	err = os.RemoveAll(targetPath)
 	if err != nil {
-		log.Errorf("error remove mount directory:%v", err)
-		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", target, err)
+		log.Errorf("error remove mount directory: %v", err)
+		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", targetPath, err)
 	}
-	err = os.RemoveAll("/host" + target)
-	if err != nil {
-		log.Errorf("error remove mount directory:%v", err)
-		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", target, err)
-	}
+
 	log.Infoln("Successfully un-published volume ", req.GetVolumeId())
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }

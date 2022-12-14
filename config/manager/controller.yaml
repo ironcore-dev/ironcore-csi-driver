@@ -104,7 +104,7 @@ spec:
       labels:
         app: onmetal-csi-driver
     spec:
-      serviceAccount: onmetal-csi-driver
+      serviceAccountName: onmetal-csi-driver
       containers:
         - name: attacher
           image: quay.io/k8scsi/csi-attacher:v3.4.0

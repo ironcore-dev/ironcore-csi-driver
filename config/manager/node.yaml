@@ -61,9 +61,34 @@ spec:
       labels:
         app: onmetal-csi-node
     spec:
-      serviceAccount: onmetal-csi-node
+      serviceAccountName: onmetal-csi-node
       hostNetwork: true
-      containers:  
+      containers:
+        - name: registrar
+          image: quay.io/k8scsi/csi-node-driver-registrar:v2.5.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+            - --kubelet-registration-path=/var/lib/kubelet/plugins/csi.onmetal.de/csi.sock
+          securityContext:
+            privileged: true
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: NODE_IP_ADDRESS
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: registration-dir
+              mountPath: /registration
+            - name: driver-path
+              mountPath: /csi
         - name: driver
           securityContext:
             privileged: true
@@ -71,10 +96,10 @@ spec:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true              
           image: onmetal-csi-driver:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           env:
             - name: CSI_ENDPOINT
-              value: unix:///var/lib/kubelet/plugins/csi.onmetal.de/csi.sock
+              value: unix://csi/csi.sock
             - name: X_CSI_MODE
               value: node
             - name: X_CSI_DEBUG
@@ -94,45 +119,28 @@ spec:
                 fieldRef:
                   fieldPath: status.podIP
           volumeMounts:
-            - name: driver-path
-              mountPath: /var/lib/kubelet/plugins/csi.onmetal.de
-            - name: host-dir
-              mountPath: /host
-              mountPropagation: "Bidirectional"
-        - name: registrar
-          image: quay.io/k8scsi/csi-node-driver-registrar:v2.5.0
-          args:
-            - "--v=5"
-            - "--csi-address=$(ADDRESS)"
-            - --kubelet-registration-path=/var/lib/kubelet/plugins/csi.onmetal.de/csi.sock
-          securityContext:
-            privileged: true
-          env:
-            - name: ADDRESS
-              value: /csi/csi.sock
-            - name: KUBE_NODE_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
-            - name: NODE_IP_ADDRESS
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP                  
-          volumeMounts:
-            - name: registration-dir
-              mountPath: /registration
-            - name: driver-path
+            - name: socket-dir
               mountPath: /csi
+            - name: kubelet-dir
+              mountPath: /var/lib/kubelet
+              mountPropagation: Bidirectional
+            - name: pods-probe-dir
+              mountPath: /dev
+              mountPropagation: HostToContainer
       volumes:
         - name: registration-dir
           hostPath:
             path: /var/lib/kubelet/plugins_registry/
             type: DirectoryOrCreate
-        - name: driver-path
+        - name: kubelet-dir
+          hostPath:
+            path: /var/lib/kubelet
+            type: Directory
+        - name: pods-probe-dir
+          hostPath:
+            path: /dev
+            type: Directory
+        - name: socket-dir
           hostPath:
             path: /var/lib/kubelet/plugins/csi.onmetal.de
             type: DirectoryOrCreate
-        - name: host-dir
-          hostPath:
-            path: /
-            type: Directory
