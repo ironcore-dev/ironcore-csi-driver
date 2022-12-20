@@ -18,7 +18,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -35,6 +34,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 
@@ -73,7 +73,6 @@ var _ = BeforeSuite(func() {
 		},
 		ErrorIfAPIServicePathIsMissing: true,
 	}
-
 	var err error
 	cfg, err = envtestutils.StartWithExtensions(testEnv, testEnvExt)
 
@@ -92,7 +91,6 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	err = corev1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
-
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
@@ -119,7 +117,7 @@ var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	if err != nil {
-		time.Sleep(1 * time.Second) // TODO: workaround of a known issue https://github.com/kubernetes-sigs/controller-runtime/issues/1571#issuecomment-1005575071
+		time.Sleep(1 * time.Second) // TODO: fix this, workaround of a known issue https://github.com/kubernetes-sigs/controller-runtime/issues/1571#issuecomment-1005575071
 	}
 	err = testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
@@ -133,29 +131,64 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *service) {
 	BeforeEach(func() {
 		*ns = corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
-				//GenerateName: "test-ns-",
-				Name: "test-ns",
+				GenerateName: "test-ns-",
 			},
-		}
-		secretMap := make(map[string][]byte)
-		secretMap["kubeconfig.yaml"] = []byte("YXBpVmVyc2lvbjogdjEKY2x1c3RlcnM6Ci0gY2x1c3RlcjoKICAgIGNlcnRpZmljYXRlLWF1dGhvcml0eS1kYXRhOiBMUzB0TFMxQ1JVZEpUaUJEUlZKVVNVWkpRMEZVUlMwdExTMHRDazFKU1VNdmFrTkRRV1ZoWjBGM1NVSkJaMGxDUVVSQlRrSm5hM0ZvYTJsSE9YY3dRa0ZSYzBaQlJFRldUVkpOZDBWUldVUldVVkZFUlhkd2NtUlhTbXdLWTIwMWJHUkhWbnBOUWpSWVJGUkplVTFVUlhsUFZFRXpUa1JaZVU5V2IxaEVWRTE1VFZSRmVVNXFRVE5PUkZsNVQxWnZkMFpVUlZSTlFrVkhRVEZWUlFwQmVFMUxZVE5XYVZwWVNuVmFXRkpzWTNwRFEwRlRTWGRFVVZsS1MyOWFTV2gyWTA1QlVVVkNRbEZCUkdkblJWQkJSRU5EUVZGdlEyZG5SV")
-
-		secret := corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				GenerateName: "kube-secret",
-				Namespace:    "test-ns",
-			},
-			Data: secretMap,
 		}
 
 		Expect(k8sClient.Create(ctx, ns)).To(Succeed(), "failed to create test namespace")
-		Expect(k8sClient.Create(ctx, &secret)).To(Succeed(), "failed to create test namespace")
-
 		DeferCleanup(k8sClient.Delete, ctx, ns)
 
 		newSrv := New(getTestConfig())
 		*srv = *newSrv.(*service)
-		fmt.Println("srv.parentClient", srv.parentClient)
+		srv.csiNamespace = ns.Name
+
+		// Create a test node with required annotations
+		node := &corev1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: srv.nodeName,
+				Annotations: map[string]string{
+					"onmetal-machine":   "test-onmetal-machine",
+					"onmetal-namespace": srv.csiNamespace,
+				},
+			},
+		}
+
+		kubeClient, err := BuildInclusterClient()
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(kubeClient).ShouldNot(BeNil())
+
+		Expect(kubeClient.Create(ctx, node)).To(Succeed())
+		DeferCleanup(kubeClient.Delete, ctx, node)
+
+		createdNode := &corev1.Node{}
+		Expect(kubeClient.Get(ctx, client.ObjectKey{Name: srv.nodeName}, createdNode)).To(Succeed())
+
+		//create a test machine
+		machine := &computev1alpha1.Machine{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      createdNode.Annotations["onmetal-machine"],
+				Namespace: createdNode.Annotations["onmetal-namespace"],
+			},
+			Spec: computev1alpha1.MachineSpec{
+				Image: "gardenlinux",
+				MachineClassRef: corev1.LocalObjectReference{
+					Name: "t3-small",
+				},
+				MachinePoolRef: &corev1.LocalObjectReference{
+					Name: "pool1",
+				},
+			},
+		}
+
+		Expect(k8sClient.Create(ctx, machine)).To(Succeed())
+
+		//patch machine status to running
+		outdatedStatusMachine := machine.DeepCopy()
+		machine.Status.State = computev1alpha1.MachineStateRunning
+		Expect(k8sClient.Patch(ctx, machine, client.MergeFrom(outdatedStatusMachine))).To(Succeed())
+		DeferCleanup(k8sClient.Delete, ctx, machine)
+
+		srv.parentClient = k8sClient
 	})
 
 	return ns, srv
@@ -163,12 +196,11 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *service) {
 
 func getTestConfig() map[string]string {
 	cfg := map[string]string{
-		"driverName":         "onmetal-csi-driver",
-		"driverVersion":      "1.0.0",
-		"nodeId":             "127.0.0.1",
-		"nodeName":           "test-csi",
-		"csiNamespace":       "test-ns",
-		"parent_kube_config": "/home/sujeet/go/src/onmetal-csi-driver/config/samples/kube_secret_template.yaml",
+		"driver_name":    "onmetal-csi-driver",
+		"driver_version": "1.0.0",
+		"csi_namespace":  "test-ns",
+		"node_id":        "test-node1",
+		"node_name":      "test-node",
 	}
 	return cfg
 }
