@@ -23,7 +23,7 @@ GOBUILD=$(GOCMD) build
 GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 GOMOD=$(GOCMD) mod
- 
+
 BINARY_NAME=onmetal-csi-driver
 DOCKER_IMAGE=onmetal-csi-driver
 
@@ -43,10 +43,24 @@ ifeq ($(env),prod)
 	DOCKER_IMAGE_TAG=1.1.0
 endif
 # For Production Build ##################################################################
+##@ Tools
 
-KUSTOMIZE = $(shell pwd)/bin/kustomize
-kustomize: ## Download kustomize locally if necessary.
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.4.1)
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
+## Tool Binaries
+KUSTOMIZE ?= $(LOCALBIN)/kustomize
+
+## Tool Versions
+KUSTOMIZE_VERSION ?= v3.8.7
+
+KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
+.PHONY: kustomize
+kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
+$(KUSTOMIZE): $(LOCALBIN)
+	curl -s $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN)
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -90,7 +104,7 @@ build-linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BINARY_NAME) -v ./cmd/
 
 docker-build: 
-	docker build --ssh default=${HOME}/.ssh/id_rsa -t ${IMG} -f Dockerfile .
+	docker build -t ${IMG} -f Dockerfile .
 
 docker-push:
 	docker push ${IMG}
@@ -101,10 +115,11 @@ all: build docker-build docker-push clean
 
 deploy:
 	cd config/manager && $(KUSTOMIZE) edit set image onmetal-csi-driver=${IMG}
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
+	kubectl apply -k config/default
 
 undeploy:
-	$(KUSTOMIZE) build config/default | kubectl delete -f -
+	kubectl delete -k  config/default
+
 
 fmt: ## Run go fmt against code.
 	go fmt ./...

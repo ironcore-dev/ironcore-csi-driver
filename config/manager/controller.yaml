@@ -105,6 +105,7 @@ spec:
         app: onmetal-csi-driver
     spec:
       serviceAccount: onmetal-csi-driver
+      hostNetwork: true
       containers:
         - name: attacher
           image: quay.io/k8scsi/csi-attacher:v3.1.0
