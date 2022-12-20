@@ -165,10 +165,9 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 		}
 		volAttachment := computev1alpha1.Volume{}
 		volAttachment.Name = vaName
-		// volAttachment.Priority = 1
 		volAttachment.VolumeSource = attachSource
 		machine.Spec.Volumes = append(machine.Spec.Volumes, volAttachment)
-		log.Infoln("update machine with volumeattachment")
+		log.Infoln("update machine with volume attachment")
 		err = s.parentClient.Update(ctx, machine)
 		if err != nil {
 			log.Errorf("failed to update machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
@@ -365,8 +364,8 @@ func (s *service) ControllerGetCapabilities(ctx context.Context, req *csi.Contro
 	}, nil
 }
 
-func (s *service) ControllerGetVolume(ctx context.Context, req *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
-	return &csi.ControllerGetVolumeResponse{}, nil
+func (s *service) ControllerGetVolume(context.Context, *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ControllerGetVolume not implemented")
 }
 
 type Volume struct {

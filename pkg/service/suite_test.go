@@ -27,10 +27,10 @@ import (
 	"github.com/onmetal/controller-utils/buildutils"
 
 	"github.com/onmetal/controller-utils/modutils"
-	computev1alpha1 "github.com/onmetal/onmetal-api/apis/compute/v1alpha1"
-	storagev1alpha1 "github.com/onmetal/onmetal-api/apis/storage/v1alpha1"
-	"github.com/onmetal/onmetal-api/envtestutils"
-	"github.com/onmetal/onmetal-api/envtestutils/apiserver"
+	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
+	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
+	"github.com/onmetal/onmetal-api/testutils/envtestutils"
+	"github.com/onmetal/onmetal-api/testutils/envtestutils/apiserver"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -97,7 +97,7 @@ var _ = BeforeSuite(func() {
 	komega.SetClient(k8sClient)
 
 	apiSrv, err := apiserver.New(cfg, apiserver.Options{
-		MainPath:     "github.com/onmetal/onmetal-api/cmd/apiserver",
+		MainPath:     "github.com/onmetal/onmetal-api/onmetal-apiserver/cmd/apiserver",
 		BuildOptions: []buildutils.BuildOption{buildutils.ModModeMod},
 		ETCDServers:  []string{testEnv.ControlPlane.Etcd.URL.String()},
 		Host:         testEnvExt.APIServiceInstallOptions.LocalServingHost,
@@ -138,17 +138,13 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *service) {
 		Expect(k8sClient.Create(ctx, ns)).To(Succeed(), "failed to create test namespace")
 		DeferCleanup(k8sClient.Delete, ctx, ns)
 
-		newSrv := New(getTestConfig())
-		*srv = *newSrv.(*service)
-		srv.csiNamespace = ns.Name
-
 		// Create a test node with required annotations
 		node := &corev1.Node{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: srv.nodeName,
+				GenerateName: "node-",
 				Annotations: map[string]string{
 					"onmetal-machine":   "test-onmetal-machine",
-					"onmetal-namespace": srv.csiNamespace,
+					"onmetal-namespace": ns.Name,
 				},
 			},
 		}
@@ -159,6 +155,11 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *service) {
 
 		Expect(kubeClient.Create(ctx, node)).To(Succeed())
 		DeferCleanup(kubeClient.Delete, ctx, node)
+
+		newSrv := New(getTestConfig())
+		*srv = *newSrv.(*service)
+		srv.csiNamespace = ns.Name
+		srv.nodeName = node.Name
 
 		createdNode := &corev1.Node{}
 		Expect(kubeClient.Get(ctx, client.ObjectKey{Name: srv.nodeName}, createdNode)).To(Succeed())

@@ -2,8 +2,8 @@ package service
 
 import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	computev1alpha1 "github.com/onmetal/onmetal-api/apis/compute/v1alpha1"
-	storagev1alpha1 "github.com/onmetal/onmetal-api/apis/storage/v1alpha1"
+	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
+	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
 	"github.com/onmetal/onmetal-api/testutils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -19,7 +19,7 @@ var _ = Describe("Service tests", func() {
 
 	var (
 		reqVolumeId = "v1"
-		deviceId    = "sda1"
+		deviceName  = "sda"
 	)
 
 	It("should be able to create, publish, unpublish and delete volume", func() {
@@ -65,7 +65,7 @@ var _ = Describe("Service tests", func() {
 						Name: "volume-" + reqVolumeId,
 					},
 				},
-				Device: deviceId,
+				Device: &deviceName,
 			},
 		}
 		createdMachine.Status.Volumes = []computev1alpha1.VolumeStatus{
@@ -79,7 +79,7 @@ var _ = Describe("Service tests", func() {
 		By("patching volume with device")
 		base = createdVolume.DeepCopy()
 		volumeAttr := make(map[string]string)
-		volumeAttr["wwn"] = deviceId
+		volumeAttr["WWN"] = deviceName
 		createdVolume.Status = storagev1alpha1.VolumeStatus{
 			State: storagev1alpha1.VolumeStateAvailable,
 			Phase: storagev1alpha1.VolumePhaseBound,
@@ -101,7 +101,7 @@ var _ = Describe("Service tests", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(publishRes).ShouldNot(BeNil())
 		Expect(publishRes.PublishContext["volume_id"]).To(Equal(reqVolumeId))
-		Expect(publishRes.PublishContext["device_name"]).To(Equal(validateDeviceName(createdVolume)))
+		Expect(publishRes.PublishContext["device_name"]).To(Equal(validateDeviceName(createdVolume, createdMachine, reqVolumeId+"-attachment")))
 		Expect(publishRes.PublishContext["node_id"]).To(Equal(srv.nodeId))
 
 		By("Unpublishing the volume")
