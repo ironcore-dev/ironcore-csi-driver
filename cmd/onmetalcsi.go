@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 
+	"github.com/dell/gocsi"
+	csictx "github.com/dell/gocsi/context"
 	"github.com/onmetal/onmetal-csi-driver/pkg/provider"
 	"github.com/onmetal/onmetal-csi-driver/pkg/service"
-	"github.com/sujeet01/gocsi"
-	csictx "github.com/sujeet01/gocsi/context"
 )
 
 func main() {

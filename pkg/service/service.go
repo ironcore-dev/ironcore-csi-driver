@@ -17,7 +17,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/sujeet01/gocsi"
+	"github.com/dell/gocsi"
 	mount "k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
 	"sigs.k8s.io/controller-runtime/pkg/client"
