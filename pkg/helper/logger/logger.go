@@ -3,7 +3,7 @@ package logger
 import (
 	"context"
 
-	csictx "github.com/rexray/gocsi/context"
+	csictx "github.com/dell/gocsi/context"
 	"github.com/sirupsen/logrus"
 )
 

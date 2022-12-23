@@ -1,8 +1,8 @@
 package provider
 
 import (
+	"github.com/dell/gocsi"
 	"github.com/onmetal/onmetal-csi-driver/pkg/service"
-	"github.com/rexray/gocsi"
 )
 
 func New(config map[string]string) gocsi.StoragePluginProvider {

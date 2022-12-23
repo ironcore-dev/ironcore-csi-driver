@@ -2,22 +2,42 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
+	"os"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/clientcmd"
+
+	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
+	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
+
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/onmetal/onmetal-csi-driver/pkg/helper"
-	"github.com/rexray/gocsi"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"github.com/dell/gocsi"
 	mount "k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
 )
 
 const (
 	ServiceName = "onmetal-csi-driver"
 )
+
+// Initialize kubernetes client
+var (
+	Scheme = runtime.NewScheme()
+)
+
+func init() {
+	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
+	utilruntime.Must(storagev1alpha1.AddToScheme(Scheme))
+	utilruntime.Must(computev1alpha1.AddToScheme(Scheme))
+}
 
 type service struct {
 	// parameters
@@ -29,7 +49,6 @@ type service struct {
 	mountutil     *mount.SafeFormatAndMount
 	// rest client
 	parentClient client.Client
-	kubehelper   helper.Helper
 }
 
 // Service is the CSI Mock service provider.
@@ -48,18 +67,17 @@ func New(config map[string]string) Service {
 		nodeId:        config["node_id"],
 		nodeName:      config["node_name"],
 		csiNamespace:  config["csi_namespace"],
-		kubehelper:    &helper.KubeHelper{},
 		mountutil:     &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
 	}
 
 	if _, ok := config["parent_kube_config"]; ok {
-		parentCluster, err := svc.kubehelper.LoadRESTConfig(config["parent_kube_config"])
+		parentCluster, err := LoadRESTConfig(config["parent_kube_config"])
 		if err != nil {
 			log.Fatal(err, "unable to load target kubeconfig")
 		}
-		newClient, err := client.New(parentCluster.GetConfig(), client.Options{Scheme: helper.Scheme})
+		newClient, err := client.New(parentCluster.GetConfig(), client.Options{Scheme: Scheme})
 		if err != nil {
-			log.Fatal(err, "unable to load cluster cliet")
+			log.Fatal(err, "unable to load cluster client")
 		}
 		svc.parentClient = newClient
 
@@ -67,10 +85,25 @@ func New(config map[string]string) Service {
 	return svc
 }
 
-func (s *service) BeforeServe(ctx context.Context, sp *gocsi.StoragePlugin, listner net.Listener) error {
-	return nil
+func LoadRESTConfig(kubeconfig string) (cluster.Cluster, error) {
+	data, err := os.ReadFile(kubeconfig)
+	if err != nil {
+		return nil, fmt.Errorf("could not read kubeconfig %s: %w ", kubeconfig, err)
+	}
+
+	parentCfg, err := clientcmd.RESTConfigFromKubeConfig(data)
+	if err != nil {
+		return nil, err
+	}
+	parentCluster, err := cluster.New(parentCfg, func(o *cluster.Options) {
+		o.Scheme = Scheme
+	})
+	if err != nil {
+		return nil, err
+	}
+	return parentCluster, nil
 }
 
-func (s *service) ControllerGetVolume(context.Context, *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ControllerGetVolume not implemented")
+func (s *service) BeforeServe(ctx context.Context, sp *gocsi.StoragePlugin, listner net.Listener) error {
+	return nil
 }

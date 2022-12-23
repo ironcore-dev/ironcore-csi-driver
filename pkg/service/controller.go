@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -19,6 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 const volumeFieldOwner = client.FieldOwner("storage.onmetal.de/volume")
@@ -136,12 +136,12 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 	log.Infof("request received to publish volume %s at node %s\n", req.GetVolumeId(), req.GetNodeId())
 	csiResp := &csi.ControllerPublishVolumeResponse{}
 	machine := &computev1alpha1.Machine{}
-	kubeClient, err := s.kubehelper.BuildInclusterClient()
+	kubeClient, err := BuildInclusterClient()
 	if err != nil {
 		log.Errorf("error getting kubeclient:%v", err)
 		return nil, err
 	}
-	onmetalAnnotation, err := s.kubehelper.NodeGetAnnotations(s.nodeName, kubeClient.Client) //Get onmetal-machine annotations
+	onmetalAnnotation, err := NodeAnnotations(s.nodeName, kubeClient) //Get onmetal-machine annotations
 	if err != nil || (onmetalAnnotation.OnmetalMachine == "" && onmetalAnnotation.OnmetalNamespace == "") {
 		log.Infoln("onmetal annotations Not Found")
 	}
@@ -164,10 +164,9 @@ func (s *service) ControllerPublishVolume(ctx context.Context, req *csi.Controll
 		}
 		volAttachment := computev1alpha1.Volume{}
 		volAttachment.Name = vaName
-		// volAttachment.Priority = 1
 		volAttachment.VolumeSource = attachSource
 		machine.Spec.Volumes = append(machine.Spec.Volumes, volAttachment)
-		log.Infoln("update machine with volumeattachment")
+		log.Infoln("update machine with volume attachment")
 		err = s.parentClient.Update(ctx, machine)
 		if err != nil {
 			log.Errorf("failed to update machine with name %s,namespace %s, error:%v", machineKey.Name, machineKey.Namespace, err)
@@ -222,12 +221,12 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 	log.Infof("request received to un-publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId())
 	csiResp := &csi.ControllerUnpublishVolumeResponse{}
 	machine := &computev1alpha1.Machine{}
-	kubeClient, err := s.kubehelper.BuildInclusterClient()
+	kubeClient, err := BuildInclusterClient()
 	if err != nil {
 		log.Errorf("error getting kubeclient:%v", err)
 		return nil, err
 	}
-	onmetalAnnotation, err := s.kubehelper.NodeGetAnnotations(s.nodeName, kubeClient.Client) //Get onmetal-machine annotations
+	onmetalAnnotation, err := NodeAnnotations(s.nodeName, kubeClient) //Get onmetal-machine annotations
 	if err != nil || (onmetalAnnotation.OnmetalMachine == "" && onmetalAnnotation.OnmetalNamespace == "") {
 		log.Infoln("onmetal annotations Not Found")
 	}
@@ -364,6 +363,10 @@ func (s *service) ControllerGetCapabilities(ctx context.Context, req *csi.Contro
 	}, nil
 }
 
+func (s *service) ControllerGetVolume(context.Context, *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ControllerGetVolume not implemented")
+}
+
 type Volume struct {
 	ID            string
 	Name          string
@@ -445,12 +448,43 @@ func validateDeviceName(volume *storagev1alpha1.Volume, machine *computev1alpha1
 			if va.Name == vaName && *va.Device != "" {
 				device := *va.Device
 				log.Infoln("Machine is updated with device :", device)
-				device_array := strings.Split(device, "")
-				device_slice := strings.Join(device_array[1:], "")
-				return "/dev/disk/by-id/virtio-v" + device_slice + "-" + wwn
+				return "/dev/disk/by-id/virtio-" + device + "-" + wwn
 			}
 		}
 	}
 	log.Infoln("could not found device for given volume", volume.ObjectMeta.Name)
 	return ""
+}
+
+// onmetal machine annotations
+type Annotation struct {
+	OnmetalMachine   string
+	OnmetalNamespace string
+}
+
+func NodeAnnotations(Nodename string, c client.Client) (a Annotation, err error) {
+	node := &corev1.Node{}
+	err = c.Get(context.Background(), client.ObjectKey{Name: Nodename}, node)
+	if err != nil {
+		log.Errorf("Node Not found :%v", err)
+	}
+	onmetalMachineName := node.ObjectMeta.Annotations["onmetal-machine"]
+	onmetalMachineNamespace := node.ObjectMeta.Annotations["onmetal-namespace"]
+	onmetalAnnotation := Annotation{OnmetalMachine: onmetalMachineName, OnmetalNamespace: onmetalMachineNamespace}
+	return onmetalAnnotation, err
+}
+
+func BuildInclusterClient() (c client.Client, err error) {
+	config, err := config.GetConfig()
+	if err != nil {
+		log.Errorf("BuildClient Error while getting cluster config, error: %v", err)
+		return nil, err
+	}
+	clientset, err := client.New(config, client.Options{})
+	if err != nil {
+		log.Errorf("BuildClient Error while creating client, error: %v", err)
+		return nil, err
+	}
+
+	return clientset, err
 }
