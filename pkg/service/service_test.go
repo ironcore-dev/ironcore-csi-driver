@@ -14,12 +14,13 @@ import (
 )
 
 var _ = Describe("Service tests", func() {
+
 	ctx := testutils.SetupContext()
-	ns, srv := SetupTest(ctx)
+	ns, srvc := SetupTest(ctx)
 
 	var (
-		reqVolumeId = "v1"
-		deviceName  = "sda"
+		reqVolumeId    = "v1"
+		testDeviceName = "sda"
 	)
 
 	It("should be able to create, publish, unpublish and delete volume", func() {
@@ -30,8 +31,8 @@ var _ = Describe("Service tests", func() {
 			"storage_pool":       "pool1",
 		}
 		crtValReq := getCreateVolumeRequest(reqVolumeId, reqParameterMap)
-		res, err := srv.CreateVolume(ctx, crtValReq)
-		Expect(err).To(MatchError(status.Errorf(codes.Internal, "check volume State it's not Available")))
+		res, err := srvc.CreateVolume(ctx, crtValReq)
+		Expect(err).To(MatchError(status.Errorf(codes.Internal, "volume state is not Available")))
 
 		By("patching the volume state to be available")
 		createdVolume := &storagev1alpha1.Volume{}
@@ -41,7 +42,7 @@ var _ = Describe("Service tests", func() {
 		Expect(k8sClient.Patch(ctx, createdVolume, client.MergeFrom(base))).To(Succeed())
 
 		By("cheking CreateVolume response")
-		createRes, err := srv.CreateVolume(ctx, crtValReq)
+		createRes, err := srvc.CreateVolume(ctx, crtValReq)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(createRes).ShouldNot(BeNil())
 		Expect(createRes.Volume.VolumeId).To(Equal(reqVolumeId))
@@ -51,11 +52,11 @@ var _ = Describe("Service tests", func() {
 		By("publishing the volume")
 		crtPublishVolumeReq := getCrtControllerPublishVolumeRequest(reqVolumeId)
 		crtPublishVolumeReq.VolumeId = reqVolumeId
-		crtPublishVolumeReq.NodeId = srv.nodeId
+		crtPublishVolumeReq.NodeId = srvc.nodeId
 
 		By("patching machine with volume atachment")
 		createdMachine := &computev1alpha1.Machine{}
-		Expect(k8sClient.Get(ctx, client.ObjectKey{Name: "test-onmetal-machine", Namespace: srv.csiNamespace}, createdMachine)).To(Succeed())
+		Expect(k8sClient.Get(ctx, client.ObjectKey{Name: "test-onmetal-machine", Namespace: srvc.csiNamespace}, createdMachine)).To(Succeed())
 		outdatedStatusMachine := createdMachine.DeepCopy()
 		createdMachine.Spec.Volumes = []computev1alpha1.Volume{
 			{
@@ -65,7 +66,7 @@ var _ = Describe("Service tests", func() {
 						Name: "volume-" + reqVolumeId,
 					},
 				},
-				Device: &deviceName,
+				Device: &testDeviceName,
 			},
 		}
 		createdMachine.Status.Volumes = []computev1alpha1.VolumeStatus{
@@ -79,7 +80,7 @@ var _ = Describe("Service tests", func() {
 		By("patching volume with device")
 		base = createdVolume.DeepCopy()
 		volumeAttr := make(map[string]string)
-		volumeAttr["WWN"] = deviceName
+		volumeAttr["WWN"] = testDeviceName
 		createdVolume.Status = storagev1alpha1.VolumeStatus{
 			State: storagev1alpha1.VolumeStateAvailable,
 			Phase: storagev1alpha1.VolumePhaseBound,
@@ -97,22 +98,22 @@ var _ = Describe("Service tests", func() {
 		Expect(k8sClient.Patch(ctx, createdVolume, client.MergeFrom(base))).To(Succeed())
 
 		By("checking ControllerPublishVolume response")
-		publishRes, err := srv.ControllerPublishVolume(ctx, crtPublishVolumeReq)
+		publishRes, err := srvc.ControllerPublishVolume(ctx, crtPublishVolumeReq)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(publishRes).ShouldNot(BeNil())
 		Expect(publishRes.PublishContext["volume_id"]).To(Equal(reqVolumeId))
-		Expect(publishRes.PublishContext["device_name"]).To(Equal(validateDeviceName(createdVolume, createdMachine, reqVolumeId+"-attachment")))
-		Expect(publishRes.PublishContext["node_id"]).To(Equal(srv.nodeId))
+		Expect(publishRes.PublishContext["device_name"]).To(Equal(validateDeviceName(createdVolume, createdMachine, reqVolumeId+"-attachment", srvc.log)))
+		Expect(publishRes.PublishContext["node_id"]).To(Equal(srvc.nodeId))
 
 		By("Unpublishing the volume")
-		unpublishVolReq := getCrtControllerUnpublishVolumeRequest(reqVolumeId, srv.nodeId)
-		unpublishRes, err := srv.ControllerUnpublishVolume(ctx, unpublishVolReq)
+		unpublishVolReq := getCrtControllerUnpublishVolumeRequest(reqVolumeId, srvc.nodeId)
+		unpublishRes, err := srvc.ControllerUnpublishVolume(ctx, unpublishVolReq)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(unpublishRes).ShouldNot(BeNil())
 
 		By("deleting the volume")
-		delValReq := getDeleteVolumeRequest(reqVolumeId, getSecret())
-		deleteRes, err := srv.DeleteVolume(ctx, delValReq)
+		delValReq := getDeleteVolumeRequest(reqVolumeId, getTestSecrets())
+		deleteRes, err := srvc.DeleteVolume(ctx, delValReq)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(deleteRes).ShouldNot(BeNil())
 	})
@@ -121,14 +122,14 @@ var _ = Describe("Service tests", func() {
 
 		By("getting plugin info")
 		var req *csi.GetPluginInfoRequest
-		res, err := srv.GetPluginInfo(ctx, req)
+		res, err := srvc.GetPluginInfo(ctx, req)
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(res.Name).To(Equal(srv.driverName))
-		Expect(res.VendorVersion).To(Equal(srv.driverVersion))
+		Expect(res.Name).To(Equal(srvc.driverName))
+		Expect(res.VendorVersion).To(Equal(srvc.driverVersion))
 
 		By("getting plugin capabilities")
 		var reqCap *csi.GetPluginCapabilitiesRequest
-		resCap, err := srv.GetPluginCapabilities(ctx, reqCap)
+		resCap, err := srvc.GetPluginCapabilities(ctx, reqCap)
 		capabilities := []*csi.PluginCapability{
 			{
 				Type: &csi.PluginCapability_Service_{
@@ -151,7 +152,7 @@ var _ = Describe("Service tests", func() {
 
 		By("getting Probe")
 		var reqProbe *csi.ProbeRequest
-		resProbe, err := srv.Probe(ctx, reqProbe)
+		resProbe, err := srvc.Probe(ctx, reqProbe)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(resProbe).NotTo(BeNil())
 
@@ -193,7 +194,7 @@ func getDeleteVolumeRequest(volumeId string, secrets map[string]string) *csi.Del
 	}
 }
 
-func getSecret() map[string]string {
+func getTestSecrets() map[string]string {
 	secretMap := map[string]string{
 		"username": "admin",
 		"password": "123456",
