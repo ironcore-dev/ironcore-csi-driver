@@ -21,11 +21,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/onmetal/controller-utils/buildutils"
 
+	csictx "github.com/dell/gocsi/context"
 	"github.com/onmetal/controller-utils/modutils"
 	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
@@ -49,12 +52,12 @@ import (
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
+const apiServiceTimeout = 5 * time.Minute
+
 var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
 var testEnvExt *envtestutils.EnvironmentExtensions
-
-const apiServiceTimeout = 5 * time.Minute
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -125,8 +128,8 @@ var _ = AfterSuite(func() {
 
 func SetupTest(ctx context.Context) (*corev1.Namespace, *service) {
 	var (
-		ns  = &corev1.Namespace{}
-		srv = &service{}
+		ns   = &corev1.Namespace{}
+		srvc = &service{}
 	)
 	BeforeEach(func() {
 		*ns = corev1.Namespace{
@@ -137,6 +140,11 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *service) {
 
 		Expect(k8sClient.Create(ctx, ns)).To(Succeed(), "failed to create test namespace")
 		DeferCleanup(k8sClient.Delete, ctx, ns)
+
+		logger := initLogger()
+		newSrv := New(getTestConfig(), logger)
+		*srvc = *newSrv.(*service)
+		srvc.csiNamespace = ns.Name
 
 		// Create a test node with required annotations
 		node := &corev1.Node{
@@ -149,20 +157,17 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *service) {
 			},
 		}
 
-		kubeClient, err := BuildInclusterClient()
+		kubeClient, err := BuildInClusterClient(srvc.log)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(kubeClient).ShouldNot(BeNil())
 
 		Expect(kubeClient.Create(ctx, node)).To(Succeed())
 		DeferCleanup(kubeClient.Delete, ctx, node)
 
-		newSrv := New(getTestConfig())
-		*srv = *newSrv.(*service)
-		srv.csiNamespace = ns.Name
-		srv.nodeName = node.Name
+		srvc.nodeName = node.Name
 
 		createdNode := &corev1.Node{}
-		Expect(kubeClient.Get(ctx, client.ObjectKey{Name: srv.nodeName}, createdNode)).To(Succeed())
+		Expect(kubeClient.Get(ctx, client.ObjectKey{Name: srvc.nodeName}, createdNode)).To(Succeed())
 
 		//create a test machine
 		machine := &computev1alpha1.Machine{
@@ -189,10 +194,10 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *service) {
 		Expect(k8sClient.Patch(ctx, machine, client.MergeFrom(outdatedStatusMachine))).To(Succeed())
 		DeferCleanup(k8sClient.Delete, ctx, machine)
 
-		srv.parentClient = k8sClient
+		srvc.parentClient = k8sClient
 	})
 
-	return ns, srv
+	return ns, srvc
 }
 
 func getTestConfig() map[string]string {
@@ -204,4 +209,14 @@ func getTestConfig() map[string]string {
 		"node_name":      "test-node",
 	}
 	return cfg
+}
+
+func initLogger() logr.Logger {
+	logLevel, _ := csictx.LookupEnv(context.Background(), "APP_LOG_LEVEL")
+	ll, err := zapcore.ParseLevel(logLevel)
+	if err != nil {
+		ll = zapcore.InfoLevel
+	}
+	zapOpts := zap.Options{Development: true, Level: ll, TimeEncoder: zapcore.ISO8601TimeEncoder}
+	return zap.New(zap.UseFlagOptions(&zapOpts))
 }

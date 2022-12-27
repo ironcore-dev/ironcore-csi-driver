@@ -2,11 +2,12 @@ package provider
 
 import (
 	"github.com/dell/gocsi"
+	"github.com/go-logr/logr"
 	"github.com/onmetal/onmetal-csi-driver/pkg/service"
 )
 
-func New(config map[string]string) gocsi.StoragePluginProvider {
-	srvc := service.New(config)
+func New(config map[string]string, logger logr.Logger) gocsi.StoragePluginProvider {
+	srvc := service.New(config, logger)
 	return &gocsi.StoragePlugin{
 		Controller:  srvc,
 		Node:        srvc,

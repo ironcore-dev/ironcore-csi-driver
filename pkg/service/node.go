@@ -6,14 +6,15 @@ import (
 	"os"
 	"path/filepath"
 
+	"errors"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	log "github.com/onmetal/onmetal-csi-driver/pkg/helper/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
-	log.Infoln("request received for node stage volume ", req.GetVolumeId(), "at", req.GetStagingTargetPath())
+	s.log.Info("request received for node stage volume ", "VolumeId", req.GetVolumeId(), "StagingTargetPath", req.GetStagingTargetPath())
 	fstype := req.GetVolumeContext()["fstype"]
 	devicePath := "/host" + req.PublishContext["device_name"]
 
@@ -25,20 +26,20 @@ func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 
 	targetPath := req.GetStagingTargetPath()
 	resp := &csi.NodeStageVolumeResponse{}
-	log.Infoln("validate mount point")
+	s.log.V(1).Info("validate mount point")
 	notMnt, err := s.mountutil.IsLikelyNotMountPoint(targetPath)
 	if err != nil && !os.IsNotExist(err) {
-		log.Errorf("unable to verify MountPoint:%v", err)
+		s.log.Error(err, "unable to verify mount point")
 		return resp, err
 	}
-	log.Infoln("check if volume is already mounted")
+	s.log.V(1).Info("check if volume is already mounted")
 	if !notMnt {
-		log.Infof("volume at %s already mounted", targetPath)
+		s.log.Info("volume already mounted", "targetPath", targetPath)
 		return resp, nil
 	}
-	log.Infoln("create target directory")
+	s.log.V(1).Info("create target directory")
 	if err := os.MkdirAll(targetPath, 0750); err != nil {
-		log.Errorf("failed to mkdir error:%v", err)
+		s.log.Error(err, "unable to create target directory")
 		return resp, err
 	}
 
@@ -50,40 +51,40 @@ func (s service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		options = append(options, "rw")
 	}
 	options = append(options, mountOptions...)
-	log.Infoln("format and mount the volume")
+	s.log.V(1).Info("format and mount the volume")
 	if err = s.mountutil.FormatAndMount(devicePath, targetPath, fstype, options); err != nil {
-		log.Errorf("failed to stage volume:%v", err)
+		s.log.Error(err, "failed to stage volume")
 		return resp, fmt.Errorf("failed to mount volume %s [%s] to %s, error %v", devicePath, fstype, targetPath, err)
 	}
-	log.Infoln("Successfully staged the volume", req.GetVolumeId())
+	s.log.Info("successfully staged the volume", "VolumeId", req.GetVolumeId())
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
 func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
-	log.Infoln("request received for node publish volume ", req.GetVolumeId(), "at", req.GetTargetPath())
+	s.log.Info("request received for node publish volume ", "VolumeId", req.GetVolumeId(), "TargetPath", req.GetTargetPath())
 	resp := &csi.NodePublishVolumeResponse{}
 
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
-		log.Errorln("Unable to get volume id")
+		s.log.Error(errors.New("unable to get volume id"), "unable to get volume id")
 		return nil, status.Error(codes.InvalidArgument, "Volume ID not found")
 	}
 
 	stagePath := req.GetStagingTargetPath()
 	if len(stagePath) == 0 {
-		log.Infoln("Unable to get staging path")
+		s.log.Error(errors.New("unable to get staging path"), "Unable to get staging path")
 		return nil, status.Error(codes.InvalidArgument, "Staging path not found")
 	}
 
 	targetPath := req.GetTargetPath()
 	if len(targetPath) == 0 {
-		log.Errorln("Unable to get target path")
+		s.log.Error(errors.New("unable to get target path"), "Unable to get target path")
 		return nil, status.Error(codes.InvalidArgument, "Target path not found")
 	}
 
 	volCap := req.GetVolumeCapability()
 	if volCap == nil {
-		log.Infoln("Unable to get volume capacity")
+		s.log.Error(errors.New("unable  to get volume capacity"), "Unable  to get volume capacity")
 		return nil, status.Error(codes.InvalidArgument, "Volume capability not provided")
 	}
 	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
@@ -93,7 +94,7 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 	} else {
 		mountOptions = append(mountOptions, "rw")
 	}
-	log.Infoln("get mount")
+	s.log.V(1).Info("get mount")
 	if m := volCap.GetMount(); m != nil {
 		for _, f := range m.MountFlags {
 			if f != "bind" && f != "ro" {
@@ -113,26 +114,26 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 	}
 
 	if notMnt {
-		log.Infoln("targetPath is  not mountpoint", targetPath)
+		s.log.Info("targetPath is not mountpoint", "targetPath", targetPath)
 		if os.IsNotExist(err) {
-			log.Infoln("make target directory")
+			s.log.V(1).Info("make target directory")
 			if err := os.MkdirAll(targetPath, 0750); err != nil {
-				log.Errorf("failed to create directory %s, error", targetPath)
+				s.log.Error(errors.New("failed to create directory"), "failed to create directory", "targetPath", targetPath)
 				return resp, err
 			}
 		}
 
 		if err := s.mountutil.Mount(stagePath, targetPath, fstype, mountOptions); err != nil {
-			log.Errorf("failed to mount volume. error while publishing volume:%v", err)
+			s.log.Error(err, "failed to mount volume. error while publishing volume")
 			return resp, status.Errorf(codes.Internal, "Could not mount %q at %q: %v", stagePath, targetPath, err)
 		}
 	}
-	log.Infoln("Successfully published volume", req.GetVolumeId())
+	s.log.Info("successfully published volume", "VolumeId", req.GetVolumeId())
 	return resp, nil
 }
 
 func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
-	log.Infoln("request received for node un-stage volume ", req.GetVolumeId(), "at", req.GetStagingTargetPath())
+	s.log.Info("request received for node un-stage volume ", "VolumeId", req.GetVolumeId(), "StagingTargetPath", req.GetStagingTargetPath())
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID not found")
@@ -152,26 +153,26 @@ func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVol
 	}
 	err = s.mountutil.Unmount(stagePath)
 	if err != nil {
-		log.Errorf("failed to un-stage volume:%v", err)
+		s.log.Error(err, "failed to un-stage volume")
 		return nil, status.Errorf(codes.Internal, "Failed to unmount target %q: %v", stagePath, err)
 	}
-	log.Infoln("remove directory after mount")
+	s.log.V(1).Info("remove directory after mount")
 	err = os.RemoveAll(stagePath)
 	if err != nil {
-		log.Errorf("error remove mount directory:%v", err)
+		s.log.Error(err, "error remove mount directory")
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", stagePath, err)
 	}
 	err = os.RemoveAll("/host" + stagePath)
 	if err != nil {
-		log.Errorf("error remove mount directory:%v", err)
+		s.log.Error(err, "error remove mount directory")
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", stagePath, err)
 	}
-	log.Infoln("Successfully un-stanged volume", req.GetVolumeId())
+	s.log.Info("successfully un-stanged volume", "VolumeId", req.GetVolumeId())
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
 func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
-	log.Infoln("request received for node unpublish volume ", req.GetVolumeId(), "at", req.GetTargetPath())
+	s.log.Info("request received for node unpublish volume ", "VolumeId", req.GetVolumeId(), "TargetPath", req.GetTargetPath())
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
@@ -181,29 +182,29 @@ func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublis
 	if len(target) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path not provided")
 	}
-	log.Infoln("validate mount path", target)
+	s.log.Info("validate mount path", "target", target)
 	_, err := os.Stat(target)
 	if err != nil {
-		log.Errorf("Unable to unmount volume:%v", err)
+		s.log.Error(err, "unable to unmount volume")
 		return nil, status.Errorf(codes.Internal, "Unable to unmount %q: %v", target, err)
 	}
 	err = s.mountutil.Unmount(target)
 	if err != nil {
-		log.Infoln("failed to unmount volume ", err)
-		return nil, status.Errorf(codes.Internal, "Failed not unmount %q: %v", target, err)
+		s.log.Error(err, "failed to unmount volume")
+		return nil, status.Errorf(codes.Internal, "Failed to unmount %q: %v", target, err)
 	}
-	log.Infoln("remove directory after mount")
+	s.log.V(1).Info("remove directory after mount")
 	err = os.RemoveAll(target)
 	if err != nil {
-		log.Errorf("error remove mount directory:%v", err)
+		s.log.Error(err, "unable to remove mount directory")
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", target, err)
 	}
 	err = os.RemoveAll("/host" + target)
 	if err != nil {
-		log.Errorf("error remove mount directory:%v", err)
+		s.log.Error(err, "unable to remove mount directory")
 		return nil, status.Errorf(codes.Internal, "Failed remove mount directory %q, error: %v", target, err)
 	}
-	log.Infoln("Successfully un-published volume ", req.GetVolumeId())
+	s.log.Info("successfully un-published volume ", "VolumeId", req.GetVolumeId())
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 func (s *service) NodeGetVolumeStats(
