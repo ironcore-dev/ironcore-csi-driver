@@ -6,7 +6,7 @@ require (
 	github.com/container-storage-interface/spec v1.7.0
 	github.com/dell/gocsi v1.6.0
 	github.com/golang/protobuf v1.5.2
-	github.com/onmetal/controller-utils v0.6.5
+	github.com/onmetal/controller-utils v0.6.6
 	github.com/onmetal/onmetal-api v0.0.13-0.20221213101226-2fe1607aa3b3
 	github.com/onsi/ginkgo/v2 v2.6.0
 	github.com/onsi/gomega v1.24.1
@@ -80,7 +80,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.25.0 // indirect
+	k8s.io/apiextensions-apiserver v0.25.5 // indirect
 	k8s.io/component-base v0.25.5 // indirect
 	k8s.io/klog/v2 v2.80.0 // indirect
 	k8s.io/kube-aggregator v0.25.5 // indirect
