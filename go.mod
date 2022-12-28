@@ -8,8 +8,8 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/onmetal/controller-utils v0.6.5
 	github.com/onmetal/onmetal-api v0.0.13-0.20221213101226-2fe1607aa3b3
-	github.com/onsi/ginkgo/v2 v2.6.0
-	github.com/onsi/gomega v1.24.1
+	github.com/onsi/ginkgo/v2 v2.6.1
+	github.com/onsi/gomega v1.24.2
 	github.com/sirupsen/logrus v1.9.0
 	google.golang.org/grpc v1.50.1
 	k8s.io/api v0.25.5
@@ -67,7 +67,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.23.0 // indirect
-	golang.org/x/net v0.3.1-0.20221206200815-1e63c2f08a10 // indirect
+	golang.org/x/net v0.4.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20220909003341-f21342109be1 // indirect
 	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/term v0.3.0 // indirect
