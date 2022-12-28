@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/go-logr/logr"
 	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
 
@@ -29,29 +28,6 @@ const (
 	ServiceName = "onmetal-csi-driver"
 )
 
-type service struct {
-	// parameters
-	driverName    string
-	driverVersion string
-	nodeId        string
-	nodeName      string
-	csiNamespace  string
-	mountutil     *mount.SafeFormatAndMount
-	// rest client
-	parentClient client.Client
-	// logger
-	log logr.Logger
-}
-
-// Service is the CSI Mock service provider.
-type Service interface {
-	csi.ControllerServer
-	csi.IdentityServer
-	csi.NodeServer
-
-	BeforeServe(context.Context, *gocsi.StoragePlugin, net.Listener) error
-}
-
 // Initialize kubernetes client
 var (
 	Scheme = runtime.NewScheme()
@@ -63,7 +39,28 @@ func init() {
 	utilruntime.Must(computev1alpha1.AddToScheme(Scheme))
 }
 
-func New(config map[string]string, logger logr.Logger) Service {
+type service struct {
+	// parameters
+	driverName    string
+	driverVersion string
+	nodeId        string
+	nodeName      string
+	csiNamespace  string
+	mountutil     *mount.SafeFormatAndMount
+	// rest client
+	parentClient client.Client
+}
+
+// Service is the CSI Mock service provider.
+type Service interface {
+	csi.ControllerServer
+	csi.IdentityServer
+	csi.NodeServer
+
+	BeforeServe(context.Context, *gocsi.StoragePlugin, net.Listener) error
+}
+
+func New(config map[string]string) Service {
 	svc := &service{
 		driverName:    config["driver_name"],
 		driverVersion: config["driver_version"],
@@ -71,7 +68,6 @@ func New(config map[string]string, logger logr.Logger) Service {
 		nodeName:      config["node_name"],
 		csiNamespace:  config["csi_namespace"],
 		mountutil:     &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
-		log:           logger,
 	}
 
 	if _, ok := config["parent_kube_config"]; ok {
