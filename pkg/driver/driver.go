@@ -6,8 +6,8 @@ import (
 	"net"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/dell/gocsi"
 	"github.com/onmetal/onmetal-csi-driver/pkg/util"
-	"github.com/rexray/gocsi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/mount-utils"
