@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/go-logr/logr"
 	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
 	"github.com/onmetal/onmetal-csi-driver/pkg/util"
-	log "github.com/onmetal/onmetal-csi-driver/pkg/util/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
@@ -24,10 +24,10 @@ import (
 const volumeFieldOwner = client.FieldOwner("storage.onmetal.de/volume")
 
 func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
-	log.Infoln("create volume request received with volume name", req.GetName())
+	d.log.Info("create volume request received", "volume.Name", req.GetName())
 	capacity := req.GetCapacityRange()
 	csiVolResp := &csi.CreateVolumeResponse{}
-	volBytes, sVolSize, err := validateVolumeSize(capacity)
+	volBytes, sVolSize, err := validateVolumeSize(capacity, d.log)
 	if err != nil {
 		return csiVolResp, status.Errorf(codes.Internal, err.Error())
 	}
@@ -47,7 +47,8 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		}
 	}
 
-	log.Infof("storage pool %s is used for volume %s", storagePool, req.GetName())
+	d.log.Info("storage pool used for volume", "volume.Name", req.GetName(), "storagePool", storagePool)
+
 	volume := &storagev1alpha1.Volume{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: storagev1alpha1.SchemeGroupVersion.String(),
@@ -70,17 +71,17 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		},
 	}
 
-	log.Infoln("create/update volume: ", volume.Name)
+	d.log.Info("create/update volume: ", "volume.Name", volume.Name)
 	if err := d.kubeHelper.OnMetalClient.Patch(ctx, volume, client.Apply, volumeFieldOwner); err != nil {
-		log.Errorf("error while create/update volume:%v", err)
+		d.log.Error(err, "error while create/update volume")
 		return csiVolResp, status.Errorf(codes.Internal, err.Error())
 	}
 
 	createdVolume := &storagev1alpha1.Volume{}
-	log.Infoln("check volume is created and Available")
+	d.log.Info("check if volume is created and Available")
 	err = d.kubeHelper.OnMetalClient.Get(ctx, client.ObjectKey{Name: volume.Name, Namespace: volume.Namespace}, createdVolume)
 	if err != nil && !apierrors.IsNotFound(err) {
-		log.Errorf("could not get volume with name %s,namespace %s, error:%v", volume.Name, volume.Namespace, err)
+		d.log.Error(err, "could not get volume", "volume.Name", volume.Name, "namespace", volume.Namespace)
 		return csiVolResp, status.Errorf(codes.Internal, err.Error())
 	}
 
@@ -96,15 +97,15 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	csiVolResp.Volume = volResp
 
 	if createdVolume.Status.State != storagev1alpha1.VolumeStateAvailable {
-		log.Errorf("volume with name %s,namespace %s, is successfully created, But State is not 'Available'", volume.Name, volume.Namespace)
+		d.log.Error(err, "volume is successfully created, But State is not 'Available'", "volume.Name", volume.Name, "namespace", volume.Namespace)
 		return csiVolResp, status.Errorf(codes.Internal, "check volume State it's not Available")
 	}
-	log.Infoln("successfully created volume", csiVolResp.Volume.VolumeId)
+	d.log.Info("successfully created volume", "VolumeId", csiVolResp.Volume.VolumeId)
 	return csiVolResp, nil
 }
 
 func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	log.Infoln("delete volume request received with volume ID", req.GetVolumeId())
+	d.log.Info("delete volume request received with volume ID", "VolumeId", req.GetVolumeId())
 	if req.GetVolumeId() == "" {
 		return nil, status.Errorf(codes.Internal, "required parameters are missing")
 	}
@@ -116,36 +117,35 @@ func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 	vol := &storagev1alpha1.Volume{}
 	err := d.kubeHelper.OnMetalClient.Get(ctx, volumeKey, vol)
 	if err != nil && !apierrors.IsNotFound(err) {
-		log.Errorf("could not get volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
+		d.log.Error(err, "could not get volume", "volumeKey.Name", volumeKey.Name, "namespace", volumeKey.Namespace)
 		return deleteResponse, status.Errorf(codes.Internal, err.Error())
 	}
 	if apierrors.IsNotFound(err) {
-		log.Infoln("volume is already been deleted")
+		d.log.V(1).Info("volume is already been deleted")
 		return deleteResponse, nil
 	}
 	err = d.kubeHelper.OnMetalClient.Delete(ctx, vol)
 	if err != nil {
-		log.Errorf("unable to delete volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
+		d.log.Error(err, "unable to delete volume", "volumeKey.Name", volumeKey.Name, "namespace", volumeKey.Namespace)
 		return deleteResponse, status.Errorf(codes.Internal, err.Error())
 	}
-	log.Infoln("deleted volume ", volumeKey.Name)
-	log.Infoln("successfully deleted volume", req.GetVolumeId())
+	d.log.Info("deleted volume ", "volumeKey.Name", volumeKey.Name)
+	d.log.Info("successfully deleted volume", "VolumeId", req.GetVolumeId())
 	return deleteResponse, nil
 }
 
 func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (controlePublishresponse *csi.ControllerPublishVolumeResponse, err error) {
-	log.Infof("request received to publish volume %s at node %s\n", req.GetVolumeId(), req.GetNodeId())
-
+	d.log.Info("request received to publish volume", "VolumeId", req.GetVolumeId(), "NodeId", req.GetNodeId())
 	csiResp := &csi.ControllerPublishVolumeResponse{}
-	providerID, err := d.kubeHelper.NodeGetProviderID(ctx, req.GetNodeId())
+	providerID, err := d.kubeHelper.NodeGetProviderID(ctx, req.GetNodeId(), d.log)
 	if err != nil {
-		log.Errorf("could not get ProviderID from node %s, error:%v", req.GetNodeId(), err)
+		d.log.Error(err, "could not get ProviderID from node", "nodeId", req.GetNodeId())
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 
 	namespace, err := util.GetNamespaceFromProviderID(providerID)
 	if err != nil {
-		log.Errorf("could not get Namespace from ProviderID %s for node %s, error:%v", providerID, req.GetNodeId(), err)
+		d.log.Error(err, "could not get Namespace from ProviderID for node", "nodeId", req.GetNodeId(), "providerID", providerID)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 
@@ -156,10 +156,10 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 		},
 	}
 
-	log.Infoln("get machine with provided name and namespace")
+	d.log.Info("get machine with provided name and namespace")
 	err = d.kubeHelper.OnMetalClient.Get(ctx, client.ObjectKeyFromObject(machine), machine)
 	if err != nil {
-		log.Errorf("could not get machine with name %s,namespace %s, error:%v", machine.Name, machine.Namespace, err)
+		d.log.Error(err, "could not get machine", "machine.Name", machine.Name, "namespace", machine.Namespace)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 	vaName := req.GetVolumeId() + "-attachment"
@@ -174,22 +174,22 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 		// volAttachment.Priority = 1
 		volAttachment.VolumeSource = attachSource
 		machine.Spec.Volumes = append(machine.Spec.Volumes, volAttachment)
-		log.Infoln("update machine with volumeattachment")
+		d.log.V(1).Info("update machine with volume attachment")
 		err = d.kubeHelper.OnMetalClient.Update(ctx, machine)
 		if err != nil {
-			log.Errorf("failed to update machine with name %s,namespace %s, error:%v", machine.Name, machine.Namespace, err)
+			d.log.Error(err, "failed to update machine", "machine.Name", machine.Name, "namespace", machine.Namespace)
 			return csiResp, status.Errorf(codes.Internal, err.Error())
 		}
 	}
 	updatedMachine := &computev1alpha1.Machine{}
-	log.Infoln("check machine is updated")
+	d.log.V(1).Info("check machine is updated")
 	err = d.kubeHelper.OnMetalClient.Get(ctx, client.ObjectKeyFromObject(machine), updatedMachine)
 	if err != nil && !apierrors.IsNotFound(err) {
-		log.Errorf("could not get machine with name %s,namespace %s, error:%v", machine.Name, machine.Namespace, err)
+		d.log.Error(err, "could not get machine", "machine.Name", machine.Name, "namespace", machine.Namespace)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 	if updatedMachine.Status.State != computev1alpha1.MachineStateRunning {
-		log.Errorln("machine is not ready")
+		d.log.Error(errors.New("machine is not ready"), "machine is not ready")
 		return csiResp, status.Errorf(codes.Internal, "Machine is not updated")
 	}
 
@@ -201,19 +201,19 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 	volume := &storagev1alpha1.Volume{}
 	err = d.kubeHelper.OnMetalClient.Get(ctx, volumeKey, volume)
 	if err != nil && !apierrors.IsNotFound(err) {
-		log.Errorf("could not get volume with name %s,namespace %s, error:%v", volumeKey.Name, volumeKey.Namespace, err)
+		d.log.Error(err, "could not get volume", "volumeKey.Name", volumeKey.Name, "namespace", volumeKey.Namespace)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 	if apierrors.IsNotFound(err) {
-		log.Infoln("volume not found with name ", volumeKey.Name)
+		d.log.Info("volume not found with name ", "volumeKey.Name", volumeKey.Name)
 		return csiResp, nil
 	}
 	if volume.Status.State != storagev1alpha1.VolumeStateAvailable || volume.Status.Phase != storagev1alpha1.VolumePhaseBound {
 		return csiResp, status.Errorf(codes.Internal, "Volume is not ready or bound")
 	}
-	deviceName := validateDeviceName(volume, updatedMachine, vaName)
+	deviceName := validateDeviceName(volume, updatedMachine, vaName, d.log)
 	if deviceName == "" {
-		log.Errorln("unable to get disk to mount")
+		d.log.Error(errors.New("unable to get disk to mount"), "unable to get disk to mount")
 		return csiResp, status.Errorf(codes.Internal, "Device not available")
 	}
 	volCtx := make(map[string]string)
@@ -221,22 +221,22 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 	volCtx["volume_id"] = req.GetVolumeId()
 	volCtx["device_name"] = deviceName
 	csiResp.PublishContext = volCtx
-	log.Infoln("successfully published volume", req.GetVolumeId(), "on node", req.GetNodeId())
+	d.log.Info("successfully published volume", "VolumeId", req.GetVolumeId(), "NodeId", req.GetNodeId())
 	return csiResp, nil
 }
 
 func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
-	log.Infof("request received to un-publish volume %s at node %s", req.GetVolumeId(), req.GetNodeId())
+	d.log.Info("request received to un-publish volume", "VolumeId", req.GetVolumeId(), "NodeId", req.GetNodeId())
 	csiResp := &csi.ControllerUnpublishVolumeResponse{}
-	providerID, err := d.kubeHelper.NodeGetProviderID(ctx, req.GetNodeId())
+	providerID, err := d.kubeHelper.NodeGetProviderID(ctx, req.GetNodeId(), d.log)
 	if err != nil {
-		log.Errorf("could not get ProviderID from node %s, error:%v", req.GetNodeId(), err)
+		d.log.Error(err, "could not get ProviderID from node", "nodeId", req.GetNodeId())
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 
 	namespace, err := util.GetNamespaceFromProviderID(providerID)
 	if err != nil {
-		log.Errorf("could not get Namespace from ProviderID %s for node %s, error:%v", providerID, req.GetNodeId(), err)
+		d.log.Error(err, "could not get Namespace from ProviderID for node", "nodeId", req.GetNodeId(), "providerID", providerID)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 
@@ -247,15 +247,15 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 		},
 	}
 
-	log.Infoln("get machine with provided name and namespace")
+	d.log.V(1).Info("get machine with provided name and namespace")
 	err = d.kubeHelper.OnMetalClient.Get(ctx, client.ObjectKeyFromObject(machine), machine)
 	if err != nil {
-		log.Errorf("could not get machine with name %s,namespace %s, error:%v", machine.Name, machine.Namespace, err)
+		d.log.Error(err, "could not get machine", "machine.Name", machine.Name, "namespace", machine.Namespace)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 	vaName := req.GetVolumeId() + "-attachment"
 	if d.isVolumeAttachmetAvailable(machine, vaName) {
-		log.Infoln("remove machine with volumeattachment")
+		d.log.V(1).Info("remove machine volume-attachment")
 		var vaList []computev1alpha1.Volume
 		for _, va := range machine.Spec.Volumes {
 			if va.Name != vaName {
@@ -265,22 +265,22 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 		machine.Spec.Volumes = vaList
 		err = d.kubeHelper.OnMetalClient.Update(ctx, machine)
 		if err != nil {
-			log.Errorf("failed to update machine with name %s,namespace %s, error:%v", machine.Name, machine.Namespace, err)
+			d.log.Error(err, "failed to update machine", "machine.Name", machine.Name, "namespace", machine.Namespace)
 			return csiResp, status.Errorf(codes.Internal, err.Error())
 		}
 	}
 	updatedMachine := &computev1alpha1.Machine{}
-	log.Infoln("check machine is updated")
+	d.log.V(1).Info("check machine is updated")
 	err = d.kubeHelper.OnMetalClient.Get(ctx, client.ObjectKeyFromObject(machine), updatedMachine)
 	if err != nil && !apierrors.IsNotFound(err) {
-		log.Errorf("could not get machine with name %s,namespace %s, error:%v", machine.Name, machine.Namespace, err)
+		d.log.Error(err, "could not get machine", "machine.Name", machine.Name, "namespace", machine.Namespace)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 	if updatedMachine.Status.State != computev1alpha1.MachineStateRunning {
-		log.Infoln("machine is not ready")
+		d.log.Info("machine is not ready")
 		return csiResp, status.Errorf(codes.Internal, "Machine is not updated")
 	}
-	log.Infoln("successfully un-published volume", req.GetVolumeId(), "from node", req.GetNodeId())
+	d.log.Info("successfully un-published volume", "VolumeId", req.GetVolumeId(), "NodeId", req.GetNodeId())
 	return csiResp, nil
 }
 
@@ -422,7 +422,7 @@ func validateParams(params map[string]string) bool {
 	return true
 }
 
-func validateVolumeSize(caprange *csi.CapacityRange) (int64, string, error) {
+func validateVolumeSize(caprange *csi.CapacityRange, log logr.Logger) (int64, string, error) {
 	requiredVolSize := caprange.GetRequiredBytes()
 	allowedMaxVolSize := caprange.GetLimitBytes()
 	if requiredVolSize < 0 || allowedMaxVolSize < 0 {
@@ -433,7 +433,7 @@ func validateVolumeSize(caprange *csi.CapacityRange) (int64, string, error) {
 	var kiBytesGiB int64 = 1024 * 1024
 	var bytesGiB = kiBytesGiB * bytesKiB
 	var MinVolumeSize = 1 * bytesGiB
-	log.Infoln("requested size", requiredVolSize)
+	log.Info("requested size", "size", requiredVolSize)
 	if requiredVolSize == 0 {
 		requiredVolSize = MinVolumeSize
 	}
@@ -445,7 +445,7 @@ func validateVolumeSize(caprange *csi.CapacityRange) (int64, string, error) {
 
 	sizeinGB = requiredVolSize / bytesGiB
 	if sizeinGB == 0 {
-		log.Infoln("Volumen Minimum capacity should be greater 1 GB")
+		log.Info("volume minimum capacity should be greater 1 GB")
 		sizeinGB = 1
 	}
 
@@ -456,22 +456,22 @@ func validateVolumeSize(caprange *csi.CapacityRange) (int64, string, error) {
 		}
 	}
 	strsize := strconv.FormatInt(sizeinGB, 10) + "Gi"
-	log.Infoln("requested size in Gi", strsize)
+	log.Info("requested size in Gi", "size", strsize)
 	return sizeinByte, strsize, nil
 }
 
-func validateDeviceName(volume *storagev1alpha1.Volume, machine *computev1alpha1.Machine, vaName string) string {
+func validateDeviceName(volume *storagev1alpha1.Volume, machine *computev1alpha1.Machine, vaName string, log logr.Logger) string {
 	if volume.Status.Access != nil && volume.Status.Access.VolumeAttributes != nil {
 		wwn := volume.Status.Access.VolumeAttributes["WWN"]
 		for _, va := range machine.Spec.Volumes {
 			if va.Name == vaName && *va.Device != "" {
 				device := *va.Device
-				log.Infoln("Machine is updated with device :", device)
+				log.Info("machine is updated with device", "device", device)
 				return "/dev/disk/by-id/virtio-" + device + "-" + wwn
 			}
 		}
 	}
-	log.Infoln("could not found device for given volume", volume.ObjectMeta.Name)
+	log.Info("could not find device for given volume", "volume.ObjectMeta.Name", volume.ObjectMeta.Name)
 	return ""
 }
 

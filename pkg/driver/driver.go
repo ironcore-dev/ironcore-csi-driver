@@ -7,6 +7,7 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/dell/gocsi"
+	"github.com/go-logr/logr"
 	"github.com/onmetal/onmetal-csi-driver/pkg/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -28,6 +29,7 @@ type driver struct {
 	csiNamespace  string
 	mountUtil     *mount.SafeFormatAndMount
 	kubeHelper    *util.KubeHelper
+	log           logr.Logger
 }
 
 // Driver is the CSI Mock driver provider.
@@ -39,9 +41,9 @@ type Driver interface {
 	BeforeServe(context.Context, *gocsi.StoragePlugin, net.Listener) error
 }
 
-func New(config map[string]string) Driver {
+func New(config map[string]string, logger logr.Logger) Driver {
 
-	kubeHelper, err := util.NewKubeHelper(config)
+	kubeHelper, err := util.NewKubeHelper(config, logger)
 	if err != nil {
 		log.Fatal(err, "unable to create kube clients")
 	}
@@ -54,6 +56,7 @@ func New(config map[string]string) Driver {
 		csiNamespace:  config["csi_namespace"],
 		kubeHelper:    kubeHelper,
 		mountUtil:     &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
+		log:           logger,
 	}
 
 	return d

@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	log "github.com/onmetal/onmetal-csi-driver/pkg/util/logger"
+	"github.com/go-logr/logr"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,10 +39,10 @@ func loadRESTConfig(kubeconfig string) (cluster.Cluster, error) {
 }
 
 // Create inCluster client
-func buildInClusterClient() (client.Client, error) {
+func buildInClusterClient(log logr.Logger) (client.Client, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		log.Errorf("BuildClient Error while getting cluster config, error: %v", err)
+		log.Error(err, "failed to get cluster config")
 		return nil, err
 	}
 
