@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -468,9 +467,7 @@ func validateDeviceName(volume *storagev1alpha1.Volume, machine *computev1alpha1
 			if va.Name == vaName && *va.Device != "" {
 				device := *va.Device
 				log.Infoln("Machine is updated with device :", device)
-				deviceArray := strings.Split(device, "")
-				deviceSlice := strings.Join(deviceArray[1:], "")
-				return "/dev/disk/by-id/virtio-v" + deviceSlice + "-" + wwn
+				return "/dev/disk/by-id/virtio-" + device + "-" + wwn
 			}
 		}
 	}
