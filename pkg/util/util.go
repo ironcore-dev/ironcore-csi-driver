@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 )
 
@@ -40,7 +40,7 @@ func loadRESTConfig(kubeconfig string) (cluster.Cluster, error) {
 
 // Create inCluster client
 func buildInClusterClient(log logr.Logger) (client.Client, error) {
-	config, err := rest.InClusterConfig()
+	config, err := config.GetConfig()
 	if err != nil {
 		log.Error(err, "failed to get cluster config")
 		return nil, err

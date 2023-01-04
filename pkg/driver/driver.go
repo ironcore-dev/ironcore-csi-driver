@@ -45,7 +45,7 @@ func New(config map[string]string, logger logr.Logger) Driver {
 
 	kubeHelper, err := util.NewKubeHelper(config, logger)
 	if err != nil {
-		log.Fatal(err, "unable to create kube clients")
+		log.Fatal(err, " unable to create kube clients")
 	}
 
 	d := &driver{
