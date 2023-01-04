@@ -142,7 +142,7 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 		*d = *newDriver.(*driver)
 		d.csiNamespace = ns.Name
 
-		// Create a test node with providerID
+		// Create a test node with providerID spec
 		node := &corev1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "node-",
@@ -161,7 +161,7 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 		createdNode := &corev1.Node{}
 		Expect(d.kubeHelper.InClusterClient.Get(ctx, client.ObjectKey{Name: d.nodeName}, createdNode)).To(Succeed())
 
-		//create a test machine
+		//create a test onmetal-machine
 		machine := &computev1alpha1.Machine{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      node.Name,
@@ -180,7 +180,7 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 
 		Expect(k8sClient.Create(ctx, machine)).To(Succeed())
 
-		//patch machine status to running
+		//patch onmetal-machine status to running
 		outdatedStatusMachine := machine.DeepCopy()
 		machine.Status.State = computev1alpha1.MachineStateRunning
 		Expect(k8sClient.Patch(ctx, machine, client.MergeFrom(outdatedStatusMachine))).To(Succeed())

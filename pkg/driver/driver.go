@@ -9,8 +9,6 @@ import (
 	"github.com/dell/gocsi"
 	"github.com/go-logr/logr"
 	"github.com/onmetal/onmetal-csi-driver/pkg/util"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
 )
@@ -64,8 +62,4 @@ func New(config map[string]string, logger logr.Logger) Driver {
 
 func (d *driver) BeforeServe(_ context.Context, _ *gocsi.StoragePlugin, _ net.Listener) error {
 	return nil
-}
-
-func (d *driver) ControllerGetVolume(context.Context, *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ControllerGetVolume not implemented")
 }

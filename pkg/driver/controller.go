@@ -98,7 +98,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 
 	if createdVolume.Status.State != storagev1alpha1.VolumeStateAvailable {
 		d.log.Error(err, "volume is successfully created, But State is not 'Available'", "volume.Name", volume.Name, "namespace", volume.Namespace)
-		return csiVolResp, status.Errorf(codes.Internal, "check volume State it's not Available")
+		return csiVolResp, status.Errorf(codes.Internal, "volume is not in Available state")
 	}
 	d.log.Info("successfully created volume", "VolumeId", csiVolResp.Volume.VolumeId)
 	return csiVolResp, nil
@@ -282,6 +282,10 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 	}
 	d.log.Info("successfully un-published volume", "VolumeId", req.GetVolumeId(), "NodeId", req.GetNodeId())
 	return csiResp, nil
+}
+
+func (d *driver) ControllerGetVolume(context.Context, *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ControllerGetVolume not implemented")
 }
 
 func (d *driver) ListVolumes(_ context.Context, _ *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
