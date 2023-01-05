@@ -65,7 +65,7 @@ spec:
       hostNetwork: true
       containers:
         - name: registrar
-          image: quay.io/k8scsi/csi-node-driver-registrar:v2.5.0
+          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.5.0
           imagePullPolicy: IfNotPresent
           args:
             - "--v=5"
