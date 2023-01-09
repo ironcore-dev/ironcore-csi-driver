@@ -1,7 +1,7 @@
 # Image URL to use all building/pushing image targets
 IMG ?= onmetal-csi-driver:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.24.2
+ENVTEST_K8S_VERSION = 1.25.0
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
