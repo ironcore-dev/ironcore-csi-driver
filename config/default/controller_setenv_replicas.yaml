@@ -17,4 +17,4 @@ spec:
             - name: CSI_DRIVER_VERSION
               value: "1.0.0"
             - name: PARENT_KUBE_CONFIG
-              value: "/etc/parent-kubeconfig/kubeconfig.yaml"
+              value: ""/etc/csi.onmetal.de/kubeconfig""

@@ -466,12 +466,12 @@ func validateVolumeSize(caprange *csi.CapacityRange, log logr.Logger) (int64, st
 
 func validateDeviceName(volume *storagev1alpha1.Volume, machine *computev1alpha1.Machine, vaName string, log logr.Logger) string {
 	if volume.Status.Access != nil && volume.Status.Access.VolumeAttributes != nil {
-		wwn := volume.Status.Access.VolumeAttributes["WWN"]
+		handle := volume.Status.Access.Handle
 		for _, va := range machine.Spec.Volumes {
 			if va.Name == vaName && *va.Device != "" {
 				device := *va.Device
 				log.Info("machine is updated with device", "device", device)
-				return "/dev/disk/by-id/virtio-" + device + "-" + wwn
+				return "/dev/disk/by-id/virtio-" + device + "-" + handle
 			}
 		}
 	}

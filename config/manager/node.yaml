@@ -87,7 +87,7 @@ spec:
           volumeMounts:
             - name: registration-dir
               mountPath: /registration
-            - name: driver-path
+            - name: socket-dir
               mountPath: /csi
         - name: driver
           securityContext:

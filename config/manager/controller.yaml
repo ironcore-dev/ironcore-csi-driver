@@ -118,10 +118,10 @@ spec:
             - "--v=5"
           env:
             - name: ADDRESS
-              value: /var/run/csi/csi.sock
+              value: /csi/csi.sock
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/run/csi
+              mountPath: /csi
         - name: provisioner
           image: k8s.gcr.io/sig-storage/csi-provisioner:v3.1.0
           args:
@@ -133,10 +133,10 @@ spec:
             - "--v=5"
           env:
             - name: ADDRESS
-              value: /var/run/csi/csi.sock
+              value: /csi/csi.sock
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/run/csi
+              mountPath: /csi
         - name: snapshotter
           image: k8s.gcr.io/sig-storage/csi-snapshotter:v5.0.1
           args:
@@ -146,11 +146,11 @@ spec:
             - "--snapshot-name-uuid-length=10"
           env:
             - name: ADDRESS
-              value: /var/run/csi/csi.sock
+              value: /csi/csi.sock
           imagePullPolicy: Always
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/run/csi
+              mountPath: /csi
         - name: resizer
           image: k8s.gcr.io/sig-storage/csi-resizer:v1.4.0
           args:
@@ -158,10 +158,10 @@ spec:
             - "--csi-address=$(ADDRESS)"
           env:
             - name: ADDRESS
-              value: /var/run/csi/csi.sock
+              value: /csi/csi.sock
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/run/csi      
+              mountPath: /csi
         - name: driver
           securityContext:
             privileged: true
@@ -172,7 +172,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: CSI_ENDPOINT
-              value: /var/run/csi/csi.sock
+              value: /csi/csi.sock
             - name: PARENT_KUBE_CONFIG
               value: "/etc/csi.onmetal.de/kubeconfig"
             - name: APP_LOG_LEVEL
@@ -198,7 +198,7 @@ spec:
                   key: namespace
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/run/csi
+              mountPath: /csi
             - name: kubeconfig-volume
               mountPath: /etc/csi.onmetal.de
       volumes:
