@@ -2,8 +2,8 @@ package driver
 
 import (
 	"context"
-	"log"
 	"net"
+	"os"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/dell/gocsi"
@@ -39,11 +39,12 @@ type Driver interface {
 	BeforeServe(context.Context, *gocsi.StoragePlugin, net.Listener) error
 }
 
-func New(config map[string]string, logger logr.Logger) Driver {
+func New(config map[string]string, log logr.Logger) Driver {
 
-	kubeHelper, err := util.NewKubeHelper(config, logger)
+	kubeHelper, err := util.NewKubeHelper(config)
 	if err != nil {
-		log.Fatal(err, " unable to create kube clients")
+		log.Error(err, "unable to create kube clients")
+		os.Exit(1)
 	}
 
 	d := &driver{
@@ -54,7 +55,7 @@ func New(config map[string]string, logger logr.Logger) Driver {
 		csiNamespace:  config["csi_namespace"],
 		kubeHelper:    kubeHelper,
 		mountUtil:     &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
-		log:           logger,
+		log:           log,
 	}
 
 	return d

@@ -24,12 +24,12 @@ type KubeHelper struct {
 	OnMetalClient   client.Client
 }
 
-func NewKubeHelper(config map[string]string, log logr.Logger) (*KubeHelper, error) {
+func NewKubeHelper(config map[string]string) (*KubeHelper, error) {
 	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
 	utilruntime.Must(storagev1alpha1.AddToScheme(Scheme))
 	utilruntime.Must(computev1alpha1.AddToScheme(Scheme))
 
-	inClusterClient, err := buildInClusterClient(log)
+	inClusterClient, err := buildInClusterClient()
 	if err != nil {
 		return nil, err
 	}
@@ -62,6 +62,7 @@ func (k *KubeHelper) NodeGetZone(ctx context.Context, nodeName string, log logr.
 	err := k.InClusterClient.Get(ctx, client.ObjectKeyFromObject(node), node)
 	if err != nil {
 		log.Error(err, "node not found")
+		return "", err
 	}
 
 	labels := node.Labels
@@ -89,6 +90,7 @@ func (k *KubeHelper) NodeGetProviderID(ctx context.Context, nodeName string, log
 	err := k.InClusterClient.Get(ctx, client.ObjectKeyFromObject(node), node)
 	if err != nil {
 		log.Error(err, "node not found")
+		return "", err
 	}
 
 	if node.Spec.ProviderID != "" {
