@@ -2,14 +2,13 @@ package driver
 
 import (
 	"context"
-	"log"
 	"net"
+	"os"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/dell/gocsi"
+	"github.com/go-logr/logr"
 	"github.com/onmetal/onmetal-csi-driver/pkg/util"
-	"github.com/rexray/gocsi"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
 )
@@ -28,6 +27,7 @@ type driver struct {
 	csiNamespace  string
 	mountUtil     *mount.SafeFormatAndMount
 	kubeHelper    *util.KubeHelper
+	log           logr.Logger
 }
 
 // Driver is the CSI Mock driver provider.
@@ -39,11 +39,12 @@ type Driver interface {
 	BeforeServe(context.Context, *gocsi.StoragePlugin, net.Listener) error
 }
 
-func New(config map[string]string) Driver {
+func New(config map[string]string, log logr.Logger) Driver {
 
 	kubeHelper, err := util.NewKubeHelper(config)
 	if err != nil {
-		log.Fatal(err, "unable to create kube clients")
+		log.Error(err, "unable to create client")
+		os.Exit(1)
 	}
 
 	d := &driver{
@@ -54,6 +55,7 @@ func New(config map[string]string) Driver {
 		csiNamespace:  config["csi_namespace"],
 		kubeHelper:    kubeHelper,
 		mountUtil:     &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
+		log:           log,
 	}
 
 	return d
@@ -61,8 +63,4 @@ func New(config map[string]string) Driver {
 
 func (d *driver) BeforeServe(_ context.Context, _ *gocsi.StoragePlugin, _ net.Listener) error {
 	return nil
-}
-
-func (d *driver) ControllerGetVolume(context.Context, *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ControllerGetVolume not implemented")
 }

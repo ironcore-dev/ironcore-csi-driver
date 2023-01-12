@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/go-logr/logr"
 	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
-	log "github.com/onmetal/onmetal-csi-driver/pkg/util/logger"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -53,7 +53,7 @@ func NewKubeHelper(config map[string]string) (*KubeHelper, error) {
 	}, nil
 }
 
-func (k *KubeHelper) NodeGetZone(ctx context.Context, nodeName string) (string, error) {
+func (k *KubeHelper) NodeGetZone(ctx context.Context, nodeName string, log logr.Logger) (string, error) {
 	node := &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: nodeName,
@@ -61,7 +61,8 @@ func (k *KubeHelper) NodeGetZone(ctx context.Context, nodeName string) (string, 
 	}
 	err := k.InClusterClient.Get(ctx, client.ObjectKeyFromObject(node), node)
 	if err != nil {
-		log.Errorf("Node Not found:%v", err)
+		log.Error(err, "node not found")
+		return "", err
 	}
 
 	labels := node.Labels
@@ -80,7 +81,7 @@ func (k *KubeHelper) NodeGetZone(ctx context.Context, nodeName string) (string, 
 	return zone, nil
 }
 
-func (k *KubeHelper) NodeGetProviderID(ctx context.Context, nodeName string) (string, error) {
+func (k *KubeHelper) NodeGetProviderID(ctx context.Context, nodeName string, log logr.Logger) (string, error) {
 	node := &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: nodeName,
@@ -88,7 +89,8 @@ func (k *KubeHelper) NodeGetProviderID(ctx context.Context, nodeName string) (st
 	}
 	err := k.InClusterClient.Get(ctx, client.ObjectKeyFromObject(node), node)
 	if err != nil {
-		log.Errorf("Node Not found:%v", err)
+		log.Error(err, "node not found")
+		return "", err
 	}
 
 	if node.Spec.ProviderID != "" {

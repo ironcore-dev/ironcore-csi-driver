@@ -2,43 +2,69 @@ package main
 
 import (
 	"context"
+	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/dell/gocsi"
+	csictx "github.com/dell/gocsi/context"
+	"github.com/go-logr/logr"
 	"github.com/onmetal/onmetal-csi-driver/pkg/driver"
 	"github.com/onmetal/onmetal-csi-driver/pkg/provider"
-	"github.com/rexray/gocsi"
-	csictx "github.com/rexray/gocsi/context"
+	"go.uber.org/zap/zapcore"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 func main() {
-	config := initialConfiguration()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-signalChan
+		cancel()
+	}()
+
+	config, log := initialConfiguration(ctx)
 	gocsi.Run(
-		context.Background(),
+		ctx,
 		driver.Name,
 		"onMetal CSI Driver Plugin",
 		"",
-		provider.New(config))
+		provider.New(config, log))
 }
 
-func initialConfiguration() map[string]string {
+func initialConfiguration(ctx context.Context) (map[string]string, logr.Logger) {
 	configParams := make(map[string]string)
-	if nodeip, ok := csictx.LookupEnv(context.Background(), "NODE_IP_ADDRESS"); ok {
+	if nodeip, ok := csictx.LookupEnv(ctx, "NODE_IP_ADDRESS"); ok {
 		configParams["node_ip"] = nodeip
 	}
-	if nodeName, ok := csictx.LookupEnv(context.Background(), "KUBE_NODE_NAME"); ok {
+	if nodeName, ok := csictx.LookupEnv(ctx, "KUBE_NODE_NAME"); ok {
 		configParams["node_name"] = nodeName
 		configParams["node_id"] = nodeName
 	}
-	if drivername, ok := csictx.LookupEnv(context.Background(), "CSI_DRIVER_NAME"); ok {
+	if drivername, ok := csictx.LookupEnv(ctx, "CSI_DRIVER_NAME"); ok {
 		configParams["driver_name"] = drivername
 	}
-	if driverversion, ok := csictx.LookupEnv(context.Background(), "CSI_DRIVER_VERSION"); ok {
+	if driverversion, ok := csictx.LookupEnv(ctx, "CSI_DRIVER_VERSION"); ok {
 		configParams["driver_version"] = driverversion
 	}
-	if parentKubeconfig, ok := csictx.LookupEnv(context.Background(), "PARENT_KUBE_CONFIG"); ok {
+	if parentKubeconfig, ok := csictx.LookupEnv(ctx, "PARENT_KUBE_CONFIG"); ok {
 		configParams["parent_kube_config"] = parentKubeconfig
 	}
-	if volumeNamespace, ok := csictx.LookupEnv(context.Background(), "VOLUME_NS"); ok {
+	if volumeNamespace, ok := csictx.LookupEnv(ctx, "VOLUME_NS"); ok {
 		configParams["csi_namespace"] = volumeNamespace
 	}
-	return configParams
+	return configParams, initLogger(ctx)
+}
+
+func initLogger(ctx context.Context) logr.Logger {
+	logLevel, _ := csictx.LookupEnv(ctx, "APP_LOG_LEVEL")
+	ll, err := zapcore.ParseLevel(logLevel)
+	if err != nil {
+		ll = zapcore.InfoLevel
+	}
+	zapOpts := zap.Options{Development: true, Level: ll, TimeEncoder: zapcore.ISO8601TimeEncoder}
+	return zap.New(zap.UseFlagOptions(&zapOpts))
 }
