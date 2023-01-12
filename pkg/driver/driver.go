@@ -43,7 +43,7 @@ func New(config map[string]string, log logr.Logger) Driver {
 
 	kubeHelper, err := util.NewKubeHelper(config)
 	if err != nil {
-		log.Error(err, "unable to create kube clients")
+		log.Error(err, "unable to create client")
 		os.Exit(1)
 	}
 

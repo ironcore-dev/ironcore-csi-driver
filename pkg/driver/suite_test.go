@@ -46,15 +46,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-// These tests use Ginkgo (BDD-style Go testing framework). Refer to
-// http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
-
 const apiServiceTimeout = 5 * time.Minute
 
-var cfg *rest.Config
-var k8sClient client.Client
-var testEnv *envtest.Environment
-var testEnvExt *envtestutils.EnvironmentExtensions
+var (
+	cfg        *rest.Config
+	k8sClient  client.Client
+	testEnv    *envtest.Environment
+	testEnvExt *envtestutils.EnvironmentExtensions
+)
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -73,24 +72,17 @@ var _ = BeforeSuite(func() {
 		},
 		ErrorIfAPIServicePathIsMissing: true,
 	}
+
 	var err error
 	cfg, err = envtestutils.StartWithExtensions(testEnv, testEnvExt)
-
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
-
 	DeferCleanup(envtestutils.StopWithExtensions, testEnv, testEnvExt)
 
+	Expect(scheme.AddToScheme(scheme.Scheme)).To(Succeed())
 	Expect(storagev1alpha1.AddToScheme(scheme.Scheme)).To(Succeed())
+	Expect(computev1alpha1.AddToScheme(scheme.Scheme)).To(Succeed())
 
-	err = scheme.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-	err = storagev1alpha1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-	err = computev1alpha1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-	err = corev1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
@@ -105,22 +97,10 @@ var _ = BeforeSuite(func() {
 		CertDir:      testEnvExt.APIServiceInstallOptions.LocalServingCertDir,
 	})
 	Expect(err).NotTo(HaveOccurred())
-
 	Expect(apiSrv.Start()).To(Succeed())
 	DeferCleanup(apiSrv.Stop)
 
 	Expect(envtestutils.WaitUntilAPIServicesReadyWithTimeout(apiServiceTimeout, testEnvExt, k8sClient, scheme.Scheme)).To(Succeed())
-
-})
-
-var _ = AfterSuite(func() {
-	By("tearing down the test environment")
-	err := testEnv.Stop()
-	if err != nil {
-		time.Sleep(1 * time.Second) // TODO: fix this, workaround of a known issue https://github.com/kubernetes-sigs/controller-runtime/issues/1571#issuecomment-1005575071
-	}
-	err = testEnv.Stop()
-	Expect(err).NotTo(HaveOccurred())
 })
 
 func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
@@ -128,6 +108,7 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 		ns = &corev1.Namespace{}
 		d  = &driver{}
 	)
+
 	BeforeEach(func() {
 		*ns = corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
@@ -153,7 +134,6 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 				ProviderID: "onmetal://" + ns.Name + "/test",
 			},
 		}
-
 		Expect(d.kubeHelper.InClusterClient.Create(ctx, node)).To(Succeed())
 		DeferCleanup(d.kubeHelper.InClusterClient.Delete, ctx, node)
 
