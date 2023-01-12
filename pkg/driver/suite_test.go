@@ -141,6 +141,8 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 		newDriver := New(getTestConfig(), zap.New())
 		*d = *newDriver.(*driver)
 		d.csiNamespace = ns.Name
+		d.kubeHelper.InClusterClient = k8sClient
+		d.kubeHelper.OnMetalClient = k8sClient
 
 		// Create a test node with providerID spec
 		node := &corev1.Node{
@@ -186,7 +188,6 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 		Expect(k8sClient.Patch(ctx, machine, client.MergeFrom(outdatedStatusMachine))).To(Succeed())
 		DeferCleanup(k8sClient.Delete, ctx, machine)
 
-		d.kubeHelper.OnMetalClient = k8sClient
 	})
 
 	return ns, d
