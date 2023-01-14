@@ -104,11 +104,10 @@ spec:
       labels:
         app: onmetal-csi-driver
     spec:
-      serviceAccount: onmetal-csi-driver
-      hostNetwork: true
+      serviceAccountName: onmetal-csi-driver
       containers:
         - name: attacher
-          image: quay.io/k8scsi/csi-attacher:v3.1.0
+          image: k8s.gcr.io/sig-storage/csi-attacher:v3.4.0
           securityContext:
             privileged: true
             capabilities:
@@ -119,26 +118,27 @@ spec:
             - "--v=5"
           env:
             - name: ADDRESS
-              value: /var/run/csi/csi.sock
+              value: /csi/csi.sock
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/run/csi
+              mountPath: /csi
         - name: provisioner
-          image: quay.io/k8scsi/csi-provisioner:v2.1.1
+          image: k8s.gcr.io/sig-storage/csi-provisioner:v3.1.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--volume-name-prefix=csi-onmetal"
             - "--volume-name-uuid-length=10"
+            - "--feature-gates=Topology=true"
             - "--timeout=300s"
             - "--v=5"
           env:
             - name: ADDRESS
-              value: /var/run/csi/csi.sock
+              value: /csi/csi.sock
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/run/csi
+              mountPath: /csi
         - name: snapshotter
-          image: quay.io/k8scsi/csi-snapshotter:v2.1.5
+          image: k8s.gcr.io/sig-storage/csi-snapshotter:v5.0.1
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"   
@@ -146,22 +146,22 @@ spec:
             - "--snapshot-name-uuid-length=10"
           env:
             - name: ADDRESS
-              value: /var/run/csi/csi.sock
+              value: /csi/csi.sock
           imagePullPolicy: Always
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/run/csi
+              mountPath: /csi
         - name: resizer
-          image: quay.io/k8scsi/csi-resizer:v1.1.0
+          image: k8s.gcr.io/sig-storage/csi-resizer:v1.4.0
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
           env:
             - name: ADDRESS
-              value: /var/run/csi/csi.sock
+              value: /csi/csi.sock
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/run/csi      
+              mountPath: /csi
         - name: driver
           securityContext:
             privileged: true
@@ -172,9 +172,9 @@ spec:
           imagePullPolicy: Always
           env:
             - name: CSI_ENDPOINT
-              value: /var/run/csi/csi.sock
+              value: /csi/csi.sock
             - name: PARENT_KUBE_CONFIG
-              value: "/etc/parent-kubeconfig/kubeconfig.yaml"
+              value: "/etc/csi.onmetal.de/kubeconfig"
             - name: APP_LOG_LEVEL
               value: "info"
             - name: CSI_DRIVER_NAME
@@ -193,17 +193,17 @@ spec:
                   fieldPath: spec.nodeName
             - name: VOLUME_NS
               valueFrom:
-                configMapKeyRef:
-                  name: csi-configmap
+                secretKeyRef:
+                  name: onmetal-csi
                   key: namespace
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/run/csi
+              mountPath: /csi
             - name: kubeconfig-volume
-              mountPath: /etc/parent-kubeconfig    
+              mountPath: /etc/csi.onmetal.de
       volumes:
         - name: socket-dir
-          emptyDir:
+          emptyDir: {}
         - name: kubeconfig-volume
           secret:
-            secretName: kubeconfig-secret    
+            secretName: onmetal-csi

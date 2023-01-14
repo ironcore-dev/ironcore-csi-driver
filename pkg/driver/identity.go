@@ -1,4 +1,4 @@
-package service
+package driver
 
 import (
 	"context"
@@ -7,14 +7,14 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 )
 
-func (s *service) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
+func (d *driver) GetPluginInfo(_ context.Context, _ *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
 	return &csi.GetPluginInfoResponse{
-		Name:          s.driverName,
-		VendorVersion: s.driverVersion,
+		Name:          d.driverName,
+		VendorVersion: d.driverVersion,
 	}, nil
 }
 
-func (s *service) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
+func (d *driver) GetPluginCapabilities(_ context.Context, _ *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
 	return &csi.GetPluginCapabilitiesResponse{
 		Capabilities: []*csi.PluginCapability{
 			{
@@ -35,7 +35,7 @@ func (s *service) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginC
 	}, nil
 }
 
-func (s *service) Probe(ctx context.Context, req *csi.ProbeRequest) (*csi.ProbeResponse, error) {
+func (d *driver) Probe(_ context.Context, _ *csi.ProbeRequest) (*csi.ProbeResponse, error) {
 	ready := new(wrappers.BoolValue)
 	ready.Value = true
 	proberes := new(csi.ProbeResponse)
