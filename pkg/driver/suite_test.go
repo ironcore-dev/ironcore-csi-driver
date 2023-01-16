@@ -1,18 +1,16 @@
-/*
-Copyright 2022.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+// Copyright 2023 OnMetal authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package driver
 
@@ -29,8 +27,8 @@ import (
 	"github.com/onmetal/controller-utils/modutils"
 	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
-	"github.com/onmetal/onmetal-api/testutils/envtestutils"
-	"github.com/onmetal/onmetal-api/testutils/envtestutils/apiserver"
+	envtestutils "github.com/onmetal/onmetal-api/utils/envtest"
+	"github.com/onmetal/onmetal-api/utils/envtest/apiserver"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -134,14 +132,14 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 				ProviderID: "onmetal://" + ns.Name + "/test",
 			},
 		}
-		Expect(d.kubeHelper.InClusterClient.Create(ctx, node)).To(Succeed())
-		DeferCleanup(d.kubeHelper.InClusterClient.Delete, ctx, node)
+		Expect(k8sClient.Create(ctx, node)).To(Succeed())
+		DeferCleanup(k8sClient.Delete, ctx, node)
 
 		d.nodeName = node.Name
 		d.nodeId = node.Name
 
 		createdNode := &corev1.Node{}
-		Expect(d.kubeHelper.InClusterClient.Get(ctx, client.ObjectKey{Name: d.nodeName}, createdNode)).To(Succeed())
+		Expect(k8sClient.Get(ctx, client.ObjectKey{Name: d.nodeName}, createdNode)).To(Succeed())
 
 		//create a test onmetal-machine
 		machine := &computev1alpha1.Machine{
