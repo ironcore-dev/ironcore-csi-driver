@@ -15,13 +15,13 @@ The CSI is a standard for exposing arbitrary block and file storage systems to c
 
 This driver provides CSI implementation for Gardener on Metal. For any Persistent volume (PVC) created using this driver, it will create a new onmetal volume and mount the relevant disks to machine(s) (VMs).
 
-## Installation, using and developing 
+## Installation, Usage, and Development
 
 For more details please refer to documentation folder  [/docs](https://github.com/onmetal/onmetal-csi-driver/tree/main/docs)
 
 ## Contributing 
 
-We`d love to get feedback from you. 
+We'd love to get feedback from you. 
 Please report bugs, suggestions or post questions by opening a [Github issue](https://github.com/onmetal/onmetal-csi-driver/issues)
 
 ## License
