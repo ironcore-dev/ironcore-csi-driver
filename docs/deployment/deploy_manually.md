@@ -1,11 +1,21 @@
-## Deploy onmetal-csi-driver manually in a minikube environment
+## Deploy *onmetal-csi-driver* 
+### Prerequisites
+- Access to a Kubernetes cluster ([minikube](https://minikube.sigs.k8s.io/docs/), [kind](https://kind.sigs.k8s.io/) or a real [kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/) cluster)
+- [make](https://www.gnu.org/software/make/) - to execute build goals
+- [golang](https://golang.org/) - to compile the code
+- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) - to interact with k8s cluster via CLI
+- [onmetal-api](https://github.com/onmetal/onmetal-api/) deployed on the cluster
+- kubeconfig of the cluster where onmetal-api deployed
+- [cloud-provider-onmetal](https://github.com/onmetal/cloud-provider-onmetal/) deployed on the cluster
 
-Start a local Kubernetes cluster using minikube
-```
-minikube start
-```
-```
-eval $(minikube docker-env) 
+
+    
+### Steps to deploy *onmetal-csi-driver*
+Clone the repository [onmetal-csi-driver](https://github.com/onmetal/onmetal-csi-driver)
+
+```shell
+git clone https://github.com/onmetal/onmetal-csi-driver.git
+cd onmetal-csi-driver
 ```
 Create a local docker build
 ```
@@ -19,34 +29,19 @@ Create a secret for kubeconfig file in onmetal-csi namespace
 ```
 kubectl apply -f config/samples/kube_secret_template.yaml -n onmetal-csi
 ```
-> Please note, you need to encode the kubeconfig file content into base64 before placing it inside config/samples/kube_secret_template.yaml
-
-Create a configmap
-
-```
-kubectl create configmap csi-configmap --from-literal=namespace=csi-test -n onmetal-csi
-```
-> Note: ```namespace=csi-test```
-The namespace value(csi-test) should be same namespace where the machine is running and Volume will be created
-
-Add annotations to the node (temporary)
-```
-kubectl annotate node minikube onmetal-machine=csi-machine
-kubectl annotate node minikube onmetal-namespace=csi-test
-```
-
-> Note: ```onmetal-machine``` and ```onmetal-namespace``` value should be the machine and namespace name respectively where the volume will be published, disk will be mounted to.
+> Note: Remember to encode the `kubeconfig` file content and the `namespace` field data to base64 before adding them to the [config/samples/kube_secret_template.yaml](https://github.com/onmetal/onmetal-csi-driver/blob/main/config/samples/kube_secret_template.yaml) file.
 
 
-Deploy onmetal-csi
+Deploy onmetal-csi-driver
 ```
 make deploy
 ```
-Validate CSI driver is deployed and Running
+Validate CSI driver is Running
 
- ```bash
+```bash
 root@node1:~# kubectl get pods -n onmetal-csi
 NAME                    READY   STATUS      RESTARTS        AGE
 onmetal-csi-driver-0    5/5     Running      0              51s
 onmetal-csi-node-mkfs9  2/2     Running      0              29s
 ```
+

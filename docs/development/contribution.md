@@ -20,7 +20,7 @@ Formatting and style section of Peter Bourgon’s [Go: Best Practices for Produc
 Do you want to work on an issue?  You are welcome to claim an existing one by commenting on it in GitHub.
 
 > Perform a cursory search to see if the issue has already been taken by someone else.
-This will prevent misunderstanding and duplication of  effort from contributors on the same issue.
+This will prevent misunderstanding and duplication of effort from contributors on the same issue.
 
 If you have questions about one of the issues please comment on them and one of the
 maintainers will clarify it.
@@ -62,7 +62,7 @@ cd onmetal-csi-driver
 
 * Create a branch from the `main`  using 'git checkout' command.
 
-> If needed, rebase to the current `main` branch before submitting  your pull request. If it doesn't merge properly
+> If needed, rebase to the current `main` branch before submitting your pull request. If it doesn't merge properly
     with `main` you may be asked to rebase your changes.
 
     ```shell
@@ -101,7 +101,7 @@ for a review in the pull request or a comment.
 
 ## Issues and Planning
 
-We use GitHub issues to track bugs and enhancement requests. Please provide as much context as possible when you open  an issue. The information you provide must be comprehensive enough to understand, reproduce the behavior and find related reports of  that issue for the assignee.
+We use GitHub issues to track bugs and enhancement requests. Please provide as much context as possible when you open an issue. The information you provide must be comprehensive enough to understand, reproduce the behavior and find related reports of that issue for the assignee.
 Therefore, contributors may use but aren't restricted to the issue template provided by the Gardener on Metal maintainers.
 
 Issues and pull requests are tracked in the [backlog](https://github.com/onmetal/onmetal-csi-driver/projects) for this project.
