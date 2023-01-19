@@ -170,11 +170,13 @@ spec:
             allowPrivilegeEscalation: true  
           image: onmetal-csi-driver:latest
           imagePullPolicy: Always
+          args:
+          - "--kubeconfig=/etc/csi.onmetal.de/shoot-kubeconfig"
           env:
             - name: CSI_ENDPOINT
               value: /csi/csi.sock
             - name: PARENT_KUBE_CONFIG
-              value: "/etc/csi.onmetal.de/kubeconfig"
+              value: "/etc/csi.onmetal.de/onmetal-kubeconfig"
             - name: APP_LOG_LEVEL
               value: "info"
             - name: CSI_DRIVER_NAME
