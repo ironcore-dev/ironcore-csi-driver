@@ -171,12 +171,11 @@ spec:
           image: onmetal-csi-driver:latest
           imagePullPolicy: Always
           args:
-          - "--kubeconfig=/etc/csi.onmetal.de/shoot-kubeconfig"
+          - "--target-kubeconfig=/etc/csi.onmetal.de/target-kubeconfig"
+          - "--onmetal-kubeconfig=/etc/csi.onmetal.de/onmetal-kubeconfig"
           env:
             - name: CSI_ENDPOINT
               value: /csi/csi.sock
-            - name: PARENT_KUBE_CONFIG
-              value: "/etc/csi.onmetal.de/onmetal-kubeconfig"
             - name: APP_LOG_LEVEL
               value: "info"
             - name: CSI_DRIVER_NAME

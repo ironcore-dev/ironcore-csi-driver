@@ -86,14 +86,14 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	}
 
 	d.log.Info("create/update volume: ", "volume.Name", volume.Name)
-	if err := d.kubeHelper.OnMetalClient.Patch(ctx, volume, client.Apply, volumeFieldOwner); err != nil {
+	if err := d.onMetalClient.Patch(ctx, volume, client.Apply, volumeFieldOwner); err != nil {
 		d.log.Error(err, "error while create/update volume")
 		return csiVolResp, status.Errorf(codes.Internal, err.Error())
 	}
 
 	createdVolume := &storagev1alpha1.Volume{}
 	d.log.Info("check if volume is created and Available")
-	err = d.kubeHelper.OnMetalClient.Get(ctx, client.ObjectKey{Name: volume.Name, Namespace: volume.Namespace}, createdVolume)
+	err = d.onMetalClient.Get(ctx, client.ObjectKey{Name: volume.Name, Namespace: volume.Namespace}, createdVolume)
 	if err != nil && !apierrors.IsNotFound(err) {
 		d.log.Error(err, "could not get volume", "volume.Name", volume.Name, "namespace", volume.Namespace)
 		return csiVolResp, status.Errorf(codes.Internal, err.Error())
@@ -129,7 +129,7 @@ func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 		Name:      "volume-" + req.GetVolumeId(),
 	}
 	vol := &storagev1alpha1.Volume{}
-	err := d.kubeHelper.OnMetalClient.Get(ctx, volumeKey, vol)
+	err := d.onMetalClient.Get(ctx, volumeKey, vol)
 	if err != nil && !apierrors.IsNotFound(err) {
 		d.log.Error(err, "could not get volume", "volumeKey.Name", volumeKey.Name, "namespace", volumeKey.Namespace)
 		return deleteResponse, status.Errorf(codes.Internal, err.Error())
@@ -138,7 +138,7 @@ func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 		d.log.V(1).Info("volume is already been deleted")
 		return deleteResponse, nil
 	}
-	err = d.kubeHelper.OnMetalClient.Delete(ctx, vol)
+	err = d.onMetalClient.Delete(ctx, vol)
 	if err != nil {
 		d.log.Error(err, "unable to delete volume", "volumeKey.Name", volumeKey.Name, "namespace", volumeKey.Namespace)
 		return deleteResponse, status.Errorf(codes.Internal, err.Error())
@@ -151,7 +151,7 @@ func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (controlePublishresponse *csi.ControllerPublishVolumeResponse, err error) {
 	d.log.Info("request received to publish volume", "VolumeId", req.GetVolumeId(), "NodeId", req.GetNodeId())
 	csiResp := &csi.ControllerPublishVolumeResponse{}
-	providerID, err := d.kubeHelper.NodeGetProviderID(ctx, req.GetNodeId(), d.log)
+	providerID, err := NodeGetProviderID(ctx, req.GetNodeId(), d.targetClient)
 	if err != nil {
 		d.log.Error(err, "could not get ProviderID from node", "nodeId", req.GetNodeId())
 		return csiResp, status.Errorf(codes.Internal, err.Error())
@@ -171,7 +171,7 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 	}
 
 	d.log.Info("get machine with provided name and namespace")
-	err = d.kubeHelper.OnMetalClient.Get(ctx, client.ObjectKeyFromObject(machine), machine)
+	err = d.onMetalClient.Get(ctx, client.ObjectKeyFromObject(machine), machine)
 	if err != nil {
 		d.log.Error(err, "could not get machine", "machine.Name", machine.Name, "namespace", machine.Namespace)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
@@ -189,7 +189,7 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 		volAttachment.VolumeSource = attachSource
 		machine.Spec.Volumes = append(machine.Spec.Volumes, volAttachment)
 		d.log.V(1).Info("update machine with volume attachment")
-		err = d.kubeHelper.OnMetalClient.Update(ctx, machine)
+		err = d.onMetalClient.Update(ctx, machine)
 		if err != nil {
 			d.log.Error(err, "failed to update machine", "machine.Name", machine.Name, "namespace", machine.Namespace)
 			return csiResp, status.Errorf(codes.Internal, err.Error())
@@ -197,7 +197,7 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 	}
 	updatedMachine := &computev1alpha1.Machine{}
 	d.log.V(1).Info("check machine is updated")
-	err = d.kubeHelper.OnMetalClient.Get(ctx, client.ObjectKeyFromObject(machine), updatedMachine)
+	err = d.onMetalClient.Get(ctx, client.ObjectKeyFromObject(machine), updatedMachine)
 	if err != nil && !apierrors.IsNotFound(err) {
 		d.log.Error(err, "could not get machine", "machine.Name", machine.Name, "namespace", machine.Namespace)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
@@ -213,7 +213,7 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 		Name:      "volume-" + req.GetVolumeId(),
 	}
 	volume := &storagev1alpha1.Volume{}
-	err = d.kubeHelper.OnMetalClient.Get(ctx, volumeKey, volume)
+	err = d.onMetalClient.Get(ctx, volumeKey, volume)
 	if err != nil && !apierrors.IsNotFound(err) {
 		d.log.Error(err, "could not get volume", "volumeKey.Name", volumeKey.Name, "namespace", volumeKey.Namespace)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
@@ -242,7 +242,7 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	d.log.Info("request received to un-publish volume", "VolumeId", req.GetVolumeId(), "NodeId", req.GetNodeId())
 	csiResp := &csi.ControllerUnpublishVolumeResponse{}
-	providerID, err := d.kubeHelper.NodeGetProviderID(ctx, req.GetNodeId(), d.log)
+	providerID, err := NodeGetProviderID(ctx, req.GetNodeId(), d.targetClient)
 	if err != nil {
 		d.log.Error(err, "could not get ProviderID from node", "nodeId", req.GetNodeId())
 		return csiResp, status.Errorf(codes.Internal, err.Error())
@@ -262,7 +262,7 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 	}
 
 	d.log.V(1).Info("get machine with provided name and namespace")
-	err = d.kubeHelper.OnMetalClient.Get(ctx, client.ObjectKeyFromObject(machine), machine)
+	err = d.onMetalClient.Get(ctx, client.ObjectKeyFromObject(machine), machine)
 	if err != nil {
 		d.log.Error(err, "could not get machine", "machine.Name", machine.Name, "namespace", machine.Namespace)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
@@ -277,7 +277,7 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 			}
 		}
 		machine.Spec.Volumes = vaList
-		err = d.kubeHelper.OnMetalClient.Update(ctx, machine)
+		err = d.onMetalClient.Update(ctx, machine)
 		if err != nil {
 			d.log.Error(err, "failed to update machine", "machine.Name", machine.Name, "namespace", machine.Namespace)
 			return csiResp, status.Errorf(codes.Internal, err.Error())
@@ -285,7 +285,7 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 	}
 	updatedMachine := &computev1alpha1.Machine{}
 	d.log.V(1).Info("check machine is updated")
-	err = d.kubeHelper.OnMetalClient.Get(ctx, client.ObjectKeyFromObject(machine), updatedMachine)
+	err = d.onMetalClient.Get(ctx, client.ObjectKeyFromObject(machine), updatedMachine)
 	if err != nil && !apierrors.IsNotFound(err) {
 		d.log.Error(err, "could not get machine", "machine.Name", machine.Name, "namespace", machine.Namespace)
 		return csiResp, status.Errorf(codes.Internal, err.Error())

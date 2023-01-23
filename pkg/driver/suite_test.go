@@ -25,6 +25,8 @@ import (
 	"github.com/onmetal/controller-utils/buildutils"
 
 	"github.com/onmetal/controller-utils/modutils"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+
 	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
 	envtestutils "github.com/onmetal/onmetal-api/utils/envtest"
@@ -33,7 +35,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -77,11 +78,10 @@ var _ = BeforeSuite(func() {
 	Expect(cfg).NotTo(BeNil())
 	DeferCleanup(envtestutils.StopWithExtensions, testEnv, testEnvExt)
 
-	Expect(scheme.AddToScheme(scheme.Scheme)).To(Succeed())
-	Expect(storagev1alpha1.AddToScheme(scheme.Scheme)).To(Succeed())
-	Expect(computev1alpha1.AddToScheme(scheme.Scheme)).To(Succeed())
+	Expect(storagev1alpha1.AddToScheme(clientgoscheme.Scheme)).To(Succeed())
+	Expect(computev1alpha1.AddToScheme(clientgoscheme.Scheme)).To(Succeed())
 
-	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
+	k8sClient, err = client.New(cfg, client.Options{Scheme: clientgoscheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 	komega.SetClient(k8sClient)
@@ -98,7 +98,7 @@ var _ = BeforeSuite(func() {
 	Expect(apiSrv.Start()).To(Succeed())
 	DeferCleanup(apiSrv.Stop)
 
-	Expect(envtestutils.WaitUntilAPIServicesReadyWithTimeout(apiServiceTimeout, testEnvExt, k8sClient, scheme.Scheme)).To(Succeed())
+	Expect(envtestutils.WaitUntilAPIServicesReadyWithTimeout(apiServiceTimeout, testEnvExt, k8sClient, clientgoscheme.Scheme)).To(Succeed())
 })
 
 func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
@@ -117,11 +117,9 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 		Expect(k8sClient.Create(ctx, ns)).To(Succeed(), "failed to create test namespace")
 		DeferCleanup(k8sClient.Delete, ctx, ns)
 
-		newDriver := New(getTestConfig(), zap.New())
+		newDriver := New(getTestConfig(), k8sClient, k8sClient, zap.New())
 		*d = *newDriver.(*driver)
 		d.csiNamespace = ns.Name
-		d.kubeHelper.InClusterClient = k8sClient
-		d.kubeHelper.OnMetalClient = k8sClient
 
 		// Create a test node with providerID spec
 		node := &corev1.Node{

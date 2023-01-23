@@ -18,10 +18,11 @@ import (
 	"github.com/dell/gocsi"
 	"github.com/go-logr/logr"
 	"github.com/onmetal/onmetal-csi-driver/pkg/driver"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func New(config map[string]string, log logr.Logger) gocsi.StoragePluginProvider {
-	drv := driver.New(config, log)
+func New(config map[string]string, targetClient, onMetalClient client.Client, log logr.Logger) gocsi.StoragePluginProvider {
+	drv := driver.New(config, targetClient, onMetalClient, log)
 	return &gocsi.StoragePlugin{
 		Controller:  drv,
 		Node:        drv,
