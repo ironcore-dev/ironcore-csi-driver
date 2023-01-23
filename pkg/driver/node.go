@@ -67,7 +67,7 @@ func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 	d.log.V(1).Info("format and mount the volume")
 	if err = d.mountUtil.FormatAndMount(devicePath, targetPath, fstype, options); err != nil {
 		d.log.Error(err, "failed to stage volume")
-		return resp, fmt.Errorf("failed to mount volume %s [%s] to %s, error %v", devicePath, fstype, targetPath, err)
+		return resp, fmt.Errorf("failed to mount volume %s [%s] to %s, error %w", devicePath, fstype, targetPath, err)
 	}
 	d.log.Info("successfully staged the volume", "VolumeId", req.GetVolumeId())
 	return &csi.NodeStageVolumeResponse{}, nil
@@ -241,8 +241,9 @@ func (d *driver) NodeGetInfo(ctx context.Context, _ *csi.NodeGetInfoRequest) (*c
 		NodeId: d.nodeId,
 	}
 
-	zone, err := d.kubeHelper.NodeGetZone(ctx, d.nodeName, d.log)
+	zone, err := NodeGetZone(ctx, d.nodeName, d.targetClient)
 	if err != nil {
+		d.log.Error(err, "node not found")
 		return nil, status.Error(codes.Internal, fmt.Sprintf("[NodeGetInfo] Unable to retrieve availability zone of node %v", err))
 	}
 

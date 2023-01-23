@@ -16,15 +16,19 @@ package driver
 
 import (
 	"context"
+	"fmt"
 	"net"
-	"os"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/dell/gocsi"
 	"github.com/go-logr/logr"
-	"github.com/onmetal/onmetal-csi-driver/pkg/util"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -33,14 +37,14 @@ const (
 )
 
 type driver struct {
-	// parameters
 	driverName    string
 	driverVersion string
 	nodeId        string
 	nodeName      string
 	csiNamespace  string
 	mountUtil     *mount.SafeFormatAndMount
-	kubeHelper    *util.KubeHelper
+	targetClient  client.Client
+	onMetalClient client.Client
 	log           logr.Logger
 }
 
@@ -53,13 +57,7 @@ type Driver interface {
 	BeforeServe(context.Context, *gocsi.StoragePlugin, net.Listener) error
 }
 
-func New(config map[string]string, log logr.Logger) Driver {
-
-	kubeHelper, err := util.NewKubeHelper(config)
-	if err != nil {
-		log.Error(err, "unable to create client")
-		os.Exit(1)
-	}
+func New(config map[string]string, targetClient, onMetalClient client.Client, log logr.Logger) Driver {
 
 	d := &driver{
 		driverName:    config["driver_name"],
@@ -67,7 +65,8 @@ func New(config map[string]string, log logr.Logger) Driver {
 		nodeId:        config["node_id"],
 		nodeName:      config["node_name"],
 		csiNamespace:  config["csi_namespace"],
-		kubeHelper:    kubeHelper,
+		targetClient:  targetClient,
+		onMetalClient: onMetalClient,
 		mountUtil:     &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
 		log:           log,
 	}
@@ -77,4 +76,49 @@ func New(config map[string]string, log logr.Logger) Driver {
 
 func (d *driver) BeforeServe(_ context.Context, _ *gocsi.StoragePlugin, _ net.Listener) error {
 	return nil
+}
+
+func NodeGetZone(ctx context.Context, nodeName string, t client.Client) (string, error) {
+	node := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: nodeName,
+		},
+	}
+	err := t.Get(ctx, client.ObjectKeyFromObject(node), node)
+	if err != nil {
+		return "", fmt.Errorf("node not found %w", err)
+	}
+
+	labels := node.Labels
+	if labels == nil {
+		return "", nil
+	}
+
+	// TODO: "failure-domain.beta..." names are deprecated, but will
+	// stick around a long time due to existing on old extant objects like PVs.
+	// Maybe one day we can stop considering them (see #88493).
+	zone, ok := labels[corev1.LabelFailureDomainBetaZone]
+	if !ok {
+		zone = labels[corev1.LabelTopologyZone]
+	}
+
+	return zone, nil
+}
+
+func NodeGetProviderID(ctx context.Context, nodeName string, t client.Client) (string, error) {
+	node := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: nodeName,
+		},
+	}
+	err := t.Get(ctx, client.ObjectKeyFromObject(node), node)
+	if err != nil {
+		return "", fmt.Errorf("node not found %w", err)
+	}
+
+	if node.Spec.ProviderID != "" {
+		return node.Spec.ProviderID, err
+	} else {
+		return "", fmt.Errorf("ProviderID for node %s is empty", nodeName)
+	}
 }
