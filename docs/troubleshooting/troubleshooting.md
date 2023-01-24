@@ -2,7 +2,9 @@
 ## Troubleshooting guide for *onmetal-csi-driver*
 
 ### CSI driver failed to start
-1. Check whether the Kubernetes cluster has required feature-gates enabled for the CSI driver. 
+1. Check whether the Kubernetes cluster has required feature-gates enabled for the CSI driver.
+    
+    For reference- [cloud-provider-onmetal](https://github.com/onmetal/cloud-provider-onmetal/blob/main/docs/deployment/deploy_manually.md#:~:text=Update%20the%20kubelet%20service%20on%20each%20node%20with%20Args%20%2D%2Dcloud%2Dprovider%3Dexternal%20Follow%20below%20steps%20to%20update%20the%20kubelet%20service%20environment%20variable%20KUBELET_KUBECONFIG_ARGS)
     > Note: kind/minikube cluster may not support mount operations.
 2. Check whether the correct kubeconfig is provided and accessible from the current cluster.
     ```
@@ -109,10 +111,15 @@
         time="2022-05-31T06:51:40Z" level=error msg="unable to get disk to mount"
     ```
 4. Check disk to mount is available at /dev/disks/by-id directory.
+
+    Look for the disk by manually entering into the machine at below path `/dev/disk/by-id/`
+    
+    Example disk-path format: `/dev/disk/by-id/virtio-odc-e50014ee2b3f4627a`
+
    Example error:
     ```bash
         root@node1:~# kubectl logs -f onmetal-csi-node-n9gjf -c driver -n onmetal-csi
-        time="2022-05-31T06:35:13Z" level=error msg="failed to stage volume:format of disk \"/host/dev/disk/by-id/wwn-0x50014ee2b3f4627a\" failed: type:(\"ext4\") target:(\"/var/lib/kubelet/plugins/kubernetes.io/csi/onmetal-csi-driver/b6fef28a18a856aa16c7a1201db104c250b95a02e4ec959377f589a096655b4e/globalmount\") options:(\"rw,defaults\") errcode:(exit status 1) output:(mke2fs 1.44.5 (15-Dec-2018)\nThe file /host/dev/disk/by-id/wwn-0x50014ee2b3f4627a does not exist and no size was specified.\n) "
+        time="2022-05-31T06:35:13Z" level=error msg="failed to stage volume:format of disk \"/host/dev/disk/by-id/virtio-odc-e50014ee2b3f4627a\" failed: type:(\"ext4\") target:(\"/var/lib/kubelet/plugins/kubernetes.io/csi/onmetal-csi-driver/b6fef28a18a856aa16c7a1201db104c250b95a02e4ec959377f589a096655b4e/globalmount\") options:(\"rw,defaults\") errcode:(exit status 1) output:(mke2fs 1.44.5 (15-Dec-2018)\nThe file /host/dev/disk/by-id/virtio-odc-e50014ee2b3f4627a does not exist and no size was specified.\n) "
     ```
     Ideal onmetal machine:
     ```bash
@@ -126,7 +133,7 @@
         NAMESPACE     NAME            VOLUMEPOOLREF       VOLUMECLASS   STATE       PHASE   AGE
         onmetal-csi   volume-sample   volumepool-sample   fast          Available   Bound   24s
     ```
-   Volume status with disk available (Wwn):
+   Volume status with disk available (Handle):
     ```bash
         root@node1:~# kubectl describe volume volume-sample -n onmetal-csi
         Name:         volume-sample
@@ -134,13 +141,15 @@
         ...
         ...
         Status:
-        Access:
-            Driver:
+          Access:
+            Driver:  ceph
+            Handle:  e4d3bbfc22aa48a1
+            Secret Ref:
+              Name: 7f2e28eb4dc255f70a1dee130cee27913e6bfd6c92ac3a451
             Volume Attributes:
-            Wwn:                     50014ee2b3f4627a
-        Last Phase Transition Time:  2022-05-31T06:56:50Z
-        Phase:                       Bound
-        State:                       Available
+              Image:  ceph/csi-vol-27df3861-9b18-11ed-9228c2aa35f3
+              Monitors:                [2a10:afc0:e013:4030::]:6789
+
     ```
     Create pod to mount volume:
     ```bash
