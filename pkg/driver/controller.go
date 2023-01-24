@@ -35,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const volumeFieldOwner = client.FieldOwner("storage.onmetal.de/volume")
+const volumeFieldOwner = client.FieldOwner("csi.onmetal.de/volume")
 
 func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	d.log.Info("create volume request received", "volume.Name", req.GetName())
@@ -85,9 +85,9 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		},
 	}
 
-	d.log.Info("create/update volume: ", "volume.Name", volume.Name)
+	d.log.Info("patching volume ", "volume.Name", volume.Name)
 	if err := d.onMetalClient.Patch(ctx, volume, client.Apply, volumeFieldOwner); err != nil {
-		d.log.Error(err, "error while create/update volume")
+		d.log.Error(err, "error while patching volume")
 		return csiVolResp, status.Errorf(codes.Internal, err.Error())
 	}
 
