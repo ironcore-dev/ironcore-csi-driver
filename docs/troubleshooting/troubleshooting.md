@@ -1,5 +1,5 @@
 
-## Troubleshooting guide for *onmetal-csi-driver*
+## Troubleshooting guide for *`onmetal-csi-driver`*
 
 ### CSI driver failed to start
 1. Check whether the Kubernetes cluster has required feature-gates enabled for the CSI driver. 
@@ -15,7 +15,7 @@
     csi-master   Ready    master   106m   v1.18.1
 
     ```
-3. Check if the current cluster node has a providerID field set.
+3. Check if the current cluster node has a `providerID` field set.
     ```
     kubectl get node csi-worker -o yaml | grep -i spec -A 3
     ```
@@ -81,7 +81,7 @@
         time="2022-05-31T06:41:15Z" level=info msg="get machine with provided name and namespace"
         time="2022-05-31T06:41:15Z" level=error msg="could not get machine with name node1,namespace onmetal-csi, error:machines.compute.api.onmetal.de \"node1\" not found"
     ```
-2. Check whether the machine is in the targeted namespace and the machine name and namespace matches the providerID fields
+2. Check whether the machine is in the targeted namespace and the machine name and namespace matches the providerID fields.
 
     providerID format  `{CloudProviderName}://{Namespace}/{MachineName}`
     
@@ -109,6 +109,7 @@
         time="2022-05-31T06:51:40Z" level=error msg="unable to get disk to mount"
     ```
 4. Check disk to mount is available at /dev/disks/by-id directory.
+
    Example error:
     ```bash
         root@node1:~# kubectl logs -f onmetal-csi-node-n9gjf -c driver -n onmetal-csi
@@ -126,7 +127,7 @@
         NAMESPACE     NAME            VOLUMEPOOLREF       VOLUMECLASS   STATE       PHASE   AGE
         onmetal-csi   volume-sample   volumepool-sample   fast          Available   Bound   24s
     ```
-   Volume status with disk available (Wwn):
+   Volume status with disk available (Handle):
     ```bash
         root@node1:~# kubectl describe volume volume-sample -n onmetal-csi
         Name:         volume-sample
@@ -134,13 +135,15 @@
         ...
         ...
         Status:
-        Access:
-            Driver:
+          Access:
+            Driver:  ceph
+            Handle:  e4d3bbfc22aa48a1
+            Secret Ref:
+              Name: 7f2e28eb4dc255f70a1dee130cee27913e6bfd6c92ac3a451
             Volume Attributes:
-            Wwn:                     50014ee2b3f4627a
-        Last Phase Transition Time:  2022-05-31T06:56:50Z
-        Phase:                       Bound
-        State:                       Available
+              Image:  ceph/csi-vol-27df3861-9b18-11ed-9228c2aa35f3
+              Monitors:                [2a10:afc0:e013:4030::]:6789
+
     ```
     Create pod to mount volume:
     ```bash
