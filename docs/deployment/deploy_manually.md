@@ -26,7 +26,7 @@ Create a namespace
 ```
 kubectl create ns onmetal-csi
 ```
-Create a secret in onmetal-csi namespace with data `target-kubeconfig`, `onmetal-kubeconfig` and the `namespace` where machines are running
+Create a secret in onmetal-csi namespace with data "`target-kubeconfig`", "`onmetal-kubeconfig`" and the "`namespace`" where machines are running
 
 A sample file is present under [config/samples/kube_secret_template.yaml](https://github.com/onmetal/onmetal-csi-driver/blob/main/config/samples/kube_secret_template.yaml)
 ```
