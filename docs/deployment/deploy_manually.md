@@ -26,7 +26,10 @@ Create a namespace
 ```
 kubectl create ns onmetal-csi
 ```
-Create a secret in onmetal-csi namespace with data "`target-kubeconfig`", "`onmetal-kubeconfig`" and the "`namespace`" where machines are running
+Create a `Secret` in the `onmetal-csi` namespace containing the following data keys: 
+- `target-kubeconfig`  containing the kubeconfig of the target Kubernetes cluster
+- `onmetal-kubeconfig` containing the kubeconfig for accessing the `onmetal` cluster
+- `namespace` is the namespace where the resources in the `onmetal` cluster should be created
 
 A sample file is present under [config/samples/kube_secret_template.yaml](https://github.com/onmetal/onmetal-csi-driver/blob/main/config/samples/kube_secret_template.yaml)
 ```
