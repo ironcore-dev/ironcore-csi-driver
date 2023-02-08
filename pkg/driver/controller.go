@@ -48,20 +48,20 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 
 	params := req.GetParameters()
 	fstype := params["fstype"]
-	storageClass := params["storage_class_name"]
+	volumeClass := params["volume_class"]
 	if !validateParams(params) {
 		return csiVolResp, status.Errorf(codes.Internal, "required parameters are missing")
 	}
 
-	storagePool := req.GetParameters()["storage_pool"]
-	// if no storage_pool was provided try to use the topology information if provided
-	if storagePool == "" {
+	volumePool := req.GetParameters()["volume_pool"]
+	// if no volume_pool was provided try to use the topology information if provided
+	if volumePool == "" {
 		if req.GetAccessibilityRequirements() != nil {
-			storagePool = getAZFromTopology(req.GetAccessibilityRequirements())
+			volumePool = getAZFromTopology(req.GetAccessibilityRequirements())
 		}
 	}
 
-	d.log.Info("storage pool used for volume", "volume.Name", req.GetName(), "storagePool", storagePool)
+	d.log.Info("volume pool used for volume", "volume.Name", req.GetName(), "volumePool", volumePool)
 
 	volume := &storagev1alpha1.Volume{
 		TypeMeta: metav1.TypeMeta{
@@ -77,10 +77,10 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 				"storage": resource.MustParse(sVolSize),
 			},
 			VolumeClassRef: &corev1.LocalObjectReference{
-				Name: storageClass,
+				Name: volumeClass,
 			},
 			VolumePoolRef: &corev1.LocalObjectReference{
-				Name: storagePool,
+				Name: volumePool,
 			},
 		},
 	}
@@ -100,12 +100,12 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	}
 
 	vol := &Volume{
-		ID:          req.GetName(),
-		Name:        req.GetName(),
-		StoragePool: storagePool,
-		Size:        volBytes,
-		FsType:      fstype,
-		CreatedAt:   createdVolume.CreationTimestamp.Unix(),
+		ID:         req.GetName(),
+		Name:       req.GetName(),
+		VolumePool: volumePool,
+		Size:       volBytes,
+		FsType:     fstype,
+		CreatedAt:  createdVolume.CreationTimestamp.Unix(),
 	}
 	volResp := d.getCsiVolume(vol, req)
 	csiVolResp.Volume = volResp
@@ -396,7 +396,7 @@ func (d *driver) ControllerGetCapabilities(_ context.Context, _ *csi.ControllerG
 type Volume struct {
 	ID            string
 	Name          string
-	StoragePool   string
+	VolumePool    string
 	CreatedAt     int64
 	Size          int64
 	FsType        string
@@ -416,7 +416,7 @@ func (d *driver) getCsiVolume(vol *Volume, req *csi.CreateVolumeRequest) *csi.Vo
 	volCtx := map[string]string{
 		"volume_id":      vol.ID,
 		"volume_name":    vol.Name,
-		"storage_pool":   vol.StoragePool,
+		"volume_pool":    vol.VolumePool,
 		"creation_time":  time.Unix(vol.CreatedAt, 0).String(),
 		"fstype":         vol.FsType,
 		"provision_type": vol.ProvisionType,
@@ -431,7 +431,7 @@ func (d *driver) getCsiVolume(vol *Volume, req *csi.CreateVolumeRequest) *csi.Vo
 }
 
 func validateParams(params map[string]string) bool {
-	expectedParams := []string{"storage_class_name"}
+	expectedParams := []string{"volume_class"}
 	for _, expPar := range expectedParams {
 		if params[expPar] == "" {
 			return false
