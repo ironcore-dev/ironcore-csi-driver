@@ -31,11 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	Name        = "csi.onmetal.de"
-	topologyKey = "topology." + Name + "/zone"
-)
-
 type driver struct {
 	driverName    string
 	driverVersion string

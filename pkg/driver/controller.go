@@ -17,14 +17,11 @@ package driver
 import (
 	"context"
 	"errors"
-	"strconv"
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/go-logr/logr"
 	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
-	"github.com/onmetal/onmetal-csi-driver/pkg/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
@@ -35,7 +32,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const volumeFieldOwner = client.FieldOwner("csi.onmetal.de/volume")
+type Volume struct {
+	ID            string
+	Name          string
+	VolumePool    string
+	CreatedAt     int64
+	Size          int64
+	FsType        string
+	ProvisionType string
+}
 
 func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	d.log.Info("create volume request received", "volume.Name", req.GetName())
@@ -107,7 +112,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		FsType:     fstype,
 		CreatedAt:  createdVolume.CreationTimestamp.Unix(),
 	}
-	volResp := d.getCsiVolume(vol, req)
+	volResp := getCsiVolume(vol, req)
 	csiVolResp.Volume = volResp
 
 	if createdVolume.Status.State != storagev1alpha1.VolumeStateAvailable {
@@ -157,7 +162,7 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 
-	namespace, err := util.GetNamespaceFromProviderID(providerID)
+	namespace, err := getNamespaceFromProviderID(providerID)
 	if err != nil {
 		d.log.Error(err, "could not get Namespace from ProviderID for node", "nodeId", req.GetNodeId(), "providerID", providerID)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
@@ -177,7 +182,7 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 	vaName := req.GetVolumeId() + "-attachment"
-	if !d.isVolumeAttachmetAvailable(machine, vaName) {
+	if !isVolumeAttachmetAvailable(machine, vaName) {
 		attachSource := computev1alpha1.VolumeSource{
 			VolumeRef: &corev1.LocalObjectReference{
 				Name: "volume-" + req.GetVolumeId(),
@@ -248,7 +253,7 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 
-	namespace, err := util.GetNamespaceFromProviderID(providerID)
+	namespace, err := getNamespaceFromProviderID(providerID)
 	if err != nil {
 		d.log.Error(err, "could not get Namespace from ProviderID for node", "nodeId", req.GetNodeId(), "providerID", providerID)
 		return csiResp, status.Errorf(codes.Internal, err.Error())
@@ -268,7 +273,7 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 		return csiResp, status.Errorf(codes.Internal, err.Error())
 	}
 	vaName := req.GetVolumeId() + "-attachment"
-	if d.isVolumeAttachmetAvailable(machine, vaName) {
+	if isVolumeAttachmetAvailable(machine, vaName) {
 		d.log.V(1).Info("remove machine volume-attachment")
 		var vaList []computev1alpha1.Volume
 		for _, va := range machine.Spec.Volumes {
@@ -393,26 +398,7 @@ func (d *driver) ControllerGetCapabilities(_ context.Context, _ *csi.ControllerG
 	}, nil
 }
 
-type Volume struct {
-	ID            string
-	Name          string
-	VolumePool    string
-	CreatedAt     int64
-	Size          int64
-	FsType        string
-	ProvisionType string
-}
-
-func (d *driver) isVolumeAttachmetAvailable(machine *computev1alpha1.Machine, vaName string) bool {
-	for _, va := range machine.Spec.Volumes {
-		if va.Name == vaName {
-			return true
-		}
-	}
-	return false
-}
-
-func (d *driver) getCsiVolume(vol *Volume, req *csi.CreateVolumeRequest) *csi.Volume {
+func getCsiVolume(vol *Volume, req *csi.CreateVolumeRequest) *csi.Volume {
 	volCtx := map[string]string{
 		"volume_id":      vol.ID,
 		"volume_name":    vol.Name,
@@ -428,84 +414,4 @@ func (d *driver) getCsiVolume(vol *Volume, req *csi.CreateVolumeRequest) *csi.Vo
 		ContentSource: req.GetVolumeContentSource(),
 	}
 	return csiVol
-}
-
-func validateParams(params map[string]string) bool {
-	expectedParams := []string{"volume_class"}
-	for _, expPar := range expectedParams {
-		if params[expPar] == "" {
-			return false
-		}
-	}
-	return true
-}
-
-func validateVolumeSize(caprange *csi.CapacityRange, log logr.Logger) (int64, string, error) {
-	requiredVolSize := caprange.GetRequiredBytes()
-	allowedMaxVolSize := caprange.GetLimitBytes()
-	if requiredVolSize < 0 || allowedMaxVolSize < 0 {
-		return 0, "", errors.New("not valid volume size")
-	}
-
-	var bytesKiB int64 = 1024
-	var kiBytesGiB int64 = 1024 * 1024
-	var bytesGiB = kiBytesGiB * bytesKiB
-	var MinVolumeSize = 1 * bytesGiB
-	log.Info("requested size", "size", requiredVolSize)
-	if requiredVolSize == 0 {
-		requiredVolSize = MinVolumeSize
-	}
-
-	var (
-		sizeinGB   int64
-		sizeinByte int64
-	)
-
-	sizeinGB = requiredVolSize / bytesGiB
-	if sizeinGB == 0 {
-		log.Info("volume minimum capacity should be greater 1 GB")
-		sizeinGB = 1
-	}
-
-	sizeinByte = sizeinGB * bytesGiB
-	if allowedMaxVolSize != 0 {
-		if sizeinByte > allowedMaxVolSize {
-			return 0, "", errors.New("volume size is out of allowed limit")
-		}
-	}
-	strsize := strconv.FormatInt(sizeinGB, 10) + "Gi"
-	log.Info("requested size in Gi", "size", strsize)
-	return sizeinByte, strsize, nil
-}
-
-func validateDeviceName(volume *storagev1alpha1.Volume, machine *computev1alpha1.Machine, vaName string, log logr.Logger) string {
-	if volume.Status.Access != nil && volume.Status.Access.VolumeAttributes != nil {
-		handle := volume.Status.Access.Handle
-		for _, va := range machine.Spec.Volumes {
-			if va.Name == vaName && *va.Device != "" {
-				device := *va.Device
-				log.Info("machine is updated with device", "device", device)
-				return "/dev/disk/by-id/virtio-" + device + "-" + handle
-			}
-		}
-	}
-	log.Info("could not find device for given volume", "volume.ObjectMeta.Name", volume.ObjectMeta.Name)
-	return ""
-}
-
-func getAZFromTopology(requirement *csi.TopologyRequirement) string {
-	for _, topology := range requirement.GetPreferred() {
-		zone, exists := topology.GetSegments()[topologyKey]
-		if exists {
-			return zone
-		}
-	}
-
-	for _, topology := range requirement.GetRequisite() {
-		zone, exists := topology.GetSegments()[topologyKey]
-		if exists {
-			return zone
-		}
-	}
-	return ""
 }

@@ -8,5 +8,5 @@ volumeBindingMode: Immediate
 allowVolumeExpansion: true
 parameters:
   fstype: ext4
-  volume_pool: "fra3"
-  volume_class: "slow"
+  volume_pool: "foo"
+  volume_class: "bar"
