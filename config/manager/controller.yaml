@@ -108,6 +108,7 @@ spec:
       containers:
         - name: attacher
           image: k8s.gcr.io/sig-storage/csi-attacher:v3.4.0
+          imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true
             capabilities:
@@ -119,11 +120,18 @@ spec:
           env:
             - name: ADDRESS
               value: /csi/csi.sock
+          resources:
+            requests:
+              cpu: 10m
+              memory: 50Mi
+            limits:
+              memory: 210Mi
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
         - name: provisioner
           image: k8s.gcr.io/sig-storage/csi-provisioner:v3.1.0
+          imagePullPolicy: IfNotPresent
           args:
             - "--csi-address=$(ADDRESS)"
             - "--volume-name-prefix=csi-onmetal"
@@ -134,11 +142,18 @@ spec:
           env:
             - name: ADDRESS
               value: /csi/csi.sock
+          resources:
+            requests:
+              cpu: 11m
+              memory: 32Mi
+            limits:
+              memory: 200Mi
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
         - name: snapshotter
           image: k8s.gcr.io/sig-storage/csi-snapshotter:v5.0.1
+          imagePullPolicy: IfNotPresent
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"   
@@ -147,18 +162,30 @@ spec:
           env:
             - name: ADDRESS
               value: /csi/csi.sock
-          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 256Mi
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
         - name: resizer
           image: k8s.gcr.io/sig-storage/csi-resizer:v1.4.0
+          imagePullPolicy: IfNotPresent
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
           env:
             - name: ADDRESS
               value: /csi/csi.sock
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 200Mi
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -169,7 +196,7 @@ spec:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true  
           image: onmetal-csi-driver:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           args:
           - "--target-kubeconfig=/etc/csi.onmetal.de/target-kubeconfig"
           - "--onmetal-kubeconfig=/etc/csi.onmetal.de/onmetal-kubeconfig"
@@ -197,6 +224,12 @@ spec:
                 secretKeyRef:
                   name: onmetal-csi
                   key: namespace
+          resources:
+            requests:
+              cpu: 20m
+              memory: 50Mi
+            limits:
+              memory: 210Mi
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -216,9 +249,16 @@ spec:
             failureThreshold: 3
         - name: liveness-probe
           image: k8s.gcr.io/sig-storage/livenessprobe:v2.9.0
+          imagePullPolicy: IfNotPresent
           args:
             - "--v=4"
             - "--csi-address=/csi/csi.sock"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 110Mi
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
