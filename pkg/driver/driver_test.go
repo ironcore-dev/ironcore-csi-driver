@@ -40,9 +40,9 @@ var _ = Describe("Service tests", func() {
 	It("should be able to create, publish, unpublish and delete volume", func() {
 
 		reqParameterMap := map[string]string{
-			"storage_class_name": "slow",
-			"fstype":             "ext4",
-			"storage_pool":       "pool1",
+			"volume_class": "slow",
+			"fstype":       "ext4",
+			"volume_pool":  "pool1",
 		}
 		crtValReq := getCreateVolumeRequest(reqVolumeId, reqParameterMap)
 		res, err := d.CreateVolume(ctx, crtValReq)
@@ -60,7 +60,7 @@ var _ = Describe("Service tests", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(createRes).ShouldNot(BeNil())
 		Expect(createRes.Volume.VolumeId).To(Equal(reqVolumeId))
-		Expect(createRes.Volume.VolumeContext["storage_pool"]).To(Equal(reqParameterMap["storage_pool"]))
+		Expect(createRes.Volume.VolumeContext["volume_pool"]).To(Equal(reqParameterMap["volume_pool"]))
 		Expect(createRes.Volume.VolumeContext["fstype"]).To(Equal(reqParameterMap["fstype"]))
 
 		By("publishing the volume")

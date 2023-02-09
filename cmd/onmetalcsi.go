@@ -76,7 +76,7 @@ func main() {
 
 	gocsi.Run(
 		ctx,
-		driver.Name,
+		driver.CSIDriverName,
 		"onMetal CSI Driver Plugin",
 		"",
 		provider.New(config, targetClient, onMetalClient, log))
