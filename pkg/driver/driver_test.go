@@ -38,7 +38,6 @@ var _ = Describe("Service tests", func() {
 	)
 
 	It("should be able to create, publish, unpublish and delete volume", func() {
-
 		reqParameterMap := map[string]string{
 			"volume_class": "slow",
 			"fstype":       "ext4",
@@ -133,7 +132,6 @@ var _ = Describe("Service tests", func() {
 	})
 
 	It("should get plugin info, plugin capabilities and probe info", func() {
-
 		By("getting plugin info")
 		var req *csi.GetPluginInfoRequest
 		res, err := d.GetPluginInfo(ctx, req)

@@ -21,6 +21,7 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
+	corev1alpha1 "github.com/onmetal/onmetal-api/api/core/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -78,7 +79,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 			Name:      "volume-" + req.GetName(),
 		},
 		Spec: storagev1alpha1.VolumeSpec{
-			Resources: map[corev1.ResourceName]resource.Quantity{
+			Resources: corev1alpha1.ResourceList{
 				"storage": resource.MustParse(sVolSize),
 			},
 			VolumeClassRef: &corev1.LocalObjectReference{
