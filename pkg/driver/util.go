@@ -68,16 +68,6 @@ func getAZFromTopology(requirement *csi.TopologyRequirement) string {
 	return ""
 }
 
-func validateParams(params map[string]string) bool {
-	expectedParams := []string{"volume_class"}
-	for _, expPar := range expectedParams {
-		if params[expPar] == "" {
-			return false
-		}
-	}
-	return true
-}
-
 func validateVolumeSize(caprange *csi.CapacityRange, log logr.Logger) (int64, string, error) {
 	requiredVolSize := caprange.GetRequiredBytes()
 	allowedMaxVolSize := caprange.GetLimitBytes()
