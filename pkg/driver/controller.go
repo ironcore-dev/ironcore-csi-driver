@@ -44,7 +44,7 @@ type Volume struct {
 }
 
 func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
-	d.log.Info("create volume request received", "volume.Name", req.GetName())
+	d.log.Info("Creating volume", "Volume", req.GetName())
 	capacity := req.GetCapacityRange()
 	csiVolResp := &csi.CreateVolumeResponse{}
 	volBytes, sVolSize, err := validateVolumeSize(capacity, d.log)
@@ -53,10 +53,14 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	}
 
 	params := req.GetParameters()
-	fstype := params["fstype"]
-	volumeClass := params["volume_class"]
-	if !validateParams(params) {
-		return csiVolResp, status.Errorf(codes.Internal, "required parameters are missing")
+	fstype, ok := params[ParameterFSType]
+	if !ok {
+		fstype = "ext4"
+	}
+
+	volumeClass, ok := params[ParameterType]
+	if !ok {
+		return nil, status.Errorf(codes.Internal, "required parameter %s is missing", ParameterType)
 	}
 
 	volumePool := req.GetParameters()["volume_pool"]
@@ -94,7 +98,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	d.log.Info("patching volume ", "volume.Name", volume.Name)
 	if err := d.onMetalClient.Patch(ctx, volume, client.Apply, volumeFieldOwner); err != nil {
 		d.log.Error(err, "error while patching volume")
-		return csiVolResp, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	createdVolume := &storagev1alpha1.Volume{}
@@ -102,7 +106,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	err = d.onMetalClient.Get(ctx, client.ObjectKey{Name: volume.Name, Namespace: volume.Namespace}, createdVolume)
 	if err != nil && !apierrors.IsNotFound(err) {
 		d.log.Error(err, "could not get volume", "volume.Name", volume.Name, "namespace", volume.Namespace)
-		return csiVolResp, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	vol := &Volume{

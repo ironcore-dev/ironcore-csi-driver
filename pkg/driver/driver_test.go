@@ -39,9 +39,9 @@ var _ = Describe("Service tests", func() {
 
 	It("should be able to create, publish, unpublish and delete volume", func() {
 		reqParameterMap := map[string]string{
-			"volume_class": "slow",
-			"fstype":       "ext4",
-			"volume_pool":  "pool1",
+			"type":        "slow",
+			"fstype":      "ext4",
+			"volume_pool": "pool1",
 		}
 		crtValReq := getCreateVolumeRequest(reqVolumeId, reqParameterMap)
 		res, err := d.CreateVolume(ctx, crtValReq)
