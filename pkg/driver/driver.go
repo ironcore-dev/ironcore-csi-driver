@@ -24,8 +24,6 @@ import (
 	"github.com/go-logr/logr"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,7 +37,7 @@ type driver struct {
 	csiNamespace  string
 	mountUtil     *mount.SafeFormatAndMount
 	targetClient  client.Client
-	onMetalClient client.Client
+	onmetalClient client.Client
 	log           logr.Logger
 }
 
@@ -61,7 +59,7 @@ func New(config map[string]string, targetClient, onMetalClient client.Client, lo
 		nodeName:      config["node_name"],
 		csiNamespace:  config["csi_namespace"],
 		targetClient:  targetClient,
-		onMetalClient: onMetalClient,
+		onmetalClient: onMetalClient,
 		mountUtil:     &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
 		log:           log,
 	}
@@ -74,46 +72,37 @@ func (d *driver) BeforeServe(_ context.Context, _ *gocsi.StoragePlugin, _ net.Li
 }
 
 func NodeGetZone(ctx context.Context, nodeName string, t client.Client) (string, error) {
-	node := &corev1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: nodeName,
-		},
-	}
-	err := t.Get(ctx, client.ObjectKeyFromObject(node), node)
-	if err != nil {
-		return "", fmt.Errorf("node not found %w", err)
+	node := &corev1.Node{}
+	nodeKey := client.ObjectKey{Name: nodeName}
+	if err := t.Get(ctx, nodeKey, node); err != nil {
+		return "", fmt.Errorf("could not get node %s: %w", nodeName, err)
 	}
 
-	labels := node.Labels
-	if labels == nil {
+	if node.Labels == nil {
 		return "", nil
 	}
 
 	// TODO: "failure-domain.beta..." names are deprecated, but will
 	// stick around a long time due to existing on old extant objects like PVs.
 	// Maybe one day we can stop considering them (see #88493).
-	zone, ok := labels[corev1.LabelFailureDomainBetaZone]
+	zone, ok := node.Labels[corev1.LabelFailureDomainBetaZone]
 	if !ok {
-		zone = labels[corev1.LabelTopologyZone]
+		zone = node.Labels[corev1.LabelTopologyZone]
 	}
 
 	return zone, nil
 }
 
 func NodeGetProviderID(ctx context.Context, nodeName string, t client.Client) (string, error) {
-	node := &corev1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: nodeName,
-		},
-	}
-	err := t.Get(ctx, client.ObjectKeyFromObject(node), node)
-	if err != nil {
-		return "", fmt.Errorf("node not found %w", err)
+	node := &corev1.Node{}
+	nodeKey := client.ObjectKey{Name: nodeName}
+	if err := t.Get(ctx, nodeKey, node); err != nil {
+		return "", fmt.Errorf("could not get node %s: %w", nodeName, err)
 	}
 
 	if node.Spec.ProviderID != "" {
-		return node.Spec.ProviderID, err
+		return node.Spec.ProviderID, nil
 	} else {
-		return "", fmt.Errorf("ProviderID for node %s is empty", nodeName)
+		return "", fmt.Errorf("providerID for node %s is empty", nodeName)
 	}
 }

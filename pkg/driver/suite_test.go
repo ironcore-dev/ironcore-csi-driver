@@ -119,10 +119,10 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 		// Create a test node with providerID spec
 		node := &corev1.Node{
 			ObjectMeta: metav1.ObjectMeta{
-				GenerateName: "node-",
+				Name: "node",
 			},
 			Spec: corev1.NodeSpec{
-				ProviderID: "onmetal://" + ns.Name + "/test",
+				ProviderID: "onmetal://" + ns.Name + "/node",
 			},
 		}
 		Expect(k8sClient.Create(ctx, node)).To(Succeed())
@@ -130,9 +130,6 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 
 		d.nodeName = node.Name
 		d.nodeId = node.Name
-
-		createdNode := &corev1.Node{}
-		Expect(k8sClient.Get(ctx, client.ObjectKey{Name: d.nodeName}, createdNode)).To(Succeed())
 
 		machineClass := &computev1alpha1.MachineClass{
 			ObjectMeta: metav1.ObjectMeta{
@@ -185,9 +182,9 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 		Expect(k8sClient.Create(ctx, machine)).To(Succeed())
 
 		//patch onmetal-machine status to running
-		outdatedStatusMachine := machine.DeepCopy()
+		machineBase := machine.DeepCopy()
 		machine.Status.State = computev1alpha1.MachineStateRunning
-		Expect(k8sClient.Status().Patch(ctx, machine, client.MergeFrom(outdatedStatusMachine))).To(Succeed())
+		Expect(k8sClient.Status().Patch(ctx, machine, client.MergeFrom(machineBase))).To(Succeed())
 		DeferCleanup(k8sClient.Delete, ctx, machine)
 	})
 
