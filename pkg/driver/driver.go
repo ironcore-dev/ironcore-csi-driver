@@ -93,10 +93,10 @@ func NodeGetZone(ctx context.Context, nodeName string, t client.Client) (string,
 	return zone, nil
 }
 
-func NodeGetProviderID(ctx context.Context, nodeName string, t client.Client) (string, error) {
+func NodeGetProviderID(ctx context.Context, nodeName string, c client.Client) (string, error) {
 	node := &corev1.Node{}
 	nodeKey := client.ObjectKey{Name: nodeName}
-	if err := t.Get(ctx, nodeKey, node); err != nil {
+	if err := c.Get(ctx, nodeKey, node); err != nil {
 		return "", fmt.Errorf("could not get node %s: %w", nodeName, err)
 	}
 
