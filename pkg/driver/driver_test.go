@@ -28,7 +28,6 @@ import (
 )
 
 var _ = Describe("Service tests", func() {
-
 	ctx := testutils.SetupContext()
 	ns, d := SetupTest(ctx)
 
@@ -44,12 +43,13 @@ var _ = Describe("Service tests", func() {
 			"volume_pool": "pool1",
 		}
 		crtValReq := getCreateVolumeRequest(reqVolumeId, reqParameterMap)
-		res, err := d.CreateVolume(ctx, crtValReq)
-		Expect(err).To(MatchError(status.Errorf(codes.Internal, "volume is not in Available state")))
+		req, err := d.CreateVolume(ctx, crtValReq)
+		Expect(req).To(BeNil())
+		Expect(err).To(MatchError(status.Errorf(codes.Internal, "provisioned volume %s is not in the available state", client.ObjectKey{Namespace: ns.Name, Name: reqVolumeId})))
 
 		By("patching the volume state to be available")
 		createdVolume := &storagev1alpha1.Volume{}
-		Expect(k8sClient.Get(ctx, client.ObjectKey{Name: "volume-" + res.Volume.VolumeId, Namespace: ns.Name}, createdVolume)).To(Succeed())
+		Expect(k8sClient.Get(ctx, client.ObjectKey{Name: reqVolumeId, Namespace: ns.Name}, createdVolume)).To(Succeed())
 		base := createdVolume.DeepCopy()
 		createdVolume.Status.State = storagev1alpha1.VolumeStateAvailable
 		Expect(k8sClient.Patch(ctx, createdVolume, client.MergeFrom(base))).To(Succeed())
@@ -68,27 +68,27 @@ var _ = Describe("Service tests", func() {
 		crtPublishVolumeReq.NodeId = d.nodeId
 
 		By("patching machine with volume atachment")
-		createdMachine := &computev1alpha1.Machine{}
-		Expect(k8sClient.Get(ctx, client.ObjectKey{Name: d.nodeName, Namespace: d.csiNamespace}, createdMachine)).To(Succeed())
-		outdatedStatusMachine := createdMachine.DeepCopy()
-		createdMachine.Spec.Volumes = []computev1alpha1.Volume{
+		machine := &computev1alpha1.Machine{}
+		Expect(k8sClient.Get(ctx, client.ObjectKey{Name: d.nodeName, Namespace: d.csiNamespace}, machine)).To(Succeed())
+		outdatedStatusMachine := machine.DeepCopy()
+		machine.Spec.Volumes = []computev1alpha1.Volume{
 			{
 				Name: reqVolumeId + "-attachment",
 				VolumeSource: computev1alpha1.VolumeSource{
 					VolumeRef: &corev1.LocalObjectReference{
-						Name: "volume-" + reqVolumeId,
+						Name: reqVolumeId,
 					},
 				},
 				Device: &testDeviceName,
 			},
 		}
-		createdMachine.Status.Volumes = []computev1alpha1.VolumeStatus{
+		machine.Status.Volumes = []computev1alpha1.VolumeStatus{
 			{
 				Name:  reqVolumeId + "-attachment",
 				Phase: computev1alpha1.VolumePhaseBound,
 			},
 		}
-		Expect(k8sClient.Patch(ctx, createdMachine, client.MergeFrom(outdatedStatusMachine))).To(Succeed())
+		Expect(k8sClient.Patch(ctx, machine, client.MergeFrom(outdatedStatusMachine))).To(Succeed())
 
 		By("patching volume with device")
 		base = createdVolume.DeepCopy()
@@ -115,7 +115,7 @@ var _ = Describe("Service tests", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(publishRes).ShouldNot(BeNil())
 		Expect(publishRes.PublishContext["volume_id"]).To(Equal(reqVolumeId))
-		Expect(publishRes.PublishContext["device_name"]).To(Equal(validateDeviceName(createdVolume, createdMachine, reqVolumeId+"-attachment", d.log)))
+		Expect(publishRes.PublishContext["device_name"]).To(Equal(validateDeviceName(createdVolume, machine, reqVolumeId+"-attachment", d.log)))
 		Expect(publishRes.PublishContext["node_id"]).To(Equal(d.nodeId))
 
 		By("Unpublishing the volume")

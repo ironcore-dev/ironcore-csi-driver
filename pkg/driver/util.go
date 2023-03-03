@@ -28,18 +28,17 @@ import (
 )
 
 const (
-	CSIDriverName     = "csi.onmetal.de"
-	cloudProviderName = "onmetal"
-	topologyKey       = "topology." + CSIDriverName + "/zone"
-	volumeFieldOwner  = client.FieldOwner("csi.onmetal.de/volume")
+	CSIDriverName    = "csi.onmetal.de"
+	topologyKey      = "topology." + CSIDriverName + "/zone"
+	volumeFieldOwner = client.FieldOwner("csi.onmetal.de/volume")
 )
 
 func getNamespaceFromProviderID(providerID string) (string, error) {
 	if providerID == "" {
-		return "", errors.New("ProviderID is empty")
+		return "", fmt.Errorf("providerID is not set")
 	}
 
-	if !strings.HasPrefix(providerID, fmt.Sprintf("%s://", cloudProviderName)) {
+	if !strings.HasPrefix(providerID, fmt.Sprintf("%s://", ProviderName)) {
 		return "", errors.New("ProviderID prefix is not valid")
 	}
 

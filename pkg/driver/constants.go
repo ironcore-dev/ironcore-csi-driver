@@ -19,4 +19,6 @@ const (
 	ParameterType = "type"
 	// ParameterFSType is the name of the fstype parameter
 	ParameterFSType = "fstype"
+	// ProviderName is the provider name of the csi
+	ProviderName = "onmetal"
 )
