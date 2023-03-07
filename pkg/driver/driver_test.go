@@ -27,44 +27,94 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var _ = Describe("Service tests", func() {
+var _ = Describe("Driver tests", func() {
 	ctx := testutils.SetupContext()
 	ns, d := SetupTest(ctx)
 
 	var (
-		reqVolumeId    = "v1"
-		testDeviceName = "sda"
+		volumeId   = "v1"
+		deviceName = "sda"
+		volumePool = "pool1"
 	)
 
 	It("should be able to create, publish, unpublish and delete volume", func() {
+		By("creating the volume if volume_pool is provided as a parameter")
 		reqParameterMap := map[string]string{
 			"type":        "slow",
 			"fstype":      "ext4",
-			"volume_pool": "pool1",
+			"volume_pool": volumePool,
 		}
-		crtValReq := getCreateVolumeRequest(reqVolumeId, reqParameterMap)
-		req, err := d.CreateVolume(ctx, crtValReq)
-		Expect(req).To(BeNil())
-		Expect(err).To(MatchError(status.Errorf(codes.Internal, "provisioned volume %s is not in the available state", client.ObjectKey{Namespace: ns.Name, Name: reqVolumeId})))
+		var tr *csi.TopologyRequirement
+		crtVolReq := getCreateVolumeRequest(volumeId, reqParameterMap, tr)
+		res, err := d.CreateVolume(ctx, crtVolReq)
+		Expect(res).To(BeNil())
+		Expect(err).To(MatchError(status.Errorf(codes.Internal, "provisioned volume %s is not in the available state", client.ObjectKey{Namespace: ns.Name, Name: volumeId})))
 
 		By("patching the volume state to be available")
 		createdVolume := &storagev1alpha1.Volume{}
-		Expect(k8sClient.Get(ctx, client.ObjectKey{Name: reqVolumeId, Namespace: ns.Name}, createdVolume)).To(Succeed())
+		Expect(k8sClient.Get(ctx, client.ObjectKey{Name: volumeId, Namespace: ns.Name}, createdVolume)).To(Succeed())
 		base := createdVolume.DeepCopy()
 		createdVolume.Status.State = storagev1alpha1.VolumeStateAvailable
 		Expect(k8sClient.Patch(ctx, createdVolume, client.MergeFrom(base))).To(Succeed())
 
 		By("cheking CreateVolume response")
-		createRes, err := d.CreateVolume(ctx, crtValReq)
+		createRes, err := d.CreateVolume(ctx, crtVolReq)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(createRes).ShouldNot(BeNil())
-		Expect(createRes.Volume.VolumeId).To(Equal(reqVolumeId))
-		Expect(createRes.Volume.VolumeContext["volume_pool"]).To(Equal(reqParameterMap["volume_pool"]))
+		Expect(createRes.Volume.VolumeId).To(Equal(volumeId))
+		Expect(createRes.Volume.VolumeContext["volume_pool"]).To(Equal(volumePool))
 		Expect(createRes.Volume.VolumeContext["fstype"]).To(Equal(reqParameterMap["fstype"]))
+		var accessibleTopology []*csi.Topology
+		Expect(createRes.Volume.AccessibleTopology).To(Equal(accessibleTopology))
+
+		By("deleting the volume")
+		delVolReq := getDeleteVolumeRequest(volumeId, getTestSecrets())
+		deleteRes, err := d.DeleteVolume(ctx, delVolReq)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(deleteRes).ShouldNot(BeNil())
+
+		By("creating the volume if volume_pool is not provided as a prameter but topology information is provided")
+		reqParameterMap["volume_pool"] = ""
+		tr = &csi.TopologyRequirement{
+			Requisite: []*csi.Topology{
+				{
+					Segments: map[string]string{
+						topologyKey: volumePool,
+					},
+				},
+			},
+			Preferred: []*csi.Topology{
+				{
+					Segments: map[string]string{
+						topologyKey: volumePool,
+					},
+				},
+			},
+		}
+		crtVolReq = getCreateVolumeRequest(volumeId, reqParameterMap, tr)
+		res, err = d.CreateVolume(ctx, crtVolReq)
+		Expect(res).To(BeNil())
+		Expect(err).To(MatchError(status.Errorf(codes.Internal, "provisioned volume %s is not in the available state", client.ObjectKey{Namespace: ns.Name, Name: volumeId})))
+
+		By("patching the volume state to be available")
+		createdVolume = &storagev1alpha1.Volume{}
+		Expect(k8sClient.Get(ctx, client.ObjectKey{Name: volumeId, Namespace: ns.Name}, createdVolume)).To(Succeed())
+		base = createdVolume.DeepCopy()
+		createdVolume.Status.State = storagev1alpha1.VolumeStateAvailable
+		Expect(k8sClient.Patch(ctx, createdVolume, client.MergeFrom(base))).To(Succeed())
+
+		By("cheking CreateVolume response")
+		createRes, err = d.CreateVolume(ctx, crtVolReq)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(createRes).ShouldNot(BeNil())
+		Expect(createRes.Volume.VolumeId).To(Equal(volumeId))
+		Expect(createRes.Volume.VolumeContext["volume_pool"]).To(Equal(volumePool))
+		Expect(createRes.Volume.VolumeContext["fstype"]).To(Equal(reqParameterMap["fstype"]))
+		Expect(createRes.Volume.AccessibleTopology).To(Equal(crtVolReq.AccessibilityRequirements.Requisite))
 
 		By("publishing the volume")
-		crtPublishVolumeReq := getCrtControllerPublishVolumeRequest(reqVolumeId)
-		crtPublishVolumeReq.VolumeId = reqVolumeId
+		crtPublishVolumeReq := getCrtControllerPublishVolumeRequest(volumeId)
+		crtPublishVolumeReq.VolumeId = volumeId
 		crtPublishVolumeReq.NodeId = d.nodeId
 
 		By("patching machine with volume atachment")
@@ -73,18 +123,18 @@ var _ = Describe("Service tests", func() {
 		outdatedStatusMachine := machine.DeepCopy()
 		machine.Spec.Volumes = []computev1alpha1.Volume{
 			{
-				Name: reqVolumeId + "-attachment",
+				Name: volumeId + "-attachment",
 				VolumeSource: computev1alpha1.VolumeSource{
 					VolumeRef: &corev1.LocalObjectReference{
-						Name: reqVolumeId,
+						Name: volumeId,
 					},
 				},
-				Device: &testDeviceName,
+				Device: &deviceName,
 			},
 		}
 		machine.Status.Volumes = []computev1alpha1.VolumeStatus{
 			{
-				Name:  reqVolumeId + "-attachment",
+				Name:  volumeId + "-attachment",
 				Phase: computev1alpha1.VolumePhaseBound,
 			},
 		}
@@ -93,7 +143,7 @@ var _ = Describe("Service tests", func() {
 		By("patching volume with device")
 		base = createdVolume.DeepCopy()
 		volumeAttr := make(map[string]string)
-		volumeAttr["WWN"] = testDeviceName
+		volumeAttr["WWN"] = deviceName
 		createdVolume.Status = storagev1alpha1.VolumeStatus{
 			State: storagev1alpha1.VolumeStateAvailable,
 			Phase: storagev1alpha1.VolumePhaseBound,
@@ -107,26 +157,25 @@ var _ = Describe("Service tests", func() {
 				VolumeAttributes: volumeAttr,
 			},
 		}
-
 		Expect(k8sClient.Patch(ctx, createdVolume, client.MergeFrom(base))).To(Succeed())
 
 		By("checking ControllerPublishVolume response")
 		publishRes, err := d.ControllerPublishVolume(ctx, crtPublishVolumeReq)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(publishRes).ShouldNot(BeNil())
-		Expect(publishRes.PublishContext["volume_id"]).To(Equal(reqVolumeId))
-		Expect(publishRes.PublishContext["device_name"]).To(Equal(validateDeviceName(createdVolume, machine, reqVolumeId+"-attachment", d.log)))
+		Expect(publishRes.PublishContext["volume_id"]).To(Equal(volumeId))
+		Expect(publishRes.PublishContext["device_name"]).To(Equal(validateDeviceName(createdVolume, machine, volumeId+"-attachment", d.log)))
 		Expect(publishRes.PublishContext["node_id"]).To(Equal(d.nodeId))
 
-		By("Unpublishing the volume")
-		unpublishVolReq := getCrtControllerUnpublishVolumeRequest(reqVolumeId, d.nodeId)
+		By("unpublishing the volume")
+		unpublishVolReq := getCrtControllerUnpublishVolumeRequest(volumeId, d.nodeId)
 		unpublishRes, err := d.ControllerUnpublishVolume(ctx, unpublishVolReq)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(unpublishRes).ShouldNot(BeNil())
 
 		By("deleting the volume")
-		delValReq := getDeleteVolumeRequest(reqVolumeId, getTestSecrets())
-		deleteRes, err := d.DeleteVolume(ctx, delValReq)
+		delVolReq = getDeleteVolumeRequest(volumeId, getTestSecrets())
+		deleteRes, err = d.DeleteVolume(ctx, delVolReq)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(deleteRes).ShouldNot(BeNil())
 	})
@@ -171,7 +220,7 @@ var _ = Describe("Service tests", func() {
 	})
 })
 
-func getCreateVolumeRequest(pvName string, parameterMap map[string]string) *csi.CreateVolumeRequest {
+func getCreateVolumeRequest(pvName string, parameterMap map[string]string, tr *csi.TopologyRequirement) *csi.CreateVolumeRequest {
 	capa := csi.VolumeCapability{
 		AccessMode: &csi.VolumeCapability_AccessMode{
 			Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
@@ -180,9 +229,10 @@ func getCreateVolumeRequest(pvName string, parameterMap map[string]string) *csi.
 	var arr []*csi.VolumeCapability
 	arr = append(arr, &capa)
 	return &csi.CreateVolumeRequest{
-		Name:               pvName,
-		Parameters:         parameterMap,
-		VolumeCapabilities: arr,
+		Name:                      pvName,
+		Parameters:                parameterMap,
+		VolumeCapabilities:        arr,
+		AccessibilityRequirements: tr,
 	}
 }
 

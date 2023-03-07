@@ -53,9 +53,15 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 
 	volumePool := req.GetParameters()["volume_pool"]
 	var accessibleTopology []*csi.Topology
-	// if no volume_pool was provided try to use the topology information if provided
-	if volumePool == "" && req.GetAccessibilityRequirements() != nil {
-		volumePool = getAZFromTopology(req.GetAccessibilityRequirements())
+
+	if volumePool == "" {
+		// if no volume_pool was provided try to use the topology information if provided
+		topology := req.GetAccessibilityRequirements()
+		if topology == nil {
+			return nil, status.Errorf(codes.Internal, "Neither volume pool nor topology provided")
+		}
+		volumePool = getAZFromTopology(topology)
+
 		accessibleTopology = []*csi.Topology{
 			{
 				Segments: map[string]string{topologyKey: volumePool},
