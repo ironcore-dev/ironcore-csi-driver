@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/container-storage-interface/spec v1.7.0
-	github.com/dell/gocsi v1.6.0
+	github.com/dell/gocsi v1.7.0
 	github.com/go-logr/logr v1.2.3
 	github.com/golang/protobuf v1.5.2
 	github.com/onmetal/controller-utils v0.7.0
