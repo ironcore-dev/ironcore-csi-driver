@@ -31,16 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type Volume struct {
-	ID            string
-	Name          string
-	VolumePool    string
-	CreatedAt     int64
-	Size          int64
-	FsType        string
-	ProvisionType string
-}
-
 func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	d.log.Info("Creating volume", "Volume", req.GetName())
 	capacity := req.GetCapacityRange()
@@ -105,15 +95,18 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		return nil, status.Errorf(codes.Internal, "provisioned volume %s is not in the available state", client.ObjectKeyFromObject(volume))
 	}
 
-	vol := &Volume{
-		ID:         req.GetName(),
-		Name:       req.GetName(),
-		VolumePool: volumePool,
-		Size:       volBytes,
-		FsType:     fstype,
-		CreatedAt:  volume.CreationTimestamp.Unix(),
+	csiVolResp.Volume = &csi.Volume{
+		VolumeId:      req.GetName(),
+		CapacityBytes: volBytes,
+		VolumeContext: map[string]string{
+			"volume_id":     req.GetName(),
+			"volume_name":   req.GetName(),
+			"volume_pool":   volumePool,
+			"creation_time": time.Unix(volume.CreationTimestamp.Unix(), 0).String(),
+			"fstype":        fstype,
+		},
+		ContentSource: req.GetVolumeContentSource(),
 	}
-	csiVolResp.Volume = getCsiVolume(vol, req)
 
 	d.log.Info("Successfully created volume", "Volume", volume)
 	return csiVolResp, nil
@@ -194,14 +187,15 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 	if deviceName == "" {
 		return nil, status.Errorf(codes.Internal, "unable to get device name for volume %s", client.ObjectKeyFromObject(volume))
 	}
-	csiResp := &csi.ControllerPublishVolumeResponse{}
-	volCtx := make(map[string]string)
-	volCtx["node_id"] = req.GetNodeId()
-	volCtx["volume_id"] = req.GetVolumeId()
-	volCtx["device_name"] = deviceName
-	csiResp.PublishContext = volCtx
+
 	d.log.Info("Successfully published volume to node", "Volume", req.GetVolumeId(), "Node", req.GetNodeId())
-	return csiResp, nil
+	return &csi.ControllerPublishVolumeResponse{
+		PublishContext: map[string]string{
+			"node_id":     req.GetNodeId(),
+			"volume_id":   req.GetVolumeId(),
+			"device_name": deviceName,
+		},
+	}, nil
 }
 
 func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
@@ -248,27 +242,27 @@ func (d *driver) ControllerGetVolume(context.Context, *csi.ControllerGetVolumeRe
 }
 
 func (d *driver) ListVolumes(_ context.Context, _ *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
-	return &csi.ListVolumesResponse{}, nil
+	return nil, status.Errorf(codes.Unimplemented, "method ListVolumes not implemented")
 }
 
 func (d *driver) ListSnapshots(_ context.Context, _ *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
-	return &csi.ListSnapshotsResponse{}, nil
+	return nil, status.Errorf(codes.Unimplemented, "method ListSnapshots not implemented")
 }
 
-func (d *driver) GetCapacity(_ context.Context, _ *csi.GetCapacityRequest) (capacityResponse *csi.GetCapacityResponse, err error) {
-	return &csi.GetCapacityResponse{}, nil
+func (d *driver) GetCapacity(_ context.Context, _ *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCapacity not implemented")
 }
 
-func (d *driver) CreateSnapshot(_ context.Context, _ *csi.CreateSnapshotRequest) (createSnapshot *csi.CreateSnapshotResponse, err error) {
-	return createSnapshot, nil
+func (d *driver) CreateSnapshot(_ context.Context, _ *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateSnapshot not implemented")
 }
 
-func (d *driver) DeleteSnapshot(_ context.Context, _ *csi.DeleteSnapshotRequest) (deleteSnapshot *csi.DeleteSnapshotResponse, err error) {
-	return deleteSnapshot, nil
+func (d *driver) DeleteSnapshot(_ context.Context, _ *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteSnapshot not implemented")
 }
 
-func (d *driver) ControllerExpandVolume(_ context.Context, _ *csi.ControllerExpandVolumeRequest) (expandVolume *csi.ControllerExpandVolumeResponse, err error) {
-	return expandVolume, nil
+func (d *driver) ControllerExpandVolume(_ context.Context, _ *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ControllerExpandVolume not implemented")
 }
 
 func (d *driver) ValidateVolumeCapabilities(_ context.Context, _ *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
@@ -336,22 +330,4 @@ func (d *driver) ControllerGetCapabilities(_ context.Context, _ *csi.ControllerG
 			},
 		},
 	}, nil
-}
-
-func getCsiVolume(vol *Volume, req *csi.CreateVolumeRequest) *csi.Volume {
-	volCtx := map[string]string{
-		"volume_id":      vol.ID,
-		"volume_name":    vol.Name,
-		"volume_pool":    vol.VolumePool,
-		"creation_time":  time.Unix(vol.CreatedAt, 0).String(),
-		"fstype":         vol.FsType,
-		"provision_type": vol.ProvisionType,
-	}
-	csiVol := &csi.Volume{
-		VolumeId:      vol.ID,
-		CapacityBytes: vol.Size,
-		VolumeContext: volCtx,
-		ContentSource: req.GetVolumeContentSource(),
-	}
-	return csiVol
 }
