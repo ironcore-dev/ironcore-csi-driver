@@ -167,9 +167,15 @@ var _ = Describe("Driver tests", func() {
 		Expect(publishRes.PublishContext["device_name"]).To(Equal(validateDeviceName(createdVolume, machine, volumeId+"-attachment", d.log)))
 		Expect(publishRes.PublishContext["node_id"]).To(Equal(d.nodeId))
 
-		By("unpublishing the volume")
-		unpublishVolReq := getCrtControllerUnpublishVolumeRequest(volumeId, d.nodeId)
+		By("unpublishing the volume from node no longer exist")
+		unpublishVolReq := getCrtControllerUnpublishVolumeRequest(volumeId, "nodeNotExist")
 		unpublishRes, err := d.ControllerUnpublishVolume(ctx, unpublishVolReq)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(unpublishRes).ShouldNot(BeNil())
+
+		By("unpublishing the volume from existing node")
+		unpublishVolReq = getCrtControllerUnpublishVolumeRequest(volumeId, d.nodeId)
+		unpublishRes, err = d.ControllerUnpublishVolume(ctx, unpublishVolReq)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(unpublishRes).ShouldNot(BeNil())
 

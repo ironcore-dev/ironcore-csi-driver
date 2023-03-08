@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -97,6 +98,9 @@ func NodeGetProviderID(ctx context.Context, nodeName string, c client.Client) (s
 	node := &corev1.Node{}
 	nodeKey := client.ObjectKey{Name: nodeName}
 	if err := c.Get(ctx, nodeKey, node); err != nil {
+		if apierrors.IsNotFound(err) {
+			return "", err
+		}
 		return "", fmt.Errorf("could not get node %s: %w", nodeName, err)
 	}
 
