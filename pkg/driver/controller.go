@@ -213,8 +213,13 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 
 func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	d.log.Info("Unpublishing volume from node", "Volume", req.GetVolumeId(), "Node", req.GetNodeId())
+
 	providerID, err := NodeGetProviderID(ctx, req.GetNodeId(), d.targetClient)
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			d.log.Info("Node no longer exists", "Node", req.GetNodeId())
+			return &csi.ControllerUnpublishVolumeResponse{}, nil
+		}
 		return nil, status.Errorf(codes.Internal, "failed to get providerID from node %s: %v", req.GetNodeId(), err)
 	}
 
