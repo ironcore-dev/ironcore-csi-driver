@@ -21,4 +21,12 @@ const (
 	ParameterFSType = "fstype"
 	// ProviderName is the provider name of the csi
 	ProviderName = "onmetal"
+	// ParameterVolumePool is the volume pool parameter
+	ParameterVolumePool = "volume_pool"
+	// ParameterVolumeID is the volume id parameter
+	ParameterVolumeID = "volume_id"
+	// ParameterVolumeName is the volume name parameter
+	ParameterVolumeName = "volume_name"
+	// ParameterCreationTime is the creation time paramater
+	ParameterCreationTime = "creation_time"
 )

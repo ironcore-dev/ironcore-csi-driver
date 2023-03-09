@@ -120,11 +120,11 @@ func validateDeviceName(volume *storagev1alpha1.Volume, machine *computev1alpha1
 		for _, va := range machine.Spec.Volumes {
 			if va.Name == vaName && *va.Device != "" {
 				device := *va.Device
-				log.Info("machine is updated with device", "device", device)
+				log.Info("Found device in machine status to use for volume", "Device", device, "Volume", client.ObjectKeyFromObject(volume))
 				return "/dev/disk/by-id/virtio-" + device + "-" + handle
 			}
 		}
 	}
-	log.Info("could not find device for given volume", "volume.ObjectMeta.Name", volume.ObjectMeta.Name)
+	log.Info("Could not find device in machine status for given volume", "Machine", client.ObjectKeyFromObject(machine), "Volume", client.ObjectKeyFromObject(volume))
 	return ""
 }
