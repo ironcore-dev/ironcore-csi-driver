@@ -121,7 +121,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		AccessibleTopology: accessibleTopology,
 	}
 
-	d.log.Info("Successfully created volume", "Volume", volume)
+	d.log.Info("Created volume", "Volume", volume)
 	return csiVolResp, nil
 }
 
@@ -141,7 +141,7 @@ func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 	if err := d.onmetalClient.Delete(ctx, vol); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete volume %s: %v", client.ObjectKeyFromObject(vol), err)
 	}
-	d.log.Info("Successfully deleted volume", "Volume", req.GetVolumeId())
+	d.log.Info("Deleted deleted volume", "Volume", req.GetVolumeId())
 	return deleteResponse, nil
 }
 
@@ -201,7 +201,7 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 		return nil, status.Errorf(codes.Internal, "unable to get device name for volume %s", client.ObjectKeyFromObject(volume))
 	}
 
-	d.log.Info("Successfully published volume to node", "Volume", req.GetVolumeId(), "Node", req.GetNodeId())
+	d.log.Info("Published volume on node", "Volume", req.GetVolumeId(), "Node", req.GetNodeId())
 	return &csi.ControllerPublishVolumeResponse{
 		PublishContext: map[string]string{
 			"node_id":     req.GetNodeId(),
@@ -251,7 +251,7 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 		}
 	}
 
-	d.log.Info("Successfully un-published volume from node", "Volume", req.GetVolumeId(), "Node", req.GetNodeId())
+	d.log.Info("Un-published volume on node", "Volume", req.GetVolumeId(), "Node", req.GetNodeId())
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
