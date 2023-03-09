@@ -27,7 +27,7 @@ import (
 )
 
 func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
-	d.log.Info("Staging volume for node ", "Volume", req.GetVolumeId(), "StagingTargetPath", req.GetStagingTargetPath())
+	d.log.Info("Staging volume on node ", "Volume", req.GetVolumeId(), "StagingTargetPath", req.GetStagingTargetPath())
 	fstype := req.GetVolumeContext()["fstype"]
 	devicePath := req.PublishContext["device_name"]
 
@@ -64,12 +64,12 @@ func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 	if err = d.mountUtil.FormatAndMount(devicePath, targetPath, fstype, options); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to mount volume %s [%s] to %s: %v", devicePath, fstype, targetPath, err)
 	}
-	d.log.Info("Successfully staged the volume", "Volume", req.GetVolumeId())
+	d.log.Info("Staged volume on node", "Volume", req.GetVolumeId())
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
 func (d *driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
-	d.log.Info("Publishing volume on node", "Volume", req.GetVolumeId(), "TargetPath", req.GetTargetPath())
+	d.log.Info("Publishing volume on node", "Volume", req.GetVolumeId(), "TargetMountPath", req.GetTargetPath())
 
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
@@ -81,9 +81,9 @@ func (d *driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 		return nil, status.Error(codes.InvalidArgument, "stagingTargetPath is not set")
 	}
 
-	targetPath := req.GetTargetPath()
-	if len(targetPath) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "targetPath is not set")
+	targetMountPath := req.GetTargetPath()
+	if len(targetMountPath) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "targetMountPath is not set")
 	}
 
 	volCap := req.GetVolumeCapability()
@@ -110,27 +110,27 @@ func (d *driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 		fstype = "ext4"
 	}
 
-	notMnt, err := d.mountUtil.IsLikelyNotMountPoint(targetPath)
+	notMnt, err := d.mountUtil.IsLikelyNotMountPoint(targetMountPath)
 	if err != nil && !os.IsNotExist(err) {
-		return nil, status.Errorf(codes.Internal, "mount directory %s does not exist: %v", targetPath, err)
+		return nil, status.Errorf(codes.Internal, "mount directory %s does not exist: %v", targetMountPath, err)
 	}
 
 	if notMnt {
-		d.log.Info("targetPath is not mountpoint", "targetPath", targetPath)
+		d.log.Info("Target mount directory does not exist", "TargetMountPath", targetMountPath)
 		if os.IsNotExist(err) {
-			d.log.V(1).Info("Create target directory")
-			if err := os.MkdirAll(targetPath, 0750); err != nil {
-				d.log.Error(errors.New("failed to create directory"), "failed to create directory", "targetPath", targetPath)
+			d.log.Info("Creating target mount directory", "TargetMountPath", targetMountPath)
+			if err := os.MkdirAll(targetMountPath, 0750); err != nil {
+				d.log.Error(errors.New("failed to create directory"), "failed to create directory", "targetMountPath", targetMountPath)
 				return nil, err
 			}
 		}
 
-		if err := d.mountUtil.Mount(stagePath, targetPath, fstype, mountOptions); err != nil {
+		if err := d.mountUtil.Mount(stagePath, targetMountPath, fstype, mountOptions); err != nil {
 			d.log.Error(err, "failed to mount volume. error while publishing volume")
-			return nil, status.Errorf(codes.Internal, "Could not mount %q at %q: %v", stagePath, targetPath, err)
+			return nil, status.Errorf(codes.Internal, "Could not mount %q at %q: %v", stagePath, targetMountPath, err)
 		}
 	}
-	d.log.Info("Successfully published volume on node", "Volume", req.GetVolumeId())
+	d.log.Info("Published volume on node", "Volume", req.GetVolumeId())
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
@@ -160,7 +160,7 @@ func (d *driver) NodeUnstageVolume(_ context.Context, req *csi.NodeUnstageVolume
 	if err = os.RemoveAll(stagePath); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to remove mount directory %s, error: %v", stagePath, err)
 	}
-	d.log.Info("Successfully un-stanged volume on node", "Volume", req.GetVolumeId())
+	d.log.Info("Un-staged volume on node", "Volume", req.GetVolumeId())
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
@@ -199,7 +199,7 @@ func (d *driver) NodeUnpublishVolume(_ context.Context, req *csi.NodeUnpublishVo
 		return nil, status.Errorf(codes.Internal, "failed to remove mount directory %s, error: %v", targetPath, err)
 	}
 
-	d.log.Info("Successfully un-published volume on node", "Volume", req.GetVolumeId())
+	d.log.Info("Un-published volume on node", "Volume", req.GetVolumeId())
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
