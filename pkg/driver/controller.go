@@ -51,25 +51,21 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		return nil, status.Errorf(codes.Internal, "required parameter %s is missing", ParameterType)
 	}
 
-	volumePool := req.GetParameters()["volume_pool"]
+	volumePoolName := req.GetParameters()[ParameterVolumePool]
 	var accessibleTopology []*csi.Topology
 
-	if volumePool == "" {
+	if volumePoolName == "" {
 		// if no volume_pool was provided try to use the topology information if provided
 		topology := req.GetAccessibilityRequirements()
 		if topology == nil {
-			return nil, status.Errorf(codes.Internal, "Neither volume pool nor topology provided")
+			return nil, status.Errorf(codes.Internal, "neither volume pool nor topology provided for volume")
 		}
-		volumePool = getAZFromTopology(topology)
-
-		accessibleTopology = []*csi.Topology{
-			{
-				Segments: map[string]string{topologyKey: volumePool},
-			},
-		}
+		volumePoolName = getAZFromTopology(topology)
+		accessibleTopology = append(accessibleTopology, &csi.Topology{
+			Segments: map[string]string{topologyKey: volumePoolName},
+		})
 	}
-
-	d.log.Info("Using volume pool for volume", "Volume", req.GetName(), "VolumePool", volumePool)
+	d.log.Info("Using volume pool for volume", "Volume", req.GetName(), "VolumePool", volumePoolName)
 
 	volume := &storagev1alpha1.Volume{
 		TypeMeta: metav1.TypeMeta{
@@ -88,14 +84,14 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 				Name: volumeClass,
 			},
 			VolumePoolRef: &corev1.LocalObjectReference{
-				Name: volumePool,
+				Name: volumePoolName,
 			},
 		},
 	}
 
 	d.log.Info("Patching volume", "Volume", volume)
-	if err := d.onmetalClient.Patch(ctx, volume, client.Apply, volumeFieldOwner); err != nil {
-		return nil, status.Errorf(codes.Internal, "faild to patch volume %s: %v", client.ObjectKeyFromObject(volume), err)
+	if err := d.onmetalClient.Patch(ctx, volume, client.Apply, volumeFieldOwner, client.ForceOwnership); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to patch volume %s: %v", client.ObjectKeyFromObject(volume), err)
 	}
 
 	d.log.Info("Check if the volume status is available")
@@ -111,11 +107,11 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		VolumeId:      req.GetName(),
 		CapacityBytes: volBytes,
 		VolumeContext: map[string]string{
-			"volume_id":     req.GetName(),
-			"volume_name":   req.GetName(),
-			"volume_pool":   volumePool,
-			"creation_time": time.Unix(volume.CreationTimestamp.Unix(), 0).String(),
-			"fstype":        fstype,
+			ParameterVolumeID:     req.GetName(),
+			ParameterVolumeName:   req.GetName(),
+			ParameterVolumePool:   volumePoolName,
+			ParameterCreationTime: time.Unix(volume.CreationTimestamp.Unix(), 0).String(),
+			ParameterFSType:       fstype,
 		},
 		ContentSource:      req.GetVolumeContentSource(),
 		AccessibleTopology: accessibleTopology,
@@ -126,12 +122,10 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 }
 
 func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	if req.GetVolumeId() == "" {
-		return nil, status.Errorf(codes.Internal, "required parameters are missing")
-	}
 	d.log.Info("Deleting volume", "Volume", req.GetVolumeId())
-
-	deleteResponse := &csi.DeleteVolumeResponse{}
+	if req.GetVolumeId() == "" {
+		return nil, status.Errorf(codes.Internal, "required parameter 'volumeID' is missing")
+	}
 	vol := &storagev1alpha1.Volume{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: d.csiNamespace,
@@ -142,11 +136,11 @@ func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 		return nil, status.Errorf(codes.Internal, "failed to delete volume %s: %v", client.ObjectKeyFromObject(vol), err)
 	}
 	d.log.Info("Deleted deleted volume", "Volume", req.GetVolumeId())
-	return deleteResponse, nil
+	return &csi.DeleteVolumeResponse{}, nil
 }
 
 func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
-	d.log.Info("request received to publish volume", "VolumeId", req.GetVolumeId(), "NodeId", req.GetNodeId())
+	d.log.Info("Publishing volume on node", "Volume", req.GetVolumeId(), "Node", req.GetNodeId())
 	providerID, err := NodeGetProviderID(ctx, req.GetNodeId(), d.targetClient)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get providerID for node %s: %v", req.GetNodeId(), err)
@@ -160,7 +154,7 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 	machine := &computev1alpha1.Machine{}
 	machineKey := client.ObjectKey{Namespace: namespace, Name: req.GetNodeId()}
 
-	d.log.Info("Get machine for adding volumes", "Machine", machine)
+	d.log.Info("Get machine to attach volume", "Machine", machine, "Volume", req.GetVolumeId())
 	if err := d.onmetalClient.Get(ctx, machineKey, machine); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get machine %s: %v", client.ObjectKeyFromObject(machine), err)
 	}
@@ -171,8 +165,7 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 				Name: req.GetVolumeId(),
 			},
 		}
-
-		d.log.V(1).Info("Adding attached volumes to machine", "Machine", machine)
+		d.log.Info("Adding attached volumes to machine", "Machine", machine)
 		machineBase := machine.DeepCopy()
 		volAttachment := computev1alpha1.Volume{
 			Name:         vaName,
@@ -231,7 +224,7 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 	machine := &computev1alpha1.Machine{}
 	machineKey := client.ObjectKey{Namespace: namespace, Name: req.GetNodeId()}
 
-	d.log.Info("Get machine for removing volumes", "Machine", machine)
+	d.log.Info("Get machine to detach volume", "Machine", machine, "Volume", req.GetVolumeId())
 	if err = d.onmetalClient.Get(ctx, machineKey, machine); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get machine %s: %v", client.ObjectKeyFromObject(machine), err)
 	}

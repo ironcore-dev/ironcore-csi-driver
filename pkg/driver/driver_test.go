@@ -68,7 +68,7 @@ var _ = Describe("Driver tests", func() {
 		Expect(createRes.Volume.AccessibleTopology).To(Equal(accessibleTopology))
 
 		By("deleting the volume")
-		delVolReq := getDeleteVolumeRequest(volumeId, getTestSecrets())
+		delVolReq := getDeleteVolumeRequest(volumeId)
 		deleteRes, err := d.DeleteVolume(ctx, delVolReq)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(deleteRes).ShouldNot(BeNil())
@@ -180,7 +180,7 @@ var _ = Describe("Driver tests", func() {
 		Expect(unpublishRes).ShouldNot(BeNil())
 
 		By("deleting the volume")
-		delVolReq = getDeleteVolumeRequest(volumeId, getTestSecrets())
+		delVolReq = getDeleteVolumeRequest(volumeId)
 		deleteRes, err = d.DeleteVolume(ctx, delVolReq)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(deleteRes).ShouldNot(BeNil())
@@ -226,19 +226,18 @@ var _ = Describe("Driver tests", func() {
 	})
 })
 
-func getCreateVolumeRequest(pvName string, parameterMap map[string]string, tr *csi.TopologyRequirement) *csi.CreateVolumeRequest {
-	capa := csi.VolumeCapability{
-		AccessMode: &csi.VolumeCapability_AccessMode{
-			Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
-		},
-	}
-	var arr []*csi.VolumeCapability
-	arr = append(arr, &capa)
+func getCreateVolumeRequest(name string, parameter map[string]string, topologyRequirement *csi.TopologyRequirement) *csi.CreateVolumeRequest {
 	return &csi.CreateVolumeRequest{
-		Name:                      pvName,
-		Parameters:                parameterMap,
-		VolumeCapabilities:        arr,
-		AccessibilityRequirements: tr,
+		Name:       name,
+		Parameters: parameter,
+		VolumeCapabilities: []*csi.VolumeCapability{
+			{
+				AccessMode: &csi.VolumeCapability_AccessMode{
+					Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+				},
+			},
+		},
+		AccessibilityRequirements: topologyRequirement,
 	}
 }
 
@@ -255,18 +254,8 @@ func getCrtControllerUnpublishVolumeRequest(volumeId, NodeId string) *csi.Contro
 	}
 }
 
-func getDeleteVolumeRequest(volumeId string, secrets map[string]string) *csi.DeleteVolumeRequest {
+func getDeleteVolumeRequest(volumeId string) *csi.DeleteVolumeRequest {
 	return &csi.DeleteVolumeRequest{
 		VolumeId: volumeId,
-		Secrets:  secrets,
 	}
-}
-
-func getTestSecrets() map[string]string {
-	secretMap := map[string]string{
-		"username": "admin",
-		"password": "123456",
-		"hostname": "https://172.17.35.61/",
-	}
-	return secretMap
 }
