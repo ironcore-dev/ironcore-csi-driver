@@ -26,6 +26,7 @@ import (
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
 	envtestutils "github.com/onmetal/onmetal-api/utils/envtest"
 	"github.com/onmetal/onmetal-api/utils/envtest/apiserver"
+	"github.com/onmetal/onmetal-csi-driver/cmd/options"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -35,7 +36,7 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	komega "sigs.k8s.io/controller-runtime/pkg/envtest/komega"
+	. "sigs.k8s.io/controller-runtime/pkg/envtest/komega"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
@@ -79,7 +80,7 @@ var _ = BeforeSuite(func() {
 	k8sClient, err = client.New(cfg, client.Options{Scheme: clientgoscheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
-	komega.SetClient(k8sClient)
+	SetClient(k8sClient)
 
 	apiSrv, err := apiserver.New(cfg, apiserver.Options{
 		MainPath:     "github.com/onmetal/onmetal-api/cmd/onmetal-apiserver",
@@ -108,13 +109,8 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 				GenerateName: "test-ns-",
 			},
 		}
-
 		Expect(k8sClient.Create(ctx, ns)).To(Succeed(), "failed to create test namespace")
 		DeferCleanup(k8sClient.Delete, ctx, ns)
-
-		newDriver := New(getTestConfig(), k8sClient, k8sClient, zap.New())
-		*d = *newDriver.(*driver)
-		d.csiNamespace = ns.Name
 
 		// Create a test node with providerID spec
 		node := &corev1.Node{
@@ -128,8 +124,16 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 		Expect(k8sClient.Create(ctx, node)).To(Succeed())
 		DeferCleanup(k8sClient.Delete, ctx, node)
 
-		d.nodeName = node.Name
-		d.nodeId = node.Name
+		config := &options.Config{
+			NodeIP:          "10.0.0.1",
+			NodeID:          "node",
+			NodeName:        "node",
+			DriverNamespace: ns.Name,
+			DriverName:      "foo",
+			DriverVersion:   "dev",
+		}
+		newDriver := NewDriver(config, k8sClient, k8sClient)
+		*d = *newDriver.(*driver)
 
 		machineClass := &computev1alpha1.MachineClass{
 			ObjectMeta: metav1.ObjectMeta{
@@ -146,7 +150,7 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 		machinePool := &computev1alpha1.MachinePool{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: ns.Name,
-				Name:      "pool1",
+				Name:      "machinepool",
 			},
 			Spec: computev1alpha1.MachinePoolSpec{
 				ProviderID: "onmetal://foo",
@@ -175,7 +179,7 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 					Name: "t3-small",
 				},
 				MachinePoolRef: &corev1.LocalObjectReference{
-					Name: "pool1",
+					Name: "machinepool",
 				},
 			},
 		}
@@ -189,12 +193,4 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 	})
 
 	return ns, d
-}
-
-func getTestConfig() map[string]string {
-	cfg := map[string]string{
-		"driver_name":    "onmetal-csi-driver",
-		"driver_version": "1.0.0",
-	}
-	return cfg
 }

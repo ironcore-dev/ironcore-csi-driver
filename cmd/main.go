@@ -24,18 +24,16 @@ import (
 
 	"github.com/dell/gocsi"
 	csictx "github.com/dell/gocsi/context"
-	"github.com/go-logr/logr"
 	"github.com/onmetal/controller-utils/configutils"
 	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
+	"github.com/onmetal/onmetal-csi-driver/cmd/options"
 	"github.com/onmetal/onmetal-csi-driver/pkg/driver"
-	"github.com/onmetal/onmetal-csi-driver/pkg/provider"
-	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 var scheme = runtime.NewScheme()
@@ -66,60 +64,77 @@ func main() {
 		cancel()
 	}()
 
-	config, log := initialConfiguration(ctx)
-
-	targetClient, onMetalClient, err := initClients()
+	config, err := initialConfiguration(ctx)
 	if err != nil {
-		log.Error(err, "error getting clients")
+		klog.Errorf("failed to initialize configuration: %v", err)
 		os.Exit(1)
 	}
 
+	targetClient, onMetalClient, err := initClients()
+	if err != nil {
+		klog.Errorf("error getting clients: %v", err)
+		os.Exit(1)
+	}
+
+	drv := driver.NewDriver(config, targetClient, onMetalClient)
 	gocsi.Run(
 		ctx,
 		driver.CSIDriverName,
 		"onMetal CSI Driver Plugin",
 		"",
-		provider.New(config, targetClient, onMetalClient, log))
+		&gocsi.StoragePlugin{
+			Controller:  drv,
+			Node:        drv,
+			Identity:    drv,
+			BeforeServe: drv.BeforeServe,
+			EnvVars: []string{
+				// Enable request validation
+				gocsi.EnvVarSpecReqValidation + "=true",
+				// Enable serial volume access
+				gocsi.EnvVarSerialVolAccess + "=true",
+			},
+		},
+	)
 }
 
-func initialConfiguration(ctx context.Context) (map[string]string, logr.Logger) {
-	configParams := make(map[string]string)
-	if nodeip, ok := csictx.LookupEnv(ctx, "NODE_IP_ADDRESS"); ok {
-		configParams["node_ip"] = nodeip
+func initialConfiguration(ctx context.Context) (*options.Config, error) {
+	nodeip, ok := csictx.LookupEnv(ctx, "NODE_IP_ADDRESS")
+	if !ok {
+		return nil, fmt.Errorf("no node ip has been provided")
 	}
-	if nodeName, ok := csictx.LookupEnv(ctx, "KUBE_NODE_NAME"); ok {
-		configParams["node_name"] = nodeName
-		configParams["node_id"] = nodeName
+	nodeName, ok := csictx.LookupEnv(ctx, "KUBE_NODE_NAME")
+	if !ok {
+		return nil, fmt.Errorf("no node name has been provided")
 	}
-	if drivername, ok := csictx.LookupEnv(ctx, "CSI_DRIVER_NAME"); ok {
-		configParams["driver_name"] = drivername
+	driverName, ok := csictx.LookupEnv(ctx, "CSI_DRIVER_NAME")
+	if !ok {
+		driverName = driver.CSIDriverName
 	}
-	if driverversion, ok := csictx.LookupEnv(ctx, "CSI_DRIVER_VERSION"); ok {
-		configParams["driver_version"] = driverversion
+	driverVersion, ok := csictx.LookupEnv(ctx, "CSI_DRIVER_VERSION")
+	if !ok {
+		driverVersion = "dev"
 	}
-	if volumeNamespace, ok := csictx.LookupEnv(ctx, "VOLUME_NS"); ok {
-		configParams["csi_namespace"] = volumeNamespace
+	driverNamespace, ok := csictx.LookupEnv(ctx, "VOLUME_NS")
+	if !ok {
+		return nil, fmt.Errorf("no node name has been provided")
 	}
-	return configParams, initLogger(ctx)
-}
-
-func initLogger(ctx context.Context) logr.Logger {
-	logLevel, _ := csictx.LookupEnv(ctx, "APP_LOG_LEVEL")
-	ll, err := zapcore.ParseLevel(logLevel)
-	if err != nil {
-		ll = zapcore.InfoLevel
-	}
-	zapOpts := zap.Options{Development: true, Level: ll, TimeEncoder: zapcore.ISO8601TimeEncoder}
-	return zap.New(zap.UseFlagOptions(&zapOpts))
+	return &options.Config{
+		NodeIP:          nodeip,
+		NodeID:          nodeName,
+		NodeName:        nodeName,
+		DriverName:      driverName,
+		DriverVersion:   driverVersion,
+		DriverNamespace: driverNamespace,
+	}, nil
 }
 
 func initClients() (client.Client, client.Client, error) {
-	targetClient, err := BuildKubeClient(targetKubeconfig)
+	targetClient, err := buildKubernetesClient(targetKubeconfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error getting target client %w", err)
 	}
 
-	onMetalClient, err := BuildKubeClient(onmetalKubeconfig)
+	onMetalClient, err := buildKubernetesClient(onmetalKubeconfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error getting onMetal client %w", err)
 	}
@@ -127,7 +142,7 @@ func initClients() (client.Client, client.Client, error) {
 	return targetClient, onMetalClient, nil
 }
 
-func BuildKubeClient(kubeconfig string) (client.Client, error) {
+func buildKubernetesClient(kubeconfig string) (client.Client, error) {
 	cfg, err := configutils.GetConfig(configutils.Kubeconfig(kubeconfig))
 	if err != nil {
 		return nil, fmt.Errorf("unable to load kubeconfig: %w", err)

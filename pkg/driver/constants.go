@@ -14,13 +14,19 @@
 
 package driver
 
+import (
+	"github.com/onmetal/onmetal-csi-driver/pkg/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
 const (
+	// DefaultVolumeSize represents the default volume size.
+	DefaultVolumeSize int64 = 10 * util.GiB
+
 	// ParameterType is the name of the type parameter
 	ParameterType = "type"
 	// ParameterFSType is the name of the fstype parameter
 	ParameterFSType = "fstype"
-	// ProviderName is the provider name of the csi
-	ProviderName = "onmetal"
 	// ParameterVolumePool is the volume pool parameter
 	ParameterVolumePool = "volume_pool"
 	// ParameterVolumeID is the volume id parameter
@@ -29,4 +35,12 @@ const (
 	ParameterVolumeName = "volume_name"
 	// ParameterCreationTime is the creation time paramater
 	ParameterCreationTime = "creation_time"
+	// ParameterNodeID is the node id parameter
+	ParameterNodeID = "node_id"
+	// ParameterDeviceName is the device name parameter
+	ParameterDeviceName = "device_name"
+
+	CSIDriverName    = "csi.onmetal.de"
+	topologyKey      = "topology." + CSIDriverName + "/zone"
+	volumeFieldOwner = client.FieldOwner("csi.onmetal.de/volume")
 )

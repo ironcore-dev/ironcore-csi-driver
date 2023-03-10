@@ -15,43 +15,45 @@
 package driver
 
 import (
-	"context"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"k8s.io/klog/v2"
+	testutils "github.com/onmetal/onmetal-api/utils/testing"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
-func (d *driver) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
-	klog.V(6).InfoS("GetPluginInfo: called", "args", *req)
-	return &csi.GetPluginInfoResponse{
-		Name:          d.config.DriverName,
-		VendorVersion: d.config.DriverVersion,
-	}, nil
-}
+var _ = Describe("Controller", func() {
+	ctx := testutils.SetupContext()
+	_, drv := SetupTest(ctx)
 
-func (d *driver) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
-	klog.V(6).InfoS("GetPluginCapabilities: called", "args", *req)
-	return &csi.GetPluginCapabilitiesResponse{
-		Capabilities: []*csi.PluginCapability{
-			{
+	It("should get the correct driver plugin information", func() {
+		By("calling GetPluginInfo")
+		res, err := drv.GetPluginInfo(ctx, &csi.GetPluginInfoRequest{})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(res).To(SatisfyAll(
+			HaveField("Name", "foo"),
+			HaveField("VendorVersion", "dev"),
+		))
+	})
+
+	It("should get the correct driver plugin capabilities", func() {
+		By("calling GetPluginCapabilities")
+		res, err := drv.GetPluginCapabilities(ctx, &csi.GetPluginCapabilitiesRequest{})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(res.Capabilities).To(ConsistOf(
+			&csi.PluginCapability{
 				Type: &csi.PluginCapability_Service_{
 					Service: &csi.PluginCapability_Service{
 						Type: csi.PluginCapability_Service_CONTROLLER_SERVICE,
 					},
 				},
 			},
-			{
+			&csi.PluginCapability{
 				Type: &csi.PluginCapability_Service_{
 					Service: &csi.PluginCapability_Service{
 						Type: csi.PluginCapability_Service_VOLUME_ACCESSIBILITY_CONSTRAINTS,
 					},
 				},
 			},
-		},
-	}, nil
-}
-
-func (d *driver) Probe(ctx context.Context, req *csi.ProbeRequest) (*csi.ProbeResponse, error) {
-	klog.V(6).InfoS("Probe: called", "args", *req)
-	return &csi.ProbeResponse{}, nil
-}
+		))
+	})
+})
