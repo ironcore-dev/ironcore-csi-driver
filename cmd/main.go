@@ -112,8 +112,8 @@ func initialConfiguration(ctx context.Context) (*options.Config, error) {
 	}
 
 	driverNamespace, ok := csictx.LookupEnv(ctx, "VOLUME_NS")
-	if !ok {
-		return nil, fmt.Errorf("no onmetal driver namespace has been provided")
+	if !ok && mode == "controller" {
+		return nil, fmt.Errorf("no onmetal driver namespace has been provided to driver controller")
 	}
 
 	return &options.Config{
