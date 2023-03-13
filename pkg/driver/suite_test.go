@@ -125,7 +125,6 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 		DeferCleanup(k8sClient.Delete, ctx, node)
 
 		config := &options.Config{
-			NodeIP:          "10.0.0.1",
 			NodeID:          "node",
 			NodeName:        "node",
 			DriverNamespace: ns.Name,

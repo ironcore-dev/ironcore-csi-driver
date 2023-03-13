@@ -98,10 +98,6 @@ func main() {
 }
 
 func initialConfiguration(ctx context.Context) (*options.Config, error) {
-	nodeip, ok := csictx.LookupEnv(ctx, "NODE_IP_ADDRESS")
-	if !ok {
-		return nil, fmt.Errorf("no node ip has been provided")
-	}
 	nodeName, ok := csictx.LookupEnv(ctx, "KUBE_NODE_NAME")
 	if !ok {
 		return nil, fmt.Errorf("no node name has been provided")
@@ -119,7 +115,6 @@ func initialConfiguration(ctx context.Context) (*options.Config, error) {
 		return nil, fmt.Errorf("no node name has been provided")
 	}
 	return &options.Config{
-		NodeIP:          nodeip,
 		NodeID:          nodeName,
 		NodeName:        nodeName,
 		DriverName:      driverName,

@@ -15,8 +15,6 @@
 package options
 
 type Config struct {
-	// NodeIp is the ip of the node
-	NodeIP string
 	// NodeID is the ID of the node
 	NodeID string
 	// NodeName is the name of the node
