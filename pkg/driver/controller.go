@@ -35,6 +35,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var (
+	// volumeCaps represents how the volume could be accessed.
+	// It is SINGLE_NODE_WRITER since an onmetal volume could only be
+	// attached to a single node at any given time.
+	volumeCaps = []csi.VolumeCapability_AccessMode{
+		{
+			Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+		},
+	}
+
+	// controllerCaps represents the capability of controller service
+	controllerCaps = []csi.ControllerServiceCapability_RPC_Type{
+		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
+		csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
+	}
+)
+
 func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	klog.InfoS("Creating volume", "Volume", req.GetName())
 	volSizeBytes, err := getVolSizeBytes(req)
@@ -216,7 +233,7 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 	machine := &computev1alpha1.Machine{}
 	klog.InfoS("Get machine to detach volume", "Machine", client.ObjectKeyFromObject(machine), "Volume", req.GetVolumeId())
 	if err = d.onmetalClient.Get(ctx, client.ObjectKey{Namespace: d.config.DriverNamespace, Name: req.GetNodeId()}, machine); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get machine %s: %v", client.ObjectKeyFromObject(machine), err)
+		return nil, status.Errorf(codes.Internal, "Failed to get machine %s: %v", client.ObjectKeyFromObject(machine), err)
 	}
 
 	vaName := req.GetVolumeId() + "-attachment"
@@ -237,78 +254,84 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
-func (d *driver) ControllerGetVolume(context.Context, *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ControllerGetVolume not implemented")
+func (d *driver) ControllerGetVolume(ctx context.Context, req *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
+	klog.V(4).InfoS("ControllerGetVolume: called", "args", *req)
+	return nil, status.Errorf(codes.Unimplemented, "Method ControllerGetVolume not implemented")
 }
 
-func (d *driver) ListVolumes(_ context.Context, _ *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListVolumes not implemented")
+func (d *driver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
+	klog.V(4).InfoS("ListVolumes: called", "args", *req)
+	return nil, status.Errorf(codes.Unimplemented, "Method ListVolumes not implemented")
 }
 
-func (d *driver) ListSnapshots(_ context.Context, _ *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListSnapshots not implemented")
+func (d *driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
+	klog.V(4).InfoS("ListSnapshots: called", "args", *req)
+	return nil, status.Errorf(codes.Unimplemented, "Method ListSnapshots not implemented")
 }
 
-func (d *driver) GetCapacity(_ context.Context, _ *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetCapacity not implemented")
+func (d *driver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
+	klog.V(4).InfoS("GetCapacity: called", "args", *req)
+	return nil, status.Errorf(codes.Unimplemented, "Method GetCapacity not implemented")
 }
 
-func (d *driver) CreateSnapshot(_ context.Context, _ *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateSnapshot not implemented")
+func (d *driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
+	klog.V(4).InfoS("CreateSnapshot: called", "args", req)
+	return nil, status.Errorf(codes.Unimplemented, "Method CreateSnapshot not implemented")
 }
 
-func (d *driver) DeleteSnapshot(_ context.Context, _ *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteSnapshot not implemented")
+func (d *driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
+	klog.V(4).InfoS("DeleteSnapshot: called", "args", req)
+	return nil, status.Errorf(codes.Unimplemented, "Method DeleteSnapshot not implemented")
 }
 
-func (d *driver) ControllerExpandVolume(_ context.Context, _ *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ControllerExpandVolume not implemented")
+func (d *driver) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
+	klog.V(4).InfoS("ControllerExpandVolume: called", "args", *req)
+	return nil, status.Errorf(codes.Unimplemented, "Method ControllerExpandVolume not implemented")
 }
 
-func (d *driver) ValidateVolumeCapabilities(_ context.Context, _ *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	return &csi.ValidateVolumeCapabilitiesResponse{}, nil
-}
+func (d *driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+	klog.V(4).InfoS("ValidateVolumeCapabilities: called", "args", *req)
+	volumeID := req.GetVolumeId()
+	if len(volumeID) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
+	}
 
-func (d *driver) ControllerGetCapabilities(_ context.Context, _ *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
-	return &csi.ControllerGetCapabilitiesResponse{
-		Capabilities: []*csi.ControllerServiceCapability{
-			{
-				Type: &csi.ControllerServiceCapability_Rpc{
-					Rpc: &csi.ControllerServiceCapability_RPC{
-						Type: csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
-					},
-				},
-			},
-			{
-				Type: &csi.ControllerServiceCapability_Rpc{
-					Rpc: &csi.ControllerServiceCapability_RPC{
-						Type: csi.ControllerServiceCapability_RPC_LIST_VOLUMES,
-					},
-				},
-			},
-			{
-				Type: &csi.ControllerServiceCapability_Rpc{
-					Rpc: &csi.ControllerServiceCapability_RPC{
-						Type: csi.ControllerServiceCapability_RPC_GET_CAPACITY,
-					},
-				},
-			},
-			{
-				Type: &csi.ControllerServiceCapability_Rpc{
-					Rpc: &csi.ControllerServiceCapability_RPC{
-						Type: csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
-					},
-				},
-			},
-			{
-				Type: &csi.ControllerServiceCapability_Rpc{
-					Rpc: &csi.ControllerServiceCapability_RPC{
-						Type: csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
-					},
-				},
-			},
-		},
+	volCaps := req.GetVolumeCapabilities()
+	if len(volCaps) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume capabilities not provided")
+	}
+
+	volume := &storagev1alpha1.Volume{}
+	if err := d.onmetalClient.Get(ctx, client.ObjectKey{Namespace: d.config.DriverNamespace, Name: req.VolumeId}, volume); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, status.Error(codes.NotFound, "Volume not found")
+		}
+		return nil, status.Errorf(codes.Internal, "Could not get volume with ID %q: %v", volumeID, err)
+	}
+
+	var confirmed *csi.ValidateVolumeCapabilitiesResponse_Confirmed
+	if isValidVolumeCapabilities(volCaps) {
+		confirmed = &csi.ValidateVolumeCapabilitiesResponse_Confirmed{VolumeCapabilities: volCaps}
+	}
+	return &csi.ValidateVolumeCapabilitiesResponse{
+		Confirmed: confirmed,
 	}, nil
+}
+
+func (d *driver) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
+	klog.V(4).InfoS("ControllerGetCapabilities: called", "args", *req)
+	var caps []*csi.ControllerServiceCapability
+	for _, cap := range controllerCaps {
+		c := &csi.ControllerServiceCapability{
+			Type: &csi.ControllerServiceCapability_Rpc{
+				Rpc: &csi.ControllerServiceCapability_RPC{
+					Type: cap,
+				},
+			},
+		}
+		caps = append(caps, c)
+	}
+	return &csi.ControllerGetCapabilitiesResponse{Capabilities: caps}, nil
 }
 
 func getVolSizeBytes(req *csi.CreateVolumeRequest) (int64, error) {
@@ -375,4 +398,23 @@ func validateDeviceName(volume *storagev1alpha1.Volume, machine *computev1alpha1
 		}
 	}
 	return "", fmt.Errorf("faild to get device name of volume %s name from machine %s", client.ObjectKeyFromObject(volume), client.ObjectKeyFromObject(machine))
+}
+
+func isValidVolumeCapabilities(volCaps []*csi.VolumeCapability) bool {
+	hasSupport := func(cap *csi.VolumeCapability) bool {
+		for _, c := range volumeCaps {
+			if c.GetMode() == cap.AccessMode.GetMode() {
+				return true
+			}
+		}
+		return false
+	}
+
+	foundAll := true
+	for _, c := range volCaps {
+		if !hasSupport(c) {
+			foundAll = false
+		}
+	}
+	return foundAll
 }
