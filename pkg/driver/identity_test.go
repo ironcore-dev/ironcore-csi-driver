@@ -30,7 +30,7 @@ var _ = Describe("Controller", func() {
 		res, err := drv.GetPluginInfo(ctx, &csi.GetPluginInfoRequest{})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res).To(SatisfyAll(
-			HaveField("Name", "foo"),
+			HaveField("Name", "csi.onmetal.de"),
 			HaveField("VendorVersion", "dev"),
 		))
 	})

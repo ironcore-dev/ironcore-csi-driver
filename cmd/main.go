@@ -102,14 +102,6 @@ func initialConfiguration(ctx context.Context) (*options.Config, error) {
 	if !ok {
 		return nil, fmt.Errorf("no node name has been provided")
 	}
-	driverName, ok := csictx.LookupEnv(ctx, "CSI_DRIVER_NAME")
-	if !ok {
-		driverName = driver.CSIDriverName
-	}
-	driverVersion, ok := csictx.LookupEnv(ctx, "CSI_DRIVER_VERSION")
-	if !ok {
-		driverVersion = "dev"
-	}
 	driverNamespace, ok := csictx.LookupEnv(ctx, "VOLUME_NS")
 	if !ok {
 		return nil, fmt.Errorf("no node name has been provided")
@@ -117,8 +109,6 @@ func initialConfiguration(ctx context.Context) (*options.Config, error) {
 	return &options.Config{
 		NodeID:          nodeName,
 		NodeName:        nodeName,
-		DriverName:      driverName,
-		DriverVersion:   driverVersion,
 		DriverNamespace: driverNamespace,
 	}, nil
 }

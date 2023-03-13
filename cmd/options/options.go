@@ -19,10 +19,6 @@ type Config struct {
 	NodeID string
 	// NodeName is the name of the node
 	NodeName string
-	// DriverName is the name of the driver
-	DriverName string
-	// DriverVersion is the version of the driver
-	DriverVersion string
 	// DriverNamespace is the target namespace in the onmetal cluster in which the driver should operate
 	DriverNamespace string
 }
