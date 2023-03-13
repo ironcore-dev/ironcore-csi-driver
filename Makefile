@@ -49,15 +49,21 @@ $(LOCALBIN):
 
 ## Tool Binaries
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
+GOIMPORTS ?= $(LOCALBIN)/goimports
 
 ## Tool Versions
-KUSTOMIZE_VERSION ?= v3.8.7
+KUSTOMIZE_VERSION ?= v5.0.0
+GOIMPORTS_VERSION ?= v0.5.0
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
 $(KUSTOMIZE): $(LOCALBIN)
-	curl -s $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN)
+	@if test -x $(LOCALBIN)/kustomize && ! $(LOCALBIN)/kustomize version | grep -q $(KUSTOMIZE_VERSION); then \
+		echo "$(LOCALBIN)/kustomize version is not expected $(KUSTOMIZE_VERSION). Removing it before installing."; \
+		rm -rf $(LOCALBIN)/kustomize; \
+	fi
+	test -s $(LOCALBIN)/kustomize || { curl -Ss $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN); }
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -117,8 +123,9 @@ deploy:
 undeploy:
 	kubectl delete -k  config/default
 
-fmt: ## Run go fmt against code.
-	go fmt ./...
+.PHONY: fmt
+fmt: goimports ## Run goimports against code.
+	$(GOIMPORTS) -w .
 
 vet: ## Run go vet against code.
 	go vet ./...
@@ -135,7 +142,7 @@ check-license: addlicense ## Check that every file has a license header present.
 	find . -name '*.go' -exec $(ADDLICENSE) -check -c 'OnMetal authors' {} +
 
 .PHONY: check
-check: add-license lint test # Generate manifests, code, lint, add licenses, test
+check: add-license fmt lint test # Generate manifests, code, lint, add licenses, test
 
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
@@ -146,3 +153,8 @@ $(ENVTEST): $(LOCALBIN)
 addlicense: $(ADDLICENSE) ## Download addlicense locally if necessary.
 $(ADDLICENSE): $(LOCALBIN)
 	test -s $(LOCALBIN)/addlicense || GOBIN=$(LOCALBIN) go install github.com/google/addlicense@$(ADDLICENSE_VERSION)
+
+.PHONY: goimports
+goimports: $(GOIMPORTS) ## Download goimports locally if necessary.
+$(GOIMPORTS): $(LOCALBIN)
+	test -s $(LOCALBIN)/goimports || GOBIN=$(LOCALBIN) go install golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION)
