@@ -98,14 +98,24 @@ func main() {
 }
 
 func initialConfiguration(ctx context.Context) (*options.Config, error) {
-	nodeName, ok := csictx.LookupEnv(ctx, "KUBE_NODE_NAME")
+	mode, ok := csictx.LookupEnv(ctx, "X_CSI_MODE")
 	if !ok {
-		return nil, fmt.Errorf("no node name has been provided")
+		return nil, fmt.Errorf("failed to determin CSI mode")
 	}
+	if mode != "node" && mode != "controller" {
+		return nil, fmt.Errorf("invalid driver mode %s (only 'node' or 'controller' are supported)", mode)
+	}
+
+	nodeName, ok := csictx.LookupEnv(ctx, "KUBE_NODE_NAME")
+	if !ok && mode == "node" {
+		return nil, fmt.Errorf("no node name has been provided to driver node")
+	}
+
 	driverNamespace, ok := csictx.LookupEnv(ctx, "VOLUME_NS")
 	if !ok {
-		return nil, fmt.Errorf("no node name has been provided")
+		return nil, fmt.Errorf("no onmetal driver namespace has been provided")
 	}
+
 	return &options.Config{
 		NodeID:          nodeName,
 		NodeName:        nodeName,
