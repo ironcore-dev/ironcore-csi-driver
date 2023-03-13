@@ -24,6 +24,7 @@ import (
 	corev1alpha1 "github.com/onmetal/onmetal-api/api/core/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
 	"github.com/onmetal/onmetal-csi-driver/pkg/util"
+	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
@@ -67,7 +68,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 
 	volumeClass, ok := params[ParameterType]
 	if !ok {
-		return nil, status.Errorf(codes.Internal, "required parameter %s is missing", ParameterType)
+		return nil, status.Errorf(codes.Internal, "Required parameter %s is missing", ParameterType)
 	}
 
 	volumePoolName := req.GetParameters()[ParameterVolumePool]
@@ -77,7 +78,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		// if no volume_pool was provided try to use the topology information if provided
 		topology := req.GetAccessibilityRequirements()
 		if topology == nil {
-			return nil, status.Errorf(codes.Internal, "neither volume pool nor topology provided for volume")
+			return nil, status.Errorf(codes.Internal, "Neither volume pool nor topology provided for volume")
 		}
 		volumePoolName = getAZFromTopology(topology)
 		accessibleTopology = append(accessibleTopology, &csi.Topology{
@@ -93,7 +94,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		if apierrors.IsNotFound(err) {
 			volumePoolName = ""
 		} else {
-			return nil, fmt.Errorf("failed to get volume pool %s: %w", volumePoolName, err)
+			return nil, status.Errorf(codes.Internal, "failed to get volume pool %s: %v", volumePoolName, err)
 		}
 	}
 
@@ -125,7 +126,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 
 	klog.InfoS("Applying volume", "Volume", client.ObjectKeyFromObject(volume))
 	if err := d.onmetalClient.Patch(ctx, volume, client.Apply, volumeFieldOwner, client.ForceOwnership); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to patch volume %s: %v", client.ObjectKeyFromObject(volume), err)
+		return nil, status.Errorf(codes.Internal, "Failed to patch volume %s: %v", client.ObjectKeyFromObject(volume), err)
 	}
 
 	klog.InfoS("Created volume", "Volume", client.ObjectKeyFromObject(volume))
@@ -149,7 +150,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	klog.InfoS("Deleting volume", "Volume", req.GetVolumeId())
 	if req.GetVolumeId() == "" {
-		return nil, status.Errorf(codes.Internal, "required parameter 'volumeID' is missing")
+		return nil, status.Errorf(codes.Internal, "Required parameter 'volumeID' is missing")
 	}
 	vol := &storagev1alpha1.Volume{
 		ObjectMeta: metav1.ObjectMeta{
@@ -158,7 +159,7 @@ func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 		},
 	}
 	if err := d.onmetalClient.Delete(ctx, vol); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to delete volume %s: %v", client.ObjectKeyFromObject(vol), err)
+		return nil, status.Errorf(codes.Internal, "Failed to delete volume %s: %v", client.ObjectKeyFromObject(vol), err)
 	}
 	klog.InfoS("Deleted deleted volume", "Volume", req.GetVolumeId())
 	return &csi.DeleteVolumeResponse{}, nil
@@ -172,23 +173,23 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 
 	klog.InfoS("Get machine to attach volume", "Machine", machineKey, "Volume", req.GetVolumeId())
 	if err := d.onmetalClient.Get(ctx, machineKey, machine); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get machine %s: %v", client.ObjectKeyFromObject(machine), err)
+		return nil, status.Errorf(codes.Internal, "Failed to get machine %s: %v", client.ObjectKeyFromObject(machine), err)
 	}
 	volumeAttachmentName := req.GetVolumeId() + "-attachment"
-	if !isVolumeAttachmentAvailable(machine, volumeAttachmentName) {
-		klog.InfoS("Adding attached volumes to machine", "Machine", client.ObjectKeyFromObject(machine))
+	klog.InfoS("Adding attached volumes to machine", "Machine", client.ObjectKeyFromObject(machine))
+	idx := volumeAttachmentIndex(machine.Spec.Volumes, volumeAttachmentName)
+	if idx < 0 {
 		machineBase := machine.DeepCopy()
-		volAttachment := computev1alpha1.Volume{
+		machine.Spec.Volumes = append(machine.Spec.Volumes, computev1alpha1.Volume{
 			Name: volumeAttachmentName,
 			VolumeSource: computev1alpha1.VolumeSource{
 				VolumeRef: &corev1.LocalObjectReference{
 					Name: req.GetVolumeId(),
 				},
 			},
-		}
-		machine.Spec.Volumes = append(machine.Spec.Volumes, volAttachment)
-		if err := d.onmetalClient.Patch(ctx, machine, client.MergeFrom(machineBase)); err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to patch machine %s: %v", client.ObjectKeyFromObject(machine), err)
+		})
+		if err := d.onmetalClient.Patch(ctx, machine, client.StrategicMergeFrom(machineBase)); err != nil {
+			return nil, status.Errorf(codes.Internal, "Failed to patch machine %s: %v", client.ObjectKeyFromObject(machine), err)
 		}
 	}
 
@@ -196,13 +197,13 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 	volumeKey := client.ObjectKey{Namespace: d.config.DriverNamespace, Name: req.GetVolumeId()}
 	if err := d.onmetalClient.Get(ctx, volumeKey, volume); err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, status.Errorf(codes.Internal, "volume %s could not be found: %v", client.ObjectKeyFromObject(volume), err)
+			return nil, status.Errorf(codes.Internal, "Volume %s could not be found: %v", client.ObjectKeyFromObject(volume), err)
 		}
-		return nil, status.Errorf(codes.Internal, "failed to get volume %s: %v", client.ObjectKeyFromObject(volume), err)
+		return nil, status.Errorf(codes.Internal, "Failed to get volume %s: %v", client.ObjectKeyFromObject(volume), err)
 	}
 
 	if volume.Status.State != storagev1alpha1.VolumeStateAvailable || volume.Status.Phase != storagev1alpha1.VolumePhaseBound {
-		return nil, status.Errorf(codes.Internal, "volume is not in state available or is already bound")
+		return nil, status.Errorf(codes.Internal, "Volume is not in state available or is already bound")
 	}
 	deviceName, err := validateDeviceName(volume, machine, volumeAttachmentName)
 	if err != nil {
@@ -223,7 +224,7 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 	klog.InfoS("Unpublishing volume from node", "Volume", req.GetVolumeId(), "Node", req.GetNodeId())
 	exists, err := nodeExists(ctx, req.GetNodeId(), d.targetClient)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to check if the node %s exists: %v", req.GetNodeId(), err)
+		return nil, status.Errorf(codes.Internal, "Failed to check if the node %s exists: %v", req.GetNodeId(), err)
 	}
 	if !exists {
 		klog.InfoS("Node no longer exists", "Node", req.GetNodeId())
@@ -236,20 +237,16 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 		return nil, status.Errorf(codes.Internal, "Failed to get machine %s: %v", client.ObjectKeyFromObject(machine), err)
 	}
 
-	vaName := req.GetVolumeId() + "-attachment"
+	volumeAttachmentName := req.GetVolumeId() + "-attachment"
 	klog.InfoS("Removing volume attachment from machine", "Machine", client.ObjectKeyFromObject(machine))
-	var volumeAttachments []computev1alpha1.Volume
-	for _, va := range machine.Spec.Volumes {
-		if va.Name != vaName {
-			volumeAttachments = append(volumeAttachments, va)
+	idx := volumeAttachmentIndex(machine.Spec.Volumes, volumeAttachmentName)
+	if idx >= 0 {
+		machineBase := machine.DeepCopy()
+		machine.Spec.Volumes = slices.Delete(machine.Spec.Volumes, idx, idx+1)
+		if err := d.onmetalClient.Patch(ctx, machine, client.StrategicMergeFrom(machineBase)); err != nil {
+			return nil, status.Errorf(codes.Internal, "Failed to patch machine %s: %v", client.ObjectKeyFromObject(machine), err)
 		}
 	}
-	machineBase := machine.DeepCopy()
-	machine.Spec.Volumes = volumeAttachments
-	if err := d.onmetalClient.Patch(ctx, machine, client.MergeFrom(machineBase)); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to patch machine %s: %v", client.ObjectKeyFromObject(machine), err)
-	}
-
 	klog.InfoS("Un-published volume on node", "Volume", req.GetVolumeId(), "Node", req.GetNodeId())
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
@@ -377,16 +374,8 @@ func getAZFromTopology(requirement *csi.TopologyRequirement) string {
 	return ""
 }
 
-func isVolumeAttachmentAvailable(machine *computev1alpha1.Machine, volumeName string) bool {
-	for _, volume := range machine.Spec.Volumes {
-		if volume.Name == volumeName {
-			return true
-		}
-	}
-	return false
-}
-
 func validateDeviceName(volume *storagev1alpha1.Volume, machine *computev1alpha1.Machine, vaName string) (string, error) {
+	// TODO: fix device name. Return machine volume device name and let the rest handle via Kernel.
 	if volume.Status.Access != nil && volume.Status.Access.VolumeAttributes != nil {
 		handle := volume.Status.Access.Handle
 		for _, va := range machine.Spec.Volumes {
@@ -397,7 +386,7 @@ func validateDeviceName(volume *storagev1alpha1.Volume, machine *computev1alpha1
 			}
 		}
 	}
-	return "", fmt.Errorf("faild to get device name of volume %s name from machine %s", client.ObjectKeyFromObject(volume), client.ObjectKeyFromObject(machine))
+	return "", fmt.Errorf("failed to get device name of volume %s name from machine %s", client.ObjectKeyFromObject(volume), client.ObjectKeyFromObject(machine))
 }
 
 func isValidVolumeCapabilities(volCaps []*csi.VolumeCapability) bool {
@@ -417,4 +406,10 @@ func isValidVolumeCapabilities(volCaps []*csi.VolumeCapability) bool {
 		}
 	}
 	return foundAll
+}
+
+func volumeAttachmentIndex(volumes []computev1alpha1.Volume, volumeAttachmentName string) int {
+	return slices.IndexFunc(volumes, func(volume computev1alpha1.Volume) bool {
+		return volume.Name == volumeAttachmentName
+	})
 }

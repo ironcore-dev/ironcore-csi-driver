@@ -43,15 +43,15 @@ func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 	klog.InfoS("Validate mount point", "MountPoint", targetPath)
 	notMnt, err := d.mountUtil.IsLikelyNotMountPoint(targetPath)
 	if err != nil && !os.IsNotExist(err) {
-		return nil, status.Errorf(codes.Internal, "failed to verify mount point %s: %v", devicePath, err)
+		return nil, status.Errorf(codes.Internal, "Failed to verify mount point %s: %v", devicePath, err)
 	}
 	klog.InfoS("Check if volume is already mounted")
 	if !notMnt {
-		return nil, status.Errorf(codes.Internal, "volume %s is already mounted under path %s", req.GetVolumeId(), targetPath)
+		return nil, status.Errorf(codes.Internal, "Volume %s is already mounted under path %s", req.GetVolumeId(), targetPath)
 	}
 	klog.InfoS("Create target directory")
 	if err := os.MkdirAll(targetPath, 0750); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to create target directory %s for volume %s: %v", targetPath, req.GetVolumeId(), err)
+		return nil, status.Errorf(codes.Internal, "Failed to create target directory %s for volume %s: %v", targetPath, req.GetVolumeId(), err)
 	}
 
 	var options []string
@@ -64,7 +64,7 @@ func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 	options = append(options, mountOptions...)
 	klog.InfoS("Format and mount the volume")
 	if err = d.mountUtil.FormatAndMount(devicePath, targetPath, fstype, options); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to mount volume %s [%s] to %s: %v", devicePath, fstype, targetPath, err)
+		return nil, status.Errorf(codes.Internal, "Failed to mount volume %s [%s] to %s: %v", devicePath, fstype, targetPath, err)
 	}
 	klog.InfoS("Staged volume on node", "Volume", req.GetVolumeId())
 	return &csi.NodeStageVolumeResponse{}, nil
@@ -74,22 +74,22 @@ func (d *driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 	klog.InfoS("Publishing volume on node", "Volume", req.GetVolumeId(), "TargetMountPath", req.GetTargetPath())
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "volumeID is not set")
+		return nil, status.Error(codes.InvalidArgument, "Volume ID is not set")
 	}
 
 	stagePath := req.GetStagingTargetPath()
 	if len(stagePath) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "stagingTargetPath is not set")
+		return nil, status.Error(codes.InvalidArgument, "StagingTargetPath is not set")
 	}
 
 	targetMountPath := req.GetTargetPath()
 	if len(targetMountPath) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "targetMountPath is not set")
+		return nil, status.Error(codes.InvalidArgument, "TargetMountPath is not set")
 	}
 
 	volCap := req.GetVolumeCapability()
 	if volCap == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "no volume capabilities provided for volume %s", req.GetVolumeId())
+		return nil, status.Errorf(codes.InvalidArgument, "No volume capabilities provided for volume %s", req.GetVolumeId())
 	}
 	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
 	mountOptions = append(mountOptions, "bind")
@@ -113,7 +113,7 @@ func (d *driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 
 	notMnt, err := d.mountUtil.IsLikelyNotMountPoint(targetMountPath)
 	if err != nil && !os.IsNotExist(err) {
-		return nil, status.Errorf(codes.Internal, "mount directory %s does not exist: %v", targetMountPath, err)
+		return nil, status.Errorf(codes.Internal, "Mount directory %s does not exist: %v", targetMountPath, err)
 	}
 
 	if notMnt {
@@ -121,7 +121,7 @@ func (d *driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 		if os.IsNotExist(err) {
 			klog.InfoS("Creating target mount directory", "TargetMountPath", targetMountPath)
 			if err := os.MkdirAll(targetMountPath, 0750); err != nil {
-				return nil, fmt.Errorf("failed to create mount directory %s: %w", targetMountPath, err)
+				return nil, fmt.Errorf("Failed to create mount directory %s: %w", targetMountPath, err)
 			}
 		}
 		if err := d.mountUtil.Mount(stagePath, targetMountPath, fstype, mountOptions); err != nil {
@@ -136,27 +136,27 @@ func (d *driver) NodeUnstageVolume(_ context.Context, req *csi.NodeUnstageVolume
 	klog.InfoS("Un-staging volume on node", "Volume", req.GetVolumeId(), "StagingTargetPath", req.GetStagingTargetPath())
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "volumeID is not set")
+		return nil, status.Error(codes.InvalidArgument, "Volume ID is not set")
 	}
 
 	stagePath := req.GetStagingTargetPath()
 	if len(stagePath) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "stagingTargetPath is not set")
+		return nil, status.Error(codes.InvalidArgument, "StagingTargetPath is not set")
 	}
 
 	devicePath, err := d.GetMountDeviceName(stagePath)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get device path for device %s: %v", stagePath, err)
+		return nil, status.Errorf(codes.Internal, "Failed to get device path for device %s: %v", stagePath, err)
 	}
 	if devicePath == "" {
-		return nil, status.Error(codes.Internal, "device path not set")
+		return nil, status.Error(codes.Internal, "Device path not set")
 	}
 	if err := d.mountUtil.Unmount(stagePath); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to unmount stating target path %s: %v", stagePath, err)
+		return nil, status.Errorf(codes.Internal, "Failed to unmount stating target path %s: %v", stagePath, err)
 	}
 	klog.InfoS("Remove stagingTargetPath directory after unmount")
 	if err = os.RemoveAll(stagePath); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to remove mount directory %s, error: %v", stagePath, err)
+		return nil, status.Errorf(codes.Internal, "Failed to remove mount directory %s, error: %v", stagePath, err)
 	}
 	klog.InfoS("Un-staged volume on node", "Volume", req.GetVolumeId())
 	return &csi.NodeUnstageVolumeResponse{}, nil
@@ -181,20 +181,20 @@ func (d *driver) NodeUnpublishVolume(_ context.Context, req *csi.NodeUnpublishVo
 
 	notMnt, err := d.mountUtil.IsLikelyNotMountPoint(targetPath)
 	if err != nil && !os.IsNotExist(err) {
-		return nil, status.Errorf(codes.Internal, "mount point %s does not exist: %v", targetPath, err)
+		return nil, status.Errorf(codes.Internal, "Mount point %s does not exist: %v", targetPath, err)
 	}
 
 	if !notMnt {
 		err = d.mountUtil.Unmount(targetPath)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed not unmount %s: %v", targetPath, err)
+			return nil, status.Errorf(codes.Internal, "Failed not unmount %s: %v", targetPath, err)
 		}
 	}
 
 	klog.InfoS("Remove directory after unmount")
 	err = os.RemoveAll(targetPath)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to remove mount directory %s, error: %v", targetPath, err)
+		return nil, status.Errorf(codes.Internal, "Failed to remove mount directory %s, error: %v", targetPath, err)
 	}
 
 	klog.InfoS("Un-published volume on node", "Volume", req.GetVolumeId())
@@ -216,7 +216,7 @@ func (d *driver) NodeGetInfo(ctx context.Context, _ *csi.NodeGetInfoRequest) (*c
 
 	zone, err := getZoneFromNode(ctx, d.config.NodeName, d.targetClient)
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to retrieve availability zone for node %s: %v", d.config.NodeName, err))
+		return nil, status.Errorf(codes.Internal, "Failed to retrieve availability zone for node %s: %v", d.config.NodeName, err)
 	}
 
 	if zone != "" {
