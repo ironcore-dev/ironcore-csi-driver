@@ -128,8 +128,8 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	if err := d.onmetalClient.Patch(ctx, volume, client.Apply, volumeFieldOwner, client.ForceOwnership); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to patch volume %s: %v", client.ObjectKeyFromObject(volume), err)
 	}
+	klog.InfoS("Applied volume", "Volume", client.ObjectKeyFromObject(volume))
 
-	klog.InfoS("Created volume", "Volume", client.ObjectKeyFromObject(volume))
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			VolumeId:      req.GetName(),
@@ -171,12 +171,12 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 	machine := &computev1alpha1.Machine{}
 	machineKey := client.ObjectKey{Namespace: d.config.DriverNamespace, Name: req.GetNodeId()}
 
-	klog.InfoS("Get machine to attach volume", "Machine", machineKey, "Volume", req.GetVolumeId())
+	klog.InfoS("Get machine for volume attachment", "Machine", machineKey, "Volume", req.GetVolumeId())
 	if err := d.onmetalClient.Get(ctx, machineKey, machine); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to get machine %s: %v", client.ObjectKeyFromObject(machine), err)
 	}
 	volumeAttachmentName := req.GetVolumeId() + "-attachment"
-	klog.InfoS("Adding attached volumes to machine", "Machine", client.ObjectKeyFromObject(machine))
+	klog.InfoS("Attaching volume to machine", "Machine", client.ObjectKeyFromObject(machine))
 	idx := volumeAttachmentIndex(machine.Spec.Volumes, volumeAttachmentName)
 	if idx < 0 {
 		machineBase := machine.DeepCopy()
