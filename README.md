@@ -1,5 +1,6 @@
 # onmetal-csi-driver
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/onmetal/onmetal-csi-driver)](https://goreportcard.com/report/github.com/onmetal/onmetal-csi-driver)
 [![Test](https://github.com/onmetal/onmetal-csi-driver/actions/workflows/test.yml/badge.svg)](https://github.com/onmetal/onmetal-csi-driver/actions/workflows/test.yml)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://makeapullrequest.com)
 [![GitHub License](https://img.shields.io/static/v1?label=License&message=Apache-2.0&color=blue&style=flat-square)](LICENSE)
