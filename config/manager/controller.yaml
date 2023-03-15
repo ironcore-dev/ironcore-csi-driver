@@ -151,44 +151,6 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
-        - name: snapshotter
-          image: k8s.gcr.io/sig-storage/csi-snapshotter:v5.0.1
-          imagePullPolicy: IfNotPresent
-          args:
-            - "--csi-address=$(ADDRESS)"
-            - "--v=5"   
-            - "--snapshot-name-prefix=onmetalsnap"
-            - "--snapshot-name-uuid-length=10"
-          env:
-            - name: ADDRESS
-              value: /csi/csi.sock
-          resources:
-            requests:
-              cpu: 10m
-              memory: 32Mi
-            limits:
-              memory: 256Mi
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-        - name: resizer
-          image: k8s.gcr.io/sig-storage/csi-resizer:v1.4.0
-          imagePullPolicy: IfNotPresent
-          args:
-            - "--v=5"
-            - "--csi-address=$(ADDRESS)"
-          env:
-            - name: ADDRESS
-              value: /csi/csi.sock
-          resources:
-            requests:
-              cpu: 10m
-              memory: 32Mi
-            limits:
-              memory: 200Mi
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
         - name: driver
           securityContext:
             privileged: true
@@ -205,10 +167,6 @@ spec:
               value: /csi/csi.sock
             - name: APP_LOG_LEVEL
               value: "info"
-            - name: CSI_DRIVER_NAME
-              value: "onmetal-csi-driver"
-            - name: CSI_DRIVER_VERSION
-              value: "1.0.0"
             - name: X_CSI_MODE
               value: controller
             - name: X_CSI_SPEC_DISABLE_LEN_CHECK

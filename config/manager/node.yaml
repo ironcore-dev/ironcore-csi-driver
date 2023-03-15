@@ -112,8 +112,6 @@ spec:
               value: "false"
             - name: APP_LOG_LEVEL
               value: "info"
-            - name: CSI_DRIVER_NAME
-              value: "onmetal-csi-driver"
             - name: X_CSI_SPEC_DISABLE_LEN_CHECK
               value: "true"
             - name: KUBE_NODE_NAME
