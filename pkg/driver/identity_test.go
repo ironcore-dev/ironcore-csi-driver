@@ -21,7 +21,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Controller", func() {
+var _ = Describe("Identity", func() {
 	ctx := testutils.SetupContext()
 	_, drv := SetupTest(ctx)
 
@@ -55,5 +55,11 @@ var _ = Describe("Controller", func() {
 				},
 			},
 		))
+	})
+
+	It("should return no error when Probe is called", func() {
+		By("calling Probe")
+		_, err := drv.Probe(ctx, &csi.ProbeRequest{})
+		Expect(err).NotTo(HaveOccurred())
 	})
 })

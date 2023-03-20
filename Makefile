@@ -13,6 +13,7 @@ ADDLICENSE ?= $(LOCALBIN)/addlicense
 KUSTOMIZE_VERSION ?= v3.8.7
 CONTROLLER_TOOLS_VERSION ?= v0.9.2
 ADDLICENSE_VERSION ?= v1.1.0
+MOCKGEN_VERSION ?= v1.6.0
 
 # Go parameters
 GOCMD=go
@@ -50,6 +51,7 @@ $(LOCALBIN):
 ## Tool Binaries
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 GOIMPORTS ?= $(LOCALBIN)/goimports
+MOCKGEN ?= $(LOCALBIN)/mockgen
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.0.0
@@ -130,7 +132,7 @@ fmt: goimports ## Run goimports against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
-test: fmt vet envtest ## Run tests.
+test: generate-mocks update-mock fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
 
 .PHONY: add-license
@@ -158,3 +160,16 @@ $(ADDLICENSE): $(LOCALBIN)
 goimports: $(GOIMPORTS) ## Download goimports locally if necessary.
 $(GOIMPORTS): $(LOCALBIN)
 	test -s $(LOCALBIN)/goimports || GOBIN=$(LOCALBIN) go install golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION)
+
+.PHONY: generate-mocks
+generate-mocks: mockgen ## Generate code (mocks etc.).
+	MOCKGEN=$(MOCKGEN) go generate ./...
+
+.PHONY: mockgen
+mockgen: $(MOCKGEN)
+$(MOCKGEN): $(LOCALBIN)
+	test -s $(LOCALBIN)/mockgen || GOBIN=$(LOCALBIN) go install github.com/golang/mock/mockgen@$(MOCKGEN_VERSION)
+
+.PHONY: update-mock
+update-mock: ## Run update-gomock script to update mountutils mock file
+	./hack/update-gomock

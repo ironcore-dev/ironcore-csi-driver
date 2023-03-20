@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/container-storage-interface/spec v1.8.0
 	github.com/dell/gocsi v1.7.0
+	github.com/golang/mock v1.6.0
 	github.com/onmetal/controller-utils v0.7.0
 	github.com/onmetal/onmetal-api v0.0.13-0.20230227135944-d30696017cc2
 	github.com/onsi/ginkgo/v2 v2.9.1
