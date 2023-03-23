@@ -17,7 +17,6 @@ package driver
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -41,8 +40,8 @@ func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 
 	targetPath := req.GetStagingTargetPath()
 	klog.InfoS("Validate mount point", "MountPoint", targetPath)
-	notMnt, err := d.mountUtil.IsLikelyNotMountPoint(targetPath)
-	if err != nil && !os.IsNotExist(err) {
+	notMnt, err := d.mount.IsLikelyNotMountPoint(targetPath)
+	if err != nil && !d.os.IsNotExist(err) {
 		return nil, status.Errorf(codes.Internal, "Failed to verify mount point %s: %v", devicePath, err)
 	}
 	klog.InfoS("Check if volume is already mounted")
@@ -50,7 +49,7 @@ func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 		return nil, status.Errorf(codes.Internal, "Volume %s is already mounted under path %s", req.GetVolumeId(), targetPath)
 	}
 	klog.InfoS("Create target directory")
-	if err := os.MkdirAll(targetPath, 0750); err != nil {
+	if err := d.os.MkdirAll(targetPath, 0750); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to create target directory %s for volume %s: %v", targetPath, req.GetVolumeId(), err)
 	}
 
@@ -63,7 +62,7 @@ func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 	}
 	options = append(options, mountOptions...)
 	klog.InfoS("Format and mount the volume")
-	if err = d.mountUtil.FormatAndMount(devicePath, targetPath, fstype, options); err != nil {
+	if err = d.mount.FormatAndMount(devicePath, targetPath, fstype, options); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to mount volume %s [%s] to %s: %v", devicePath, fstype, targetPath, err)
 	}
 	klog.InfoS("Staged volume on node", "Volume", req.GetVolumeId())
@@ -111,20 +110,20 @@ func (d *driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 		fstype = "ext4"
 	}
 
-	notMnt, err := d.mountUtil.IsLikelyNotMountPoint(targetMountPath)
-	if err != nil && !os.IsNotExist(err) {
+	notMnt, err := d.mount.IsLikelyNotMountPoint(targetMountPath)
+	if err != nil && !d.os.IsNotExist(err) {
 		return nil, status.Errorf(codes.Internal, "Mount directory %s does not exist: %v", targetMountPath, err)
 	}
 
 	if notMnt {
 		klog.InfoS("Target mount directory does not exist", "TargetMountPath", targetMountPath)
-		if os.IsNotExist(err) {
+		if d.os.IsNotExist(err) {
 			klog.InfoS("Creating target mount directory", "TargetMountPath", targetMountPath)
-			if err := os.MkdirAll(targetMountPath, 0750); err != nil {
-				return nil, fmt.Errorf("Failed to create mount directory %s: %w", targetMountPath, err)
+			if err := d.os.MkdirAll(targetMountPath, 0750); err != nil {
+				return nil, fmt.Errorf("failed to create mount directory %s: %w", targetMountPath, err)
 			}
 		}
-		if err := d.mountUtil.Mount(stagePath, targetMountPath, fstype, mountOptions); err != nil {
+		if err := d.mount.Mount(stagePath, targetMountPath, fstype, mountOptions); err != nil {
 			return nil, status.Errorf(codes.Internal, "Could not mount %q at %q: %v", stagePath, targetMountPath, err)
 		}
 	}
@@ -151,11 +150,11 @@ func (d *driver) NodeUnstageVolume(_ context.Context, req *csi.NodeUnstageVolume
 	if devicePath == "" {
 		return nil, status.Error(codes.Internal, "Device path not set")
 	}
-	if err := d.mountUtil.Unmount(stagePath); err != nil {
+	if err := d.mount.Unmount(stagePath); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to unmount stating target path %s: %v", stagePath, err)
 	}
 	klog.InfoS("Remove stagingTargetPath directory after unmount")
-	if err = os.RemoveAll(stagePath); err != nil {
+	if err = d.os.RemoveAll(stagePath); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to remove mount directory %s, error: %v", stagePath, err)
 	}
 	klog.InfoS("Un-staged volume on node", "Volume", req.GetVolumeId())
@@ -174,25 +173,25 @@ func (d *driver) NodeUnpublishVolume(_ context.Context, req *csi.NodeUnpublishVo
 		return nil, status.Error(codes.InvalidArgument, "Target path not provided")
 	}
 	klog.InfoS("Validate mount point", "MountPoint", targetPath)
-	_, err := os.Stat(targetPath)
+	_, err := d.os.Stat(targetPath)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to stat %s: %v", targetPath, err)
 	}
 
-	notMnt, err := d.mountUtil.IsLikelyNotMountPoint(targetPath)
-	if err != nil && !os.IsNotExist(err) {
+	notMnt, err := d.mount.IsLikelyNotMountPoint(targetPath)
+	if err != nil && !d.os.IsNotExist(err) {
 		return nil, status.Errorf(codes.Internal, "Mount point %s does not exist: %v", targetPath, err)
 	}
 
 	if !notMnt {
-		err = d.mountUtil.Unmount(targetPath)
+		err = d.mount.Unmount(targetPath)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "Failed not unmount %s: %v", targetPath, err)
 		}
 	}
 
 	klog.InfoS("Remove directory after unmount")
-	err = os.RemoveAll(targetPath)
+	err = d.os.RemoveAll(targetPath)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to remove mount directory %s, error: %v", targetPath, err)
 	}
@@ -202,11 +201,11 @@ func (d *driver) NodeUnpublishVolume(_ context.Context, req *csi.NodeUnpublishVo
 }
 
 func (d *driver) NodeGetVolumeStats(_ context.Context, _ *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
-	return &csi.NodeGetVolumeStatsResponse{}, nil
+	return nil, status.Errorf(codes.Unimplemented, "Method NodeGetVolumeStats not implemented")
 }
 
 func (d *driver) NodeExpandVolume(_ context.Context, _ *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
-	return &csi.NodeExpandVolumeResponse{}, nil
+	return nil, status.Errorf(codes.Unimplemented, "Method NodeExpandVolume not implemented")
 }
 
 func (d *driver) NodeGetInfo(ctx context.Context, _ *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
@@ -248,7 +247,7 @@ func (d *driver) NodeGetCapabilities(_ context.Context, _ *csi.NodeGetCapabiliti
 }
 
 func (d *driver) GetMountDeviceName(mountPath string) (device string, err error) {
-	mountPoints, err := d.mountUtil.List()
+	mountPoints, err := d.mount.List()
 	if err != nil {
 		return device, err
 	}

@@ -53,7 +53,7 @@ var (
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	RunSpecs(t, "Controller Suite")
+	RunSpecs(t, "Driver Suite")
 }
 
 var _ = BeforeSuite(func() {
@@ -112,10 +112,14 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 		Expect(k8sClient.Create(ctx, ns)).To(Succeed(), "failed to create test namespace")
 		DeferCleanup(k8sClient.Delete, ctx, ns)
 
-		// Create a test node with providerID spec
+		// Create a test node with providerID spec and labels
 		node := &corev1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "node",
+				Labels: map[string]string{
+					"kubernetes.io/hostname":      "node",
+					"topology.kubernetes.io/zone": "foo",
+				},
 			},
 			Spec: corev1.NodeSpec{
 				ProviderID: "onmetal://" + ns.Name + "/node",

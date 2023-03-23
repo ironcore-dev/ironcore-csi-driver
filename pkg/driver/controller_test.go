@@ -25,6 +25,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -311,6 +313,82 @@ var _ = Describe("Controller", func() {
 		var volumeAttachments []computev1alpha1.Volume
 		Eventually(Object(machine)).Should(SatisfyAll(HaveField("Spec.Volumes", volumeAttachments)))
 	})
+
+	It("should return controller capabilities", func() {
+		By("calling ControllerGetCapabilities")
+		res, err := drv.ControllerGetCapabilities(ctx, &csi.ControllerGetCapabilitiesRequest{})
+		Expect(err).NotTo(HaveOccurred())
+		var expectedCaps []*csi.ControllerServiceCapability
+		for _, cap := range controllerCaps {
+			c := &csi.ControllerServiceCapability{
+				Type: &csi.ControllerServiceCapability_Rpc{
+					Rpc: &csi.ControllerServiceCapability_RPC{
+						Type: cap,
+					},
+				},
+			}
+			expectedCaps = append(expectedCaps, c)
+		}
+		Expect(res.Capabilities).To(Equal(expectedCaps))
+	})
+
+	It("should validate volume capabilities", func() {
+		volCaps := []*csi.VolumeCapability{
+			{
+				AccessMode: &csi.VolumeCapability_AccessMode{
+					Mode: volumeCaps[0].GetMode(),
+				},
+				//TODO: validate AccessType
+			},
+		}
+
+		res, err := drv.ValidateVolumeCapabilities(ctx, &csi.ValidateVolumeCapabilitiesRequest{
+			VolumeId:           "volume",
+			VolumeCapabilities: volCaps,
+		})
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(res.Confirmed.VolumeCapabilities).To(Equal(volCaps))
+
+	})
+
+	DescribeTable("Unimplemented controller methods",
+		func(callFunc func() (interface{}, error)) {
+			res, err := callFunc()
+			Expect(res).To(BeNil())
+			status, ok := status.FromError(err)
+			Expect(ok).To(BeTrue())
+			Expect(status.Code()).To(Equal(codes.Unimplemented))
+		},
+
+		Entry("ControllerGetVolume", func() (interface{}, error) {
+			return drv.ControllerGetVolume(ctx, &csi.ControllerGetVolumeRequest{})
+		}),
+
+		Entry("ListVolumes", func() (interface{}, error) {
+			return drv.ListVolumes(ctx, &csi.ListVolumesRequest{})
+		}),
+
+		Entry("ListSnapshots", func() (interface{}, error) {
+			return drv.ListSnapshots(ctx, &csi.ListSnapshotsRequest{})
+		}),
+
+		Entry("GetCapacity", func() (interface{}, error) {
+			return drv.GetCapacity(ctx, &csi.GetCapacityRequest{})
+		}),
+
+		Entry("CreateSnapshot", func() (interface{}, error) {
+			return drv.CreateSnapshot(ctx, &csi.CreateSnapshotRequest{})
+		}),
+
+		Entry("DeleteSnapshot", func() (interface{}, error) {
+			return drv.DeleteSnapshot(ctx, &csi.DeleteSnapshotRequest{})
+		}),
+
+		Entry("ControllerExpandVolume", func() (interface{}, error) {
+			return drv.ControllerExpandVolume(ctx, &csi.ControllerExpandVolumeRequest{})
+		}),
+	)
 
 	AfterEach(func() {
 		DeferCleanup(k8sClient.Delete, ctx, volume)

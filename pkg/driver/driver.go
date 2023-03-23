@@ -16,19 +16,22 @@ package driver
 
 import (
 	"context"
+	"fmt"
 	"net"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/dell/gocsi"
 	"github.com/onmetal/onmetal-csi-driver/cmd/options"
+	"github.com/onmetal/onmetal-csi-driver/pkg/driver/mountutils"
+	"github.com/onmetal/onmetal-csi-driver/pkg/driver/osutils"
+
 	"k8s.io/klog/v2"
-	"k8s.io/mount-utils"
-	utilexec "k8s.io/utils/exec"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type driver struct {
-	mountUtil     *mount.SafeFormatAndMount
+	mount         mountutils.MountWrapper
+	os            osutils.OSWrapper
 	targetClient  client.Client
 	onmetalClient client.Client
 	config        *options.Config
@@ -45,11 +48,16 @@ type Driver interface {
 
 func NewDriver(config *options.Config, targetClient, onMetalClient client.Client) Driver {
 	klog.InfoS("Driver Information", "Driver", CSIDriverName, "Version", "dev")
+	nodeMounter, err := mountutils.NewNodeMounter()
+	if err != nil {
+		panic(fmt.Errorf("error creating node mounter: %w", err))
+	}
 	return &driver{
 		config:        config,
 		targetClient:  targetClient,
 		onmetalClient: onMetalClient,
-		mountUtil:     &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: utilexec.New()},
+		mount:         nodeMounter,
+		os:            osutils.OsOps{},
 	}
 }
 
