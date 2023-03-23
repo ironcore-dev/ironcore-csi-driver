@@ -15,13 +15,13 @@
 package driver
 
 import (
-	"github.com/onmetal/onmetal-csi-driver/pkg/util"
+	"github.com/onmetal/onmetal-csi-driver/pkg/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
 	// DefaultVolumeSize represents the default volume size.
-	DefaultVolumeSize int64 = 10 * util.GiB
+	DefaultVolumeSize int64 = 10 * utils.GiB
 
 	// ParameterType is the name of the type parameter
 	ParameterType = "type"

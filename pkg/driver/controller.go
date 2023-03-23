@@ -23,7 +23,7 @@ import (
 	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
 	corev1alpha1 "github.com/onmetal/onmetal-api/api/core/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
-	"github.com/onmetal/onmetal-csi-driver/pkg/util"
+	"github.com/onmetal/onmetal-csi-driver/pkg/utils"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -337,7 +337,7 @@ func getVolSizeBytes(req *csi.CreateVolumeRequest) (int64, error) {
 	if capRange == nil {
 		volSizeBytes = DefaultVolumeSize
 	} else {
-		volSizeBytes = util.RoundUpBytes(capRange.GetRequiredBytes())
+		volSizeBytes = utils.RoundUpBytes(capRange.GetRequiredBytes())
 		maxVolSize := capRange.GetLimitBytes()
 		if maxVolSize > 0 && maxVolSize < volSizeBytes {
 			return 0, status.Error(codes.InvalidArgument, "after round-up, volume size exceeds the limit specified")

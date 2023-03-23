@@ -2,7 +2,8 @@
 
 if ! git diff --name-only --exit-code; then
     echo "#################################################################################"
-    echo "Project is dirty. Make sure you run 'go mod tidy' before committing your changes."
+    echo "Project is dirty. Make sure you run 'make generate-mocks && go mod tidy'"
+    echo "before committing your changes."
     echo "#################################################################################"
     exit 1
 fi

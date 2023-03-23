@@ -132,7 +132,7 @@ fmt: goimports ## Run goimports against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
-test: generate-mocks update-mock fmt vet envtest ## Run tests.
+test: generate-mocks fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
 
 .PHONY: add-license
@@ -164,12 +164,9 @@ $(GOIMPORTS): $(LOCALBIN)
 .PHONY: generate-mocks
 generate-mocks: mockgen ## Generate code (mocks etc.).
 	MOCKGEN=$(MOCKGEN) go generate ./...
+	./hack/fix-mountwrapper-mock.sh
 
 .PHONY: mockgen
 mockgen: $(MOCKGEN)
 $(MOCKGEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/mockgen || GOBIN=$(LOCALBIN) go install github.com/golang/mock/mockgen@$(MOCKGEN_VERSION)
-
-.PHONY: update-mock
-update-mock: ## Run update-gomock script to update mountutils mock file
-	./hack/update-gomock
