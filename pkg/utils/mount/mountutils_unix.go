@@ -1,3 +1,6 @@
+//go:build linux || darwin
+// +build linux darwin
+
 // Copyright 2023 OnMetal authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,14 +15,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mountutils
+package mount
 
 import (
 	mount "k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
 )
 
-//go:generate $MOCKGEN -package mocks -destination=../../../pkg/driver/mocks/mountutils.go -source ../../../pkg/driver/mountutils/mountutils.go
+//go:generate $MOCKGEN -package mount -destination=mock_mountutils_unix.go -source mountutils_unix.go
 
 // MountWrapper is the interface implemented by NodeMounter. A mix & match of
 // functions defined in upstream libraries. (FormatAndMount from struct
@@ -36,17 +39,8 @@ type NodeMounter struct {
 }
 
 func NewNodeMounter() (MountWrapper, error) {
-	safeMounter, err := newSafeMounter()
-	if err != nil {
-		return nil, err
-	}
-	return &NodeMounter{safeMounter}, nil
-}
-
-// newSafeMounter returns a SafeFormatAndMount
-func newSafeMounter() (*mount.SafeFormatAndMount, error) {
-	return &mount.SafeFormatAndMount{
+	return &NodeMounter{SafeFormatAndMount: &mount.SafeFormatAndMount{
 		Interface: mount.New(""),
 		Exec:      utilexec.New(),
-	}, nil
+	}}, nil
 }

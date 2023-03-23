@@ -1,3 +1,6 @@
+//go:build linux || darwin
+// +build linux darwin
+
 // Copyright 2023 OnMetal authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,13 +15,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package osutils
+package os
 
 import (
 	"os"
 )
 
-//go:generate $MOCKGEN -package mocks -destination=../../../pkg/driver/mocks/osutils.go -source ../../../pkg/driver/osutils/osutils.go
+//go:generate $MOCKGEN -package os -destination=mock_osutils_unix.go -source osutils_unix.go
 
 // OSWrapper is the interface having os package methods implemented by OsOps.
 // Defined it explicitly so that it can be mocked.

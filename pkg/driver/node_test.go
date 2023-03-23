@@ -19,14 +19,15 @@ import (
 	"os"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	gomock "github.com/golang/mock/gomock"
+	"github.com/golang/mock/gomock"
 	testutils "github.com/onmetal/onmetal-api/utils/testing"
-	mocks "github.com/onmetal/onmetal-csi-driver/pkg/driver/mocks"
+	mountutils "github.com/onmetal/onmetal-csi-driver/pkg/utils/mount"
+	osutils "github.com/onmetal/onmetal-csi-driver/pkg/utils/os"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	mount "k8s.io/mount-utils"
+	"k8s.io/mount-utils"
 )
 
 var _ = Describe("Node", func() {
@@ -34,21 +35,24 @@ var _ = Describe("Node", func() {
 	_, drv := SetupTest(ctx)
 
 	var (
-		ctrl          *gomock.Controller
-		mockMountUtil *mocks.MockMountWrapper
-		mockOSUtil    *mocks.MockOSWrapper
-		volumeId      string
-		devicePath    string
-		targetPath    string
-		fstype        string
+		ctrl        *gomock.Controller
+		mockMounter *mountutils.MockMountWrapper
+		mockOS      *osutils.MockOSWrapper
+		volumeId    string
+		devicePath  string
+		targetPath  string
+		fstype      string
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
-		mockMountUtil = mocks.NewMockMountWrapper(ctrl)
-		mockOSUtil = mocks.NewMockOSWrapper(ctrl)
-		drv.mount = mockMountUtil
-		drv.os = mockOSUtil
+		mockMounter = mountutils.NewMockMountWrapper(ctrl)
+		mockOS = osutils.NewMockOSWrapper(ctrl)
+
+		// inject mock mounter and os wrapper
+		drv.mounter = mockMounter
+		drv.os = mockOS
+
 		volumeId = "test-volume-id"
 		devicePath = "/dev/sdb"
 		targetPath = "/target/path"
@@ -86,14 +90,14 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should fail if the volume is already mounted", func() {
-			mockMountUtil.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, nil)
+			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, nil)
 			_, err := drv.NodeStageVolume(ctx, req)
 			Expect(err).NotTo(BeNil())
 		})
 
 		It("should fail if the mount point validation fails", func() {
-			mockMountUtil.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("failed to validate mount point"))
-			mockOSUtil.EXPECT().IsNotExist(gomock.Any()).Return(false)
+			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("failed to validate mount point"))
+			mockOS.EXPECT().IsNotExist(gomock.Any()).Return(false)
 			_, err := drv.NodeStageVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Failed to verify mount point"))
@@ -103,8 +107,8 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should fail if the target directory creation fails", func() {
-			mockMountUtil.EXPECT().IsLikelyNotMountPoint(targetPath).Return(true, nil)
-			mockOSUtil.EXPECT().MkdirAll(targetPath, os.FileMode(0750)).Return(errors.New("failed to create target directory"))
+			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(true, nil)
+			mockOS.EXPECT().MkdirAll(targetPath, os.FileMode(0750)).Return(errors.New("failed to create target directory"))
 			_, err := drv.NodeStageVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Failed to create target directory"))
@@ -115,9 +119,9 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should fail if the mount operation fails", func() {
-			mockMountUtil.EXPECT().IsLikelyNotMountPoint(targetPath).Return(true, nil)
-			mockOSUtil.EXPECT().MkdirAll(targetPath, os.FileMode(0750)).Return(nil)
-			mockMountUtil.EXPECT().FormatAndMount(devicePath, targetPath, fstype, mountOptions).Return(errors.New("failed to mount volume"))
+			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(true, nil)
+			mockOS.EXPECT().MkdirAll(targetPath, os.FileMode(0750)).Return(nil)
+			mockMounter.EXPECT().FormatAndMount(devicePath, targetPath, fstype, mountOptions).Return(errors.New("failed to mount volume"))
 			_, err := drv.NodeStageVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Failed to mount volume"))
@@ -127,9 +131,9 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should stage the volume", func() {
-			mockMountUtil.EXPECT().IsLikelyNotMountPoint(targetPath).Return(true, nil)
-			mockOSUtil.EXPECT().MkdirAll(targetPath, os.FileMode(0750)).Return(nil)
-			mockMountUtil.EXPECT().FormatAndMount(devicePath, targetPath, fstype, mountOptions).Return(nil)
+			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(true, nil)
+			mockOS.EXPECT().MkdirAll(targetPath, os.FileMode(0750)).Return(nil)
+			mockMounter.EXPECT().FormatAndMount(devicePath, targetPath, fstype, mountOptions).Return(nil)
 			_, err := drv.NodeStageVolume(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -209,8 +213,8 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should fail if the mount point validation fails", func() {
-			mockMountUtil.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("failed to validate mount point"))
-			mockOSUtil.EXPECT().IsNotExist(gomock.Any()).Return(false)
+			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("failed to validate mount point"))
+			mockOS.EXPECT().IsNotExist(gomock.Any()).Return(false)
 			_, err := drv.NodePublishVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("does not exist"))
@@ -220,17 +224,17 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should publish volume on node if mount point already exist", func() {
-			mockMountUtil.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, nil)
+			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, nil)
 			_, err := drv.NodePublishVolume(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should publish volume on node if mount directory does not exist", func() {
-			mockMountUtil.EXPECT().IsLikelyNotMountPoint(targetPath).Return(true, errors.New("file does not exist"))
-			mockOSUtil.EXPECT().IsNotExist(errors.New("file does not exist")).Return(true)
-			mockOSUtil.EXPECT().IsNotExist(errors.New("file does not exist")).Return(true)
-			mockOSUtil.EXPECT().MkdirAll(targetPath, os.FileMode(os.FileMode(0750))).Return(nil)
-			mockMountUtil.EXPECT().Mount(stagingTargetPath, targetPath, fstype, mountOptions).Return(nil)
+			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(true, errors.New("file does not exist"))
+			mockOS.EXPECT().IsNotExist(errors.New("file does not exist")).Return(true)
+			mockOS.EXPECT().IsNotExist(errors.New("file does not exist")).Return(true)
+			mockOS.EXPECT().MkdirAll(targetPath, os.FileMode(os.FileMode(0750))).Return(nil)
+			mockMounter.EXPECT().Mount(stagingTargetPath, targetPath, fstype, mountOptions).Return(nil)
 			_, err := drv.NodePublishVolume(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -261,7 +265,7 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should fail if the list mounted filesystems operation fails", func() {
-			mockMountUtil.EXPECT().List().Return(nil, errors.New("error"))
+			mockMounter.EXPECT().List().Return(nil, errors.New("error"))
 			_, err := drv.NodeUnstageVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Failed to get device path"))
@@ -271,8 +275,8 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should fail if the unmount operation fails", func() {
-			mockMountUtil.EXPECT().List().Return([]mount.MountPoint{{Device: "/dev/sda1", Path: stagingTargetPath}}, nil)
-			mockMountUtil.EXPECT().Unmount(stagingTargetPath).Return(errors.New("error"))
+			mockMounter.EXPECT().List().Return([]mount.MountPoint{{Device: "/dev/sda1", Path: stagingTargetPath}}, nil)
+			mockMounter.EXPECT().Unmount(stagingTargetPath).Return(errors.New("error"))
 			_, err := drv.NodeUnstageVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Failed to unmount"))
@@ -282,9 +286,9 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should fail if the remove mount directory operation fails", func() {
-			mockMountUtil.EXPECT().List().Return([]mount.MountPoint{{Device: "/dev/sda1", Path: stagingTargetPath}}, nil)
-			mockMountUtil.EXPECT().Unmount(stagingTargetPath).Return(nil)
-			mockOSUtil.EXPECT().RemoveAll(stagingTargetPath).Return(errors.New("error"))
+			mockMounter.EXPECT().List().Return([]mount.MountPoint{{Device: "/dev/sda1", Path: stagingTargetPath}}, nil)
+			mockMounter.EXPECT().Unmount(stagingTargetPath).Return(nil)
+			mockOS.EXPECT().RemoveAll(stagingTargetPath).Return(errors.New("error"))
 			_, err := drv.NodeUnstageVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Failed to remove mount directory"))
@@ -294,9 +298,9 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should unstage the volume", func() {
-			mockMountUtil.EXPECT().List().Return([]mount.MountPoint{{Device: "/dev/sda1", Path: stagingTargetPath}}, nil)
-			mockMountUtil.EXPECT().Unmount(stagingTargetPath).Return(nil)
-			mockOSUtil.EXPECT().RemoveAll(stagingTargetPath).Return(nil)
+			mockMounter.EXPECT().List().Return([]mount.MountPoint{{Device: "/dev/sda1", Path: stagingTargetPath}}, nil)
+			mockMounter.EXPECT().Unmount(stagingTargetPath).Return(nil)
+			mockOS.EXPECT().RemoveAll(stagingTargetPath).Return(nil)
 			_, err := drv.NodeUnstageVolume(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -335,7 +339,7 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should fail if the stat operation fails", func() {
-			mockOSUtil.EXPECT().Stat(targetPath).Return(nil, errors.New("error"))
+			mockOS.EXPECT().Stat(targetPath).Return(nil, errors.New("error"))
 			_, err := drv.NodeUnpublishVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Unable to stat"))
@@ -345,9 +349,9 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should fail if the mount point validation fails", func() {
-			mockOSUtil.EXPECT().Stat(targetPath).Return(nil, nil)
-			mockMountUtil.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("failed to validate mount point"))
-			mockOSUtil.EXPECT().IsNotExist(gomock.Any()).Return(false)
+			mockOS.EXPECT().Stat(targetPath).Return(nil, nil)
+			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("failed to validate mount point"))
+			mockOS.EXPECT().IsNotExist(gomock.Any()).Return(false)
 			_, err := drv.NodeUnpublishVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("does not exist"))
@@ -357,10 +361,10 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should fail if the unmount operation fails", func() {
-			mockOSUtil.EXPECT().Stat(targetPath).Return(nil, nil)
-			mockMountUtil.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("error"))
-			mockOSUtil.EXPECT().IsNotExist(errors.New("error")).Return(true)
-			mockMountUtil.EXPECT().Unmount(targetPath).Return(errors.New("error"))
+			mockOS.EXPECT().Stat(targetPath).Return(nil, nil)
+			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("error"))
+			mockOS.EXPECT().IsNotExist(errors.New("error")).Return(true)
+			mockMounter.EXPECT().Unmount(targetPath).Return(errors.New("error"))
 			_, err := drv.NodeUnpublishVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Failed not unmount"))
@@ -370,11 +374,11 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should fail if the remove mount directory operation fails", func() {
-			mockOSUtil.EXPECT().Stat(targetPath).Return(nil, nil)
-			mockMountUtil.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("error"))
-			mockOSUtil.EXPECT().IsNotExist(errors.New("error")).Return(true)
-			mockMountUtil.EXPECT().Unmount(targetPath).Return(nil)
-			mockOSUtil.EXPECT().RemoveAll(targetPath).Return(errors.New("error"))
+			mockOS.EXPECT().Stat(targetPath).Return(nil, nil)
+			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("error"))
+			mockOS.EXPECT().IsNotExist(errors.New("error")).Return(true)
+			mockMounter.EXPECT().Unmount(targetPath).Return(nil)
+			mockOS.EXPECT().RemoveAll(targetPath).Return(errors.New("error"))
 			_, err := drv.NodeUnpublishVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Failed to remove mount directory"))
@@ -384,11 +388,11 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should unpublish volume from node", func() {
-			mockOSUtil.EXPECT().Stat(targetPath).Return(nil, nil)
-			mockMountUtil.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("error"))
-			mockOSUtil.EXPECT().IsNotExist(errors.New("error")).Return(true)
-			mockMountUtil.EXPECT().Unmount(targetPath).Return(nil)
-			mockOSUtil.EXPECT().RemoveAll(targetPath).Return(nil)
+			mockOS.EXPECT().Stat(targetPath).Return(nil, nil)
+			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("error"))
+			mockOS.EXPECT().IsNotExist(errors.New("error")).Return(true)
+			mockMounter.EXPECT().Unmount(targetPath).Return(nil)
+			mockOS.EXPECT().RemoveAll(targetPath).Return(nil)
 			_, err := drv.NodeUnpublishVolume(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
 		})
