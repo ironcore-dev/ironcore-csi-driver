@@ -25,7 +25,7 @@ func (d *driver) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoReques
 	klog.V(6).InfoS("GetPluginInfo: called", "args", *req)
 	return &csi.GetPluginInfoResponse{
 		Name:          CSIDriverName,
-		VendorVersion: "dev",
+		VendorVersion: Version(),
 	}, nil
 }
 

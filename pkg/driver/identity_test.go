@@ -31,7 +31,7 @@ var _ = Describe("Identity", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res).To(SatisfyAll(
 			HaveField("Name", "csi.onmetal.de"),
-			HaveField("VendorVersion", "dev"),
+			HaveField("VendorVersion", Version()),
 		))
 	})
 
