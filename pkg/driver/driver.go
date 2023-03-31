@@ -46,7 +46,7 @@ type Driver interface {
 }
 
 func NewDriver(config *options.Config, targetClient, onMetalClient client.Client) Driver {
-	klog.InfoS("Driver Information", "Driver", CSIDriverName, "Version", "dev")
+	klog.InfoS("Driver Information", "Driver", CSIDriverName, "Version", Version())
 	nodeMounter, err := mount.NewNodeMounter()
 	if err != nil {
 		panic(fmt.Errorf("error creating node mounter: %w", err))
