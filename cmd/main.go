@@ -41,6 +41,7 @@ var scheme = runtime.NewScheme()
 var (
 	targetKubeconfig  string
 	onmetalKubeconfig string
+	driverName        string
 )
 
 func init() {
@@ -50,6 +51,7 @@ func init() {
 
 	flag.StringVar(&targetKubeconfig, "target-kubeconfig", "", "Path pointing to the target kubeconfig.")
 	flag.StringVar(&onmetalKubeconfig, "onmetal-kubeconfig", "", "Path pointing to the onmetal kubeconfig.")
+	flag.StringVar(&driverName, "driver-name", driver.CSIDriverName, "Override the default driver name.")
 	flag.Parse()
 }
 
@@ -76,11 +78,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	drv := driver.NewDriver(config, targetClient, onMetalClient)
+	drv := driver.NewDriver(config, targetClient, onMetalClient, driverName)
 	gocsi.Run(
 		ctx,
-		driver.CSIDriverName,
-		"onMetal CSI Driver Plugin",
+		driverName,
+		"onmetal CSI Driver Plugin",
 		"",
 		&gocsi.StoragePlugin{
 			Controller:  drv,

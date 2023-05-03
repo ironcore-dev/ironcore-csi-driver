@@ -33,7 +33,7 @@ const (
 	ParameterVolumeID = "volume_id"
 	// ParameterVolumeName is the volume name parameter
 	ParameterVolumeName = "volume_name"
-	// ParameterCreationTime is the creation time paramater
+	// ParameterCreationTime is the creation time parameter
 	ParameterCreationTime = "creation_time"
 	// ParameterNodeID is the node id parameter
 	ParameterNodeID = "node_id"

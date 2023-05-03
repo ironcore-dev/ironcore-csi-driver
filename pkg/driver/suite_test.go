@@ -133,7 +133,7 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 			NodeName:        "node",
 			DriverNamespace: ns.Name,
 		}
-		newDriver := NewDriver(config, k8sClient, k8sClient)
+		newDriver := NewDriver(config, k8sClient, k8sClient, CSIDriverName)
 		*d = *newDriver.(*driver)
 
 		machineClass := &computev1alpha1.MachineClass{

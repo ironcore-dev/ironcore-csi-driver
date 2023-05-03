@@ -34,6 +34,7 @@ type driver struct {
 	targetClient  client.Client
 	onmetalClient client.Client
 	config        *options.Config
+	name          string
 }
 
 // Driver is the CSI Mock driver provider.
@@ -45,13 +46,14 @@ type Driver interface {
 	BeforeServe(context.Context, *gocsi.StoragePlugin, net.Listener) error
 }
 
-func NewDriver(config *options.Config, targetClient, onMetalClient client.Client) Driver {
-	klog.InfoS("Driver Information", "Driver", CSIDriverName, "Version", Version())
+func NewDriver(config *options.Config, targetClient, onMetalClient client.Client, driverName string) Driver {
+	klog.InfoS("Driver Information", "Driver", driverName, "Version", Version())
 	nodeMounter, err := mount.NewNodeMounter()
 	if err != nil {
 		panic(fmt.Errorf("error creating node mounter: %w", err))
 	}
 	return &driver{
+		name:          driverName,
 		config:        config,
 		targetClient:  targetClient,
 		onmetalClient: onMetalClient,
