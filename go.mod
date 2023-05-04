@@ -8,7 +8,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/onmetal/controller-utils v0.7.0
 	github.com/onmetal/onmetal-api v0.1.1
-	github.com/onsi/ginkgo/v2 v2.9.3
+	github.com/onsi/ginkgo/v2 v2.9.4
 	github.com/onsi/gomega v1.27.6
 	golang.org/x/exp v0.0.0-20221212164502-fae10dda9338
 	google.golang.org/grpc v1.54.0
