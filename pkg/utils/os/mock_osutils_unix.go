@@ -6,6 +6,7 @@ package os
 
 import (
 	os "os"
+	exec "os/exec"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -32,6 +33,25 @@ func NewMockOSWrapper(ctrl *gomock.Controller) *MockOSWrapper {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockOSWrapper) EXPECT() *MockOSWrapperMockRecorder {
 	return m.recorder
+}
+
+// Command mocks base method.
+func (m *MockOSWrapper) Command(name string, arg ...string) *exec.Cmd {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{name}
+	for _, a := range arg {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Command", varargs...)
+	ret0, _ := ret[0].(*exec.Cmd)
+	return ret0
+}
+
+// Command indicates an expected call of Command.
+func (mr *MockOSWrapperMockRecorder) Command(name interface{}, arg ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{name}, arg...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Command", reflect.TypeOf((*MockOSWrapper)(nil).Command), varargs...)
 }
 
 // IsNotExist mocks base method.

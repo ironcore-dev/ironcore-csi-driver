@@ -17,17 +17,18 @@ package driver
 import (
 	"errors"
 	"os"
+	"os/exec"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/mock/gomock"
 	testutils "github.com/onmetal/onmetal-api/utils/testing"
-	mountutils "github.com/onmetal/onmetal-csi-driver/pkg/utils/mount"
+	"github.com/onmetal/onmetal-csi-driver/pkg/utils/mount"
 	osutils "github.com/onmetal/onmetal-csi-driver/pkg/utils/os"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/mount-utils"
+	k8smountutils "k8s.io/mount-utils"
 )
 
 var _ = Describe("Node", func() {
@@ -35,19 +36,22 @@ var _ = Describe("Node", func() {
 	_, drv := SetupTest(ctx)
 
 	var (
-		ctrl        *gomock.Controller
-		mockMounter *mountutils.MockMountWrapper
-		mockOS      *osutils.MockOSWrapper
-		volumeId    string
-		devicePath  string
-		targetPath  string
-		fstype      string
+		ctrl         *gomock.Controller
+		mockMounter  *mount.MockMountWrapper
+		mockOS       *osutils.MockOSWrapper
+		mockResizefs *mount.MockResizefs
+
+		volumeId   string
+		devicePath string
+		targetPath string
+		fstype     string
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
-		mockMounter = mountutils.NewMockMountWrapper(ctrl)
+		mockMounter = mount.NewMockMountWrapper(ctrl)
 		mockOS = osutils.NewMockOSWrapper(ctrl)
+		mockResizefs = mount.NewMockResizefs(ctrl)
 
 		// inject mock mounter and os wrapper
 		drv.mounter = mockMounter
@@ -145,14 +149,12 @@ var _ = Describe("Node", func() {
 			req               *csi.NodePublishVolumeRequest
 			stagingTargetPath string
 			targetPath        string
-			devicePath        string
 			mountOptions      []string
 		)
 
 		BeforeEach(func() {
 			stagingTargetPath = "/target/path/"
 			targetPath = "/stage/path/"
-			devicePath = "/dev/sdb"
 			mountOptions = []string{"bind", "rw"}
 			req = &csi.NodePublishVolumeRequest{
 				VolumeId:          volumeId,
@@ -275,7 +277,7 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should fail if the unmount operation fails", func() {
-			mockMounter.EXPECT().List().Return([]mount.MountPoint{{Device: "/dev/sda1", Path: stagingTargetPath}}, nil)
+			mockMounter.EXPECT().List().Return([]k8smountutils.MountPoint{{Device: "/dev/sda1", Path: stagingTargetPath}}, nil)
 			mockMounter.EXPECT().Unmount(stagingTargetPath).Return(errors.New("error"))
 			_, err := drv.NodeUnstageVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -286,7 +288,7 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should fail if the remove mount directory operation fails", func() {
-			mockMounter.EXPECT().List().Return([]mount.MountPoint{{Device: "/dev/sda1", Path: stagingTargetPath}}, nil)
+			mockMounter.EXPECT().List().Return([]k8smountutils.MountPoint{{Device: "/dev/sda1", Path: stagingTargetPath}}, nil)
 			mockMounter.EXPECT().Unmount(stagingTargetPath).Return(nil)
 			mockOS.EXPECT().RemoveAll(stagingTargetPath).Return(errors.New("error"))
 			_, err := drv.NodeUnstageVolume(ctx, req)
@@ -298,7 +300,7 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should unstage the volume", func() {
-			mockMounter.EXPECT().List().Return([]mount.MountPoint{{Device: "/dev/sda1", Path: stagingTargetPath}}, nil)
+			mockMounter.EXPECT().List().Return([]k8smountutils.MountPoint{{Device: "/dev/sda1", Path: stagingTargetPath}}, nil)
 			mockMounter.EXPECT().Unmount(stagingTargetPath).Return(nil)
 			mockOS.EXPECT().RemoveAll(stagingTargetPath).Return(nil)
 			_, err := drv.NodeUnstageVolume(ctx, req)
@@ -402,21 +404,18 @@ var _ = Describe("Node", func() {
 	It("should return node capabilities", func() {
 		res, err := drv.NodeGetCapabilities(ctx, nil)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(res.Capabilities).To(ConsistOf(
-			&csi.NodeServiceCapability{
+		var expectedCaps []*csi.NodeServiceCapability
+		for _, cap := range nodeCaps {
+			c := &csi.NodeServiceCapability{
 				Type: &csi.NodeServiceCapability_Rpc{
 					Rpc: &csi.NodeServiceCapability_RPC{
-						Type: csi.NodeServiceCapability_RPC_UNKNOWN,
+						Type: cap,
 					},
 				},
-			},
-			&csi.NodeServiceCapability{
-				Type: &csi.NodeServiceCapability_Rpc{
-					Rpc: &csi.NodeServiceCapability_RPC{
-						Type: csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
-					},
-				},
-			}))
+			}
+			expectedCaps = append(expectedCaps, c)
+		}
+		Expect(res.Capabilities).To(Equal(expectedCaps))
 	})
 
 	It("should return node info", func() {
@@ -430,22 +429,107 @@ var _ = Describe("Node", func() {
 		))
 	})
 
-	DescribeTable("Unimplemented node methods",
-		func(callFunc func() (interface{}, error)) {
-			res, err := callFunc()
-			Expect(res).To(BeNil())
+	Describe("NodeExpandVolume", func() {
+		var (
+			req *csi.NodeExpandVolumeRequest
+		)
+
+		BeforeEach(func() {
+			req = &csi.NodeExpandVolumeRequest{
+				VolumeId:   volumeId,
+				VolumePath: "/volume/path",
+				VolumeCapability: &csi.VolumeCapability{
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+					},
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{
+							FsType: fstype,
+						},
+					},
+				},
+				CapacityRange: &csi.CapacityRange{
+					RequiredBytes: 1 * 1024 * 1024 * 1024,  // 1GB
+					LimitBytes:    10 * 1024 * 1024 * 1024, // 10GB
+				},
+			}
+		})
+
+		It("should return an error if volume ID is not provided", func() {
+			req.VolumeId = ""
+			resp, err := drv.NodeExpandVolume(ctx, req)
+			Expect(err).To(HaveOccurred())
+			Expect(resp).To(BeNil())
 			status, ok := status.FromError(err)
 			Expect(ok).To(BeTrue())
-			Expect(status.Code()).To(Equal(codes.Unimplemented))
-		},
+			Expect(status.Code()).To(Equal(codes.InvalidArgument))
+		})
 
-		Entry("NodeGetVolumeStats", func() (interface{}, error) {
-			return drv.NodeGetVolumeStats(ctx, &csi.NodeGetVolumeStatsRequest{})
-		}),
+		It("should return an error if volume path is not provided", func() {
+			req.VolumePath = ""
+			resp, err := drv.NodeExpandVolume(ctx, req)
+			Expect(err).To(HaveOccurred())
+			Expect(resp).To(BeNil())
+			status, ok := status.FromError(err)
+			Expect(ok).To(BeTrue())
+			Expect(status.Code()).To(Equal(codes.InvalidArgument))
+		})
 
-		Entry("NodeExpandVolume", func() (interface{}, error) {
-			return drv.NodeExpandVolume(ctx, &csi.NodeExpandVolumeRequest{})
-		}),
-	)
+		It("should return an error if invalid required bytes capacity is provided", func() {
+			req.CapacityRange.RequiredBytes = 0
+			resp, err := drv.NodeExpandVolume(ctx, req)
+			Expect(err).To(HaveOccurred())
+			Expect(resp).To(BeNil())
+			status, ok := status.FromError(err)
+			Expect(ok).To(BeTrue())
+			Expect(status.Code()).To(Equal(codes.InvalidArgument))
+		})
 
+		It("should return an error if the required bytes capacity is greater than maximum limit capacity", func() {
+			req.CapacityRange.RequiredBytes = 100 * 1024 * 1024 * 1024 // 100GB
+			resp, err := drv.NodeExpandVolume(ctx, req)
+			Expect(err).To(HaveOccurred())
+			Expect(resp).To(BeNil())
+			status, ok := status.FromError(err)
+			Expect(ok).To(BeTrue())
+			Expect(status.Code()).To(Equal(codes.OutOfRange))
+		})
+
+		It("should return an error if an invalid volume capability is provided", func() {
+			req.VolumeCapability = &csi.VolumeCapability{
+				AccessMode: &csi.VolumeCapability_AccessMode{
+					Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY,
+				},
+				AccessType: &csi.VolumeCapability_Mount{
+					Mount: &csi.VolumeCapability_MountVolume{
+						FsType: "ntfs",
+					},
+				},
+			}
+			resp, err := drv.NodeExpandVolume(ctx, req)
+			Expect(err).To(HaveOccurred())
+			Expect(resp).To(BeNil())
+			status, ok := status.FromError(err)
+			Expect(ok).To(BeTrue())
+			Expect(status.Code()).To(Equal(codes.InvalidArgument))
+		})
+
+		It("should resize the device path", func() {
+			mockMounter.EXPECT().List().Return([]k8smountutils.MountPoint{{Device: "/device/path", Path: "/volume/path"}}, nil)
+			mockMounter.EXPECT().NewResizeFs().Return(mockResizefs, nil)
+			mockResizefs.EXPECT().Resize("/device/path", req.VolumePath).Return(true, nil)
+			expectedSize := exec.Command("echo", "1073741824") //1 * 1024 * 1024 * 1024
+			mockOS.EXPECT().Command("blockdev", "--getsize64", "/device/path").Return(expectedSize)
+			_, err := drv.NodeExpandVolume(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	It("should return unimplemented error for NodeGetVolumeStats", func() {
+		res, err := drv.NodeGetVolumeStats(ctx, &csi.NodeGetVolumeStatsRequest{})
+		Expect(res).To(BeNil())
+		status, ok := status.FromError(err)
+		Expect(ok).To(BeTrue())
+		Expect(status.Code()).To(Equal(codes.Unimplemented))
+	})
 })
