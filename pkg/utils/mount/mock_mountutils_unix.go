@@ -13,7 +13,7 @@ import (
 
 // MockMountWrapper is a mock of MountWrapper interface.
 type MockMountWrapper struct {
-	mount_utils.Interface
+mount_utils.Interface
 	ctrl     *gomock.Controller
 	recorder *MockMountWrapperMockRecorder
 }
