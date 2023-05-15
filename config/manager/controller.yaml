@@ -180,7 +180,6 @@ spec:
           args:
           - "--target-kubeconfig=/etc/csi.onmetal.de/target-kubeconfig"
           - "--onmetal-kubeconfig=/etc/csi.onmetal.de/onmetal-kubeconfig"
-          - "--driver-name=onmetal-csi-driver"
           env:
             - name: CSI_ENDPOINT
               value: /csi/csi.sock

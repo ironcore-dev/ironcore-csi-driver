@@ -404,16 +404,21 @@ var _ = Describe("Node", func() {
 	It("should return node capabilities", func() {
 		res, err := drv.NodeGetCapabilities(ctx, nil)
 		Expect(err).NotTo(HaveOccurred())
-		var expectedCaps []*csi.NodeServiceCapability
-		for _, cap := range nodeCaps {
-			c := &csi.NodeServiceCapability{
+		expectedCaps := []*csi.NodeServiceCapability{
+			{
 				Type: &csi.NodeServiceCapability_Rpc{
 					Rpc: &csi.NodeServiceCapability_RPC{
-						Type: cap,
+						Type: csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
 					},
 				},
-			}
-			expectedCaps = append(expectedCaps, c)
+			},
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
+					},
+				},
+			},
 		}
 		Expect(res.Capabilities).To(Equal(expectedCaps))
 	})

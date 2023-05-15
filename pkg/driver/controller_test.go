@@ -420,16 +420,28 @@ var _ = Describe("Controller", func() {
 		By("calling ControllerGetCapabilities")
 		res, err := drv.ControllerGetCapabilities(ctx, &csi.ControllerGetCapabilitiesRequest{})
 		Expect(err).NotTo(HaveOccurred())
-		var expectedCaps []*csi.ControllerServiceCapability
-		for _, cap := range controllerCaps {
-			c := &csi.ControllerServiceCapability{
+		expectedCaps := []*csi.ControllerServiceCapability{
+			{
 				Type: &csi.ControllerServiceCapability_Rpc{
 					Rpc: &csi.ControllerServiceCapability_RPC{
-						Type: cap,
+						Type: csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 					},
 				},
-			}
-			expectedCaps = append(expectedCaps, c)
+			},
+			{
+				Type: &csi.ControllerServiceCapability_Rpc{
+					Rpc: &csi.ControllerServiceCapability_RPC{
+						Type: csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
+					},
+				},
+			},
+			{
+				Type: &csi.ControllerServiceCapability_Rpc{
+					Rpc: &csi.ControllerServiceCapability_RPC{
+						Type: csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
+					},
+				},
+			},
 		}
 		Expect(res.Capabilities).To(Equal(expectedCaps))
 	})
