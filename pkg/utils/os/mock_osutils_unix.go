@@ -6,7 +6,6 @@ package os
 
 import (
 	os "os"
-	exec "os/exec"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -35,25 +34,6 @@ func (m *MockOSWrapper) EXPECT() *MockOSWrapperMockRecorder {
 	return m.recorder
 }
 
-// Command mocks base method.
-func (m *MockOSWrapper) Command(name string, arg ...string) *exec.Cmd {
-	m.ctrl.T.Helper()
-	varargs := []interface{}{name}
-	for _, a := range arg {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "Command", varargs...)
-	ret0, _ := ret[0].(*exec.Cmd)
-	return ret0
-}
-
-// Command indicates an expected call of Command.
-func (mr *MockOSWrapperMockRecorder) Command(name interface{}, arg ...interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{name}, arg...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Command", reflect.TypeOf((*MockOSWrapper)(nil).Command), varargs...)
-}
-
 // IsNotExist mocks base method.
 func (m *MockOSWrapper) IsNotExist(err error) bool {
 	m.ctrl.T.Helper()
@@ -80,6 +60,21 @@ func (m *MockOSWrapper) MkdirAll(path string, perm os.FileMode) error {
 func (mr *MockOSWrapperMockRecorder) MkdirAll(path, perm interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MkdirAll", reflect.TypeOf((*MockOSWrapper)(nil).MkdirAll), path, perm)
+}
+
+// Open mocks base method.
+func (m *MockOSWrapper) Open(path string) (*os.File, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Open", path)
+	ret0, _ := ret[0].(*os.File)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Open indicates an expected call of Open.
+func (mr *MockOSWrapperMockRecorder) Open(path interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Open", reflect.TypeOf((*MockOSWrapper)(nil).Open), path)
 }
 
 // RemoveAll mocks base method.

@@ -17,9 +17,8 @@ package driver
 import (
 	"context"
 	"fmt"
+	"io"
 	"path/filepath"
-	"strconv"
-	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
@@ -276,17 +275,16 @@ func (d *driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolume
 }
 
 func (d *driver) getBlockSizeBytes(devicePath string) (int64, error) {
-	cmd := d.os.Command("blockdev", "--getsize64", devicePath)
-	output, err := cmd.Output()
+	file, err := d.os.Open(devicePath)
 	if err != nil {
-		return -1, fmt.Errorf("error when getting size of block volume at path %s: output: %s, err: %w", devicePath, string(output), err)
+		return -1, fmt.Errorf("error when getting size of block volume at path %s: , err: %w", devicePath, err)
 	}
-	strOut := strings.TrimSpace(string(output))
-	gotSizeBytes, err := strconv.ParseInt(strOut, 10, 64)
+	defer file.Close()
+	size, err := file.Seek(0, io.SeekEnd)
 	if err != nil {
-		return -1, fmt.Errorf("failed to parse size %s as int", strOut)
+		return -1, fmt.Errorf("error when getting size of block volume at path %s: , err: %w", devicePath, err)
 	}
-	return gotSizeBytes, nil
+	return size, nil
 }
 
 func (d *driver) NodeGetVolumeStats(_ context.Context, _ *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {

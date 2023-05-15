@@ -16,8 +16,8 @@ package driver
 
 import (
 	"errors"
+	"io"
 	"os"
-	"os/exec"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/mock/gomock"
@@ -454,8 +454,8 @@ var _ = Describe("Node", func() {
 					},
 				},
 				CapacityRange: &csi.CapacityRange{
-					RequiredBytes: 1 * 1024 * 1024 * 1024,  // 1GB
-					LimitBytes:    10 * 1024 * 1024 * 1024, // 10GB
+					RequiredBytes: 2 * 1024 * 1024,  //  2 MiB
+					LimitBytes:    10 * 1024 * 1024, // 10 MiB
 				},
 			}
 		})
@@ -491,7 +491,7 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should return an error if the required bytes capacity is greater than maximum limit capacity", func() {
-			req.CapacityRange.RequiredBytes = 100 * 1024 * 1024 * 1024 // 100GB
+			req.CapacityRange.RequiredBytes = 100 * 1024 * 1024 // 100 MiB
 			resp, err := drv.NodeExpandVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
 			Expect(resp).To(BeNil())
@@ -523,10 +523,25 @@ var _ = Describe("Node", func() {
 			mockMounter.EXPECT().List().Return([]k8smountutils.MountPoint{{Device: "/device/path", Path: "/volume/path"}}, nil)
 			mockMounter.EXPECT().NewResizeFs().Return(mockResizefs, nil)
 			mockResizefs.EXPECT().Resize("/device/path", req.VolumePath).Return(true, nil)
-			expectedSize := exec.Command("echo", "1073741824") //1 * 1024 * 1024 * 1024
-			mockOS.EXPECT().Command("blockdev", "--getsize64", "/device/path").Return(expectedSize)
-			_, err := drv.NodeExpandVolume(ctx, req)
+
+			// Create a temporary file
+			tmpFile, err := os.CreateTemp("", "device")
 			Expect(err).NotTo(HaveOccurred())
+			defer os.Remove(tmpFile.Name())
+
+			// Seek to the desired file size and write some data to increase the size
+			_, err = tmpFile.Seek(1<<21, io.SeekStart) // 2 Mib
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = tmpFile.Write([]byte("data"))
+			Expect(err).NotTo(HaveOccurred())
+			defer tmpFile.Close()
+
+			mockOS.EXPECT().Open("/device/path").Return(tmpFile, nil)
+
+			res, err := drv.NodeExpandVolume(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).To(HaveField("CapacityBytes", int64(2097156)))
 		})
 	})
 

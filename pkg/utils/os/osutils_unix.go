@@ -19,7 +19,6 @@ package os
 
 import (
 	"os"
-	"os/exec"
 )
 
 //go:generate $MOCKGEN -package os -destination=mock_osutils_unix.go -source osutils_unix.go
@@ -31,7 +30,7 @@ type OSWrapper interface {
 	RemoveAll(path string) error
 	Stat(name string) (os.FileInfo, error)
 	IsNotExist(err error) bool
-	Command(name string, arg ...string) *exec.Cmd
+	Open(path string) (*os.File, error)
 }
 
 type OsOps struct{}
@@ -52,6 +51,6 @@ func (o OsOps) IsNotExist(err error) bool {
 	return os.IsNotExist(err)
 }
 
-func (o OsOps) Command(name string, arg ...string) *exec.Cmd {
-	return exec.Command(name, arg...)
+func (o OsOps) Open(path string) (*os.File, error) {
+	return os.Open(path)
 }
