@@ -151,6 +151,24 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
+        - name: resizer
+          image: k8s.gcr.io/sig-storage/csi-resizer:v1.4.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 200Mi
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
         - name: driver
           securityContext:
             privileged: true

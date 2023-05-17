@@ -62,6 +62,21 @@ func (mr *MockOSWrapperMockRecorder) MkdirAll(path, perm interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MkdirAll", reflect.TypeOf((*MockOSWrapper)(nil).MkdirAll), path, perm)
 }
 
+// Open mocks base method.
+func (m *MockOSWrapper) Open(path string) (*os.File, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Open", path)
+	ret0, _ := ret[0].(*os.File)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Open indicates an expected call of Open.
+func (mr *MockOSWrapperMockRecorder) Open(path interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Open", reflect.TypeOf((*MockOSWrapper)(nil).Open), path)
+}
+
 // RemoveAll mocks base method.
 func (m *MockOSWrapper) RemoveAll(path string) error {
 	m.ctrl.T.Helper()

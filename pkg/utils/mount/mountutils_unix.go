@@ -18,29 +18,38 @@
 package mount
 
 import (
-	mount "k8s.io/mount-utils"
+	k8smountutils "k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
 )
 
-//go:generate $MOCKGEN -package mount -destination=mock_mountutils_unix.go -source mountutils_unix.go
+//go:generate $MOCKGEN -package mount -destination=mock_mountutils_unix.go -source mountutils_unix.go MountWrapper,NodeMounter,Resizefs
 
 // MountWrapper is the interface implemented by NodeMounter. A mix & match of
 // functions defined in upstream libraries. (FormatAndMount from struct
 // SafeFormatAndMount). Defined it explicitly so that it can be mocked.
 type MountWrapper interface {
-	mount.Interface
+	k8smountutils.Interface
 	FormatAndMount(source string, target string, fstype string, options []string) error
+	NewResizeFs() (Resizefs, error)
+}
+
+type Resizefs interface {
+	Resize(devicePath, deviceMountPath string) (bool, error)
 }
 
 // NodeMounter implements MountWrapper.
 // A superstruct of SafeFormatAndMount.
 type NodeMounter struct {
-	*mount.SafeFormatAndMount
+	*k8smountutils.SafeFormatAndMount
 }
 
 func NewNodeMounter() (MountWrapper, error) {
-	return &NodeMounter{SafeFormatAndMount: &mount.SafeFormatAndMount{
-		Interface: mount.New(""),
+	return &NodeMounter{SafeFormatAndMount: &k8smountutils.SafeFormatAndMount{
+		Interface: k8smountutils.New(""),
 		Exec:      utilexec.New(),
 	}}, nil
+}
+
+func (m *NodeMounter) NewResizeFs() (Resizefs, error) {
+	return k8smountutils.NewResizeFs(m.Exec), nil
 }

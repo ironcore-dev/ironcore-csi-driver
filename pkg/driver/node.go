@@ -17,6 +17,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"io"
 	"path/filepath"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -25,6 +26,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+var (
+	// nodeCaps represents the capability of node service.
+	nodeCaps = []csi.NodeServiceCapability_RPC_Type{
+		csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
+		csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
+	}
 )
 
 func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
@@ -200,12 +209,86 @@ func (d *driver) NodeUnpublishVolume(_ context.Context, req *csi.NodeUnpublishVo
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
-func (d *driver) NodeGetVolumeStats(_ context.Context, _ *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "Method NodeGetVolumeStats not implemented")
+func (d *driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+	klog.V(4).InfoS("NodeExpandVolume: called", "args", *req)
+
+	volumeID := req.GetVolumeId()
+	if len(volumeID) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
+	}
+
+	volumePath := req.GetVolumePath()
+	if len(volumePath) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "volume path must be provided")
+	}
+
+	// CapacityRange is optional, if specified validate required bytes and limit bytes
+	reqBytes := req.CapacityRange.GetRequiredBytes()
+	if req.CapacityRange != nil && reqBytes <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "requested capacity must be greater than zero")
+	}
+
+	limitBytes := req.CapacityRange.GetLimitBytes()
+	if req.CapacityRange != nil && limitBytes < reqBytes {
+		return nil, status.Error(codes.OutOfRange, "requested capacity exceeds maximum limit")
+	}
+
+	// VolumeCapability is optional, if specified validate it
+	volumeCapability := req.GetVolumeCapability()
+	if volumeCapability != nil {
+		caps := []*csi.VolumeCapability{volumeCapability}
+		if !isValidVolumeCapabilities(caps) {
+			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("VolumeCapability is invalid: %v", volumeCapability))
+		}
+	}
+
+	klog.InfoS("Get device path from volume path", "volumePath", volumePath, "volumeID", volumeID)
+	deviceName, err := d.GetMountDeviceName(volumePath)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get device name from mount path %s: %v", volumePath, err)
+	}
+	klog.V(4).InfoS("Device name for volume", "path", volumePath, "name", deviceName)
+
+	resizefs, err := d.mounter.NewResizeFs()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error attempting to create new ResizeFs:  %v", err)
+	}
+
+	klog.InfoS("Resizing filesystem on volume", "volumeID", volumeID, "deviceName", deviceName, "volumePath", volumePath)
+	if _, err = resizefs.Resize(deviceName, volumePath); err != nil {
+		return nil, status.Errorf(codes.Internal, "could not resize volume %q (%q):  %v", volumeID, deviceName, err)
+	}
+
+	klog.InfoS("Getting size bytes on path", "deviceName", deviceName)
+	diskSizeBytes, err := d.getBlockSizeBytes(deviceName)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get block capacity on path %s: %v", req.VolumePath, err)
+	}
+
+	if diskSizeBytes < reqBytes {
+		// It's possible that the somewhere the volume size was rounded up, getting more size than requested is a success
+		return nil, status.Errorf(codes.Internal, "resize requested for %v but after resize volume was size %v", reqBytes, diskSizeBytes)
+	}
+
+	klog.V(4).InfoS("Expanded volume on node", "volumeID", volumeID, "CapacityBytes", diskSizeBytes)
+	return &csi.NodeExpandVolumeResponse{CapacityBytes: diskSizeBytes}, nil
 }
 
-func (d *driver) NodeExpandVolume(_ context.Context, _ *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "Method NodeExpandVolume not implemented")
+func (d *driver) getBlockSizeBytes(devicePath string) (int64, error) {
+	file, err := d.os.Open(devicePath)
+	if err != nil {
+		return -1, fmt.Errorf("error when getting size of block volume at path %s: , err: %w", devicePath, err)
+	}
+	defer file.Close()
+	size, err := file.Seek(0, io.SeekEnd)
+	if err != nil {
+		return -1, fmt.Errorf("error when getting size of block volume at path %s: , err: %w", devicePath, err)
+	}
+	return size, nil
+}
+
+func (d *driver) NodeGetVolumeStats(_ context.Context, _ *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "Method NodeGetVolumeStats not implemented")
 }
 
 func (d *driver) NodeGetInfo(ctx context.Context, _ *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
@@ -226,26 +309,25 @@ func (d *driver) NodeGetInfo(ctx context.Context, _ *csi.NodeGetInfoRequest) (*c
 }
 
 func (d *driver) NodeGetCapabilities(_ context.Context, _ *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
-	return &csi.NodeGetCapabilitiesResponse{
-		Capabilities: []*csi.NodeServiceCapability{
-			{
-				Type: &csi.NodeServiceCapability_Rpc{
-					Rpc: &csi.NodeServiceCapability_RPC{
-						Type: csi.NodeServiceCapability_RPC_UNKNOWN,
-					},
+	klog.V(4).InfoS("NodeGetCapabilities: called")
+	var caps []*csi.NodeServiceCapability
+	for _, cap := range nodeCaps {
+		c := &csi.NodeServiceCapability{
+			Type: &csi.NodeServiceCapability_Rpc{
+				Rpc: &csi.NodeServiceCapability_RPC{
+					Type: cap,
 				},
 			},
-			{
-				Type: &csi.NodeServiceCapability_Rpc{
-					Rpc: &csi.NodeServiceCapability_RPC{
-						Type: csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
-					},
-				},
-			},
-		},
-	}, nil
+		}
+		caps = append(caps, c)
+	}
+	return &csi.NodeGetCapabilitiesResponse{Capabilities: caps}, nil
 }
 
+// GetMountDeviceName returns the device name associated with the specified
+// mount path. It lists all the mount points, evaluates the symlink of the given
+// mount path and compares it with the paths of all the available mounts. If a
+// matching mount is found, it returns the corresponding device name.
 func (d *driver) GetMountDeviceName(mountPath string) (device string, err error) {
 	mountPoints, err := d.mounter.List()
 	if err != nil {

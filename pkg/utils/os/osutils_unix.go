@@ -30,6 +30,7 @@ type OSWrapper interface {
 	RemoveAll(path string) error
 	Stat(name string) (os.FileInfo, error)
 	IsNotExist(err error) bool
+	Open(path string) (*os.File, error)
 }
 
 type OsOps struct{}
@@ -48,4 +49,8 @@ func (o OsOps) Stat(path string) (os.FileInfo, error) {
 
 func (o OsOps) IsNotExist(err error) bool {
 	return os.IsNotExist(err)
+}
+
+func (o OsOps) Open(path string) (*os.File, error) {
+	return os.Open(path)
 }

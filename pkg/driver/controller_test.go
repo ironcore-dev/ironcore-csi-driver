@@ -20,6 +20,7 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
+	corev1alpha1 "github.com/onmetal/onmetal-api/api/core/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
 	testutils "github.com/onmetal/onmetal-api/utils/testing"
 	. "github.com/onsi/ginkgo/v2"
@@ -29,6 +30,7 @@ import (
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -40,8 +42,9 @@ var _ = Describe("Controller", func() {
 	ns, drv := SetupTest(ctx)
 
 	var (
-		volume     = &storagev1alpha1.Volume{}
-		volumePool = &storagev1alpha1.VolumePool{}
+		volume                = &storagev1alpha1.Volume{}
+		volumePool            = &storagev1alpha1.VolumePool{}
+		volumeClassExpandOnly = &storagev1alpha1.VolumeClass{}
 	)
 
 	BeforeEach(func() {
@@ -55,7 +58,18 @@ var _ = Describe("Controller", func() {
 			},
 		}
 		Expect(k8sClient.Create(ctx, volumePool)).To(Succeed())
-
+		By("creating an expand only VolumeClass")
+		volumeClassExpandOnly = &storagev1alpha1.VolumeClass{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "expand-only",
+			},
+			Capabilities: corev1alpha1.ResourceList{
+				corev1alpha1.ResourceIOPS: resource.MustParse("100"),
+				corev1alpha1.ResourceTPS:  resource.MustParse("100"),
+			},
+			ResizePolicy: storagev1alpha1.ResizePolicyExpandOnly,
+		}
+		Expect(k8sClient.Create(ctx, volumeClassExpandOnly)).To(Succeed())
 		By("creating a volume through the csi driver")
 		volSize := int64(5 * 1024 * 1024 * 1024)
 		res, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
@@ -69,7 +83,7 @@ var _ = Describe("Controller", func() {
 				},
 			},
 			Parameters: map[string]string{
-				"type":   "slow",
+				"type":   volumeClassExpandOnly.Name,
 				"fstype": "ext4",
 			},
 			AccessibilityRequirements: &csi.TopologyRequirement{
@@ -220,6 +234,94 @@ var _ = Describe("Controller", func() {
 		}
 		Eventually(Get(deletedVolume)).Should(Satisfy(apierrors.IsNotFound))
 	})
+	It("should expand the volume size", func() {
+		By("resizing the volume")
+		newVolumeSize := int64(10 * 1024 * 1024 * 1024)
+		_, err := drv.ControllerExpandVolume(ctx, &csi.ControllerExpandVolumeRequest{
+			VolumeId: "volume",
+			CapacityRange: &csi.CapacityRange{
+				RequiredBytes: newVolumeSize,
+			},
+		})
+		Expect(err).NotTo(HaveOccurred())
+		By("ensuring that Volume has been resized")
+		Consistently(Object(volume)).Should(SatisfyAll(
+			HaveField("Spec.Resources", Equal(corev1alpha1.ResourceList{
+				corev1alpha1.ResourceStorage: resource.MustParse("10Gi"),
+			})),
+		))
+	})
+	It("should fail to expand the volume size", func() {
+		By("resizing the volume with new volume size lesser than the existing volume size")
+		newVolumeSize := int64(3 * 1024 * 1024 * 1024)
+		_, err := drv.ControllerExpandVolume(ctx, &csi.ControllerExpandVolumeRequest{
+			VolumeId: "volume",
+			CapacityRange: &csi.CapacityRange{
+				RequiredBytes: newVolumeSize,
+			},
+		})
+		Expect((err)).Should(MatchError("new volume size can not be less than existing volume size"))
+	})
+	It("should fail to resize volume if volume class is not ExpandOnly", func() {
+		By("creating a VolumeClass other than expand only")
+		volumeClass := &storagev1alpha1.VolumeClass{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "other-than-expand-only",
+			},
+			Capabilities: corev1alpha1.ResourceList{
+				corev1alpha1.ResourceIOPS: resource.MustParse("100"),
+				corev1alpha1.ResourceTPS:  resource.MustParse("100"),
+			},
+			ResizePolicy: storagev1alpha1.ResizePolicyStatic,
+		}
+		Expect(k8sClient.Create(ctx, volumeClass)).To(Succeed())
+		DeferCleanup(k8sClient.Delete, ctx, volumeClass)
+
+		By("creating a volume with volume class other than expand only")
+		volSize := int64(5 * 1024 * 1024 * 1024)
+		_, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
+			Name:          "volume-not-expand",
+			CapacityRange: &csi.CapacityRange{RequiredBytes: volSize},
+			VolumeCapabilities: []*csi.VolumeCapability{
+				{
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+					},
+				},
+			},
+			Parameters: map[string]string{
+				"type":   volumeClass.Name,
+				"fstype": "ext4",
+			},
+			AccessibilityRequirements: &csi.TopologyRequirement{
+				Requisite: []*csi.Topology{
+					{
+						Segments: map[string]string{
+							topologyKey: "volumepool",
+						},
+					},
+				},
+				Preferred: []*csi.Topology{
+					{
+						Segments: map[string]string{
+							topologyKey: "volumepool",
+						},
+					},
+				},
+			},
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		By("resizing the volume")
+		newVolumeSize := int64(10 * 1024 * 1024 * 1024)
+		_, err = drv.ControllerExpandVolume(ctx, &csi.ControllerExpandVolumeRequest{
+			VolumeId: "volume-not-expand",
+			CapacityRange: &csi.CapacityRange{
+				RequiredBytes: newVolumeSize,
+			},
+		})
+		Expect((err)).Should(MatchError("volume class resize policy does not allow resizing"))
+	})
 
 	It("should publish/unpublish a volume on a node", func() {
 		By("calling ControllerPublishVolume")
@@ -318,16 +420,28 @@ var _ = Describe("Controller", func() {
 		By("calling ControllerGetCapabilities")
 		res, err := drv.ControllerGetCapabilities(ctx, &csi.ControllerGetCapabilitiesRequest{})
 		Expect(err).NotTo(HaveOccurred())
-		var expectedCaps []*csi.ControllerServiceCapability
-		for _, cap := range controllerCaps {
-			c := &csi.ControllerServiceCapability{
+		expectedCaps := []*csi.ControllerServiceCapability{
+			{
 				Type: &csi.ControllerServiceCapability_Rpc{
 					Rpc: &csi.ControllerServiceCapability_RPC{
-						Type: cap,
+						Type: csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 					},
 				},
-			}
-			expectedCaps = append(expectedCaps, c)
+			},
+			{
+				Type: &csi.ControllerServiceCapability_Rpc{
+					Rpc: &csi.ControllerServiceCapability_RPC{
+						Type: csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
+					},
+				},
+			},
+			{
+				Type: &csi.ControllerServiceCapability_Rpc{
+					Rpc: &csi.ControllerServiceCapability_RPC{
+						Type: csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
+					},
+				},
+			},
 		}
 		Expect(res.Capabilities).To(Equal(expectedCaps))
 	})
@@ -384,14 +498,11 @@ var _ = Describe("Controller", func() {
 		Entry("DeleteSnapshot", func() (interface{}, error) {
 			return drv.DeleteSnapshot(ctx, &csi.DeleteSnapshotRequest{})
 		}),
-
-		Entry("ControllerExpandVolume", func() (interface{}, error) {
-			return drv.ControllerExpandVolume(ctx, &csi.ControllerExpandVolumeRequest{})
-		}),
 	)
 
 	AfterEach(func() {
 		DeferCleanup(k8sClient.Delete, ctx, volume)
 		DeferCleanup(k8sClient.Delete, ctx, volumePool)
+		DeferCleanup(k8sClient.Delete, ctx, volumeClassExpandOnly)
 	})
 })

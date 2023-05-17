@@ -50,6 +50,7 @@ var (
 	controllerCaps = []csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
+		csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 	}
 )
 
@@ -283,7 +284,54 @@ func (d *driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequ
 
 func (d *driver) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
 	klog.V(4).InfoS("ControllerExpandVolume: called", "args", *req)
-	return nil, status.Errorf(codes.Unimplemented, "Method ControllerExpandVolume not implemented")
+	volumeID := req.GetVolumeId()
+	if len(volumeID) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
+	}
+	volume := &storagev1alpha1.Volume{}
+	if err := d.onmetalClient.Get(ctx, client.ObjectKey{Namespace: d.config.DriverNamespace, Name: volumeID}, volume); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, status.Error(codes.NotFound, "Volume not found")
+		}
+		return nil, status.Errorf(codes.Internal, "Could not get volume with ID %q: %v", volumeID, err)
+	}
+
+	volumeClassName := volume.Spec.VolumeClassRef.Name
+	volumeClass := &storagev1alpha1.VolumeClass{}
+	if err := d.onmetalClient.Get(ctx, client.ObjectKey{Namespace: d.config.DriverNamespace, Name: volumeClassName}, volumeClass); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, status.Error(codes.NotFound, "VolumeClass not found")
+		}
+		return nil, status.Errorf(codes.Internal, "Could not get volume with ID %q: %v", volumeID, err)
+	}
+
+	if volumeClass.ResizePolicy != storagev1alpha1.ResizePolicyExpandOnly {
+		return nil, apierrors.NewBadRequest("volume class resize policy does not allow resizing")
+	}
+
+	if req.CapacityRange == nil {
+		return nil, status.Error(codes.InvalidArgument, "capacity range not provided")
+	}
+
+	volSize, ok := volume.Spec.Resources[corev1alpha1.ResourceStorage]
+	if !ok {
+		return nil, apierrors.NewBadRequest("existing Volume does not contain any capacity information")
+	}
+	newVolSize := utils.RoundUpBytes(req.CapacityRange.GetRequiredBytes())
+	if newVolSize <= volSize.Value() {
+		return nil, apierrors.NewBadRequest("new volume size can not be less than existing volume size")
+	}
+
+	volumeBase := volume.DeepCopy()
+	volume.Spec.Resources[corev1alpha1.ResourceStorage] = *resource.NewQuantity(newVolSize, resource.BinarySI)
+	klog.V(4).InfoS("Patching volume with new volume size", "Volume", client.ObjectKeyFromObject(volume))
+	if err := d.onmetalClient.Patch(ctx, volume, client.MergeFrom(volumeBase)); err != nil {
+		return nil, apierrors.NewBadRequest("failed to patch volume with new volume size")
+	}
+	return &csi.ControllerExpandVolumeResponse{
+		CapacityBytes:         utils.GiBToBytes(newVolSize),
+		NodeExpansionRequired: true,
+	}, nil
 }
 
 func (d *driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {

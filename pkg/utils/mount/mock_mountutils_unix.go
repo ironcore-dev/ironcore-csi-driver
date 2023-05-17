@@ -8,12 +8,12 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	mount "k8s.io/mount-utils"
+	mount_utils "k8s.io/mount-utils"
 )
 
 // MockMountWrapper is a mock of MountWrapper interface.
 type MockMountWrapper struct {
-mount.Interface
+    mount_utils.Interface
 	ctrl     *gomock.Controller
 	recorder *MockMountWrapperMockRecorder
 }
@@ -95,10 +95,10 @@ func (mr *MockMountWrapperMockRecorder) IsMountPoint(file interface{}) *gomock.C
 }
 
 // List mocks base method.
-func (m *MockMountWrapper) List() ([]mount.MountPoint, error) {
+func (m *MockMountWrapper) List() ([]mount_utils.MountPoint, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List")
-	ret0, _ := ret[0].([]mount.MountPoint)
+	ret0, _ := ret[0].([]mount_utils.MountPoint)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -165,6 +165,21 @@ func (mr *MockMountWrapperMockRecorder) MountSensitiveWithoutSystemdWithMountFla
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MountSensitiveWithoutSystemdWithMountFlags", reflect.TypeOf((*MockMountWrapper)(nil).MountSensitiveWithoutSystemdWithMountFlags), source, target, fstype, options, sensitiveOptions, mountFlags)
 }
 
+// NewResizeFs mocks base method.
+func (m *MockMountWrapper) NewResizeFs() (Resizefs, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewResizeFs")
+	ret0, _ := ret[0].(Resizefs)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NewResizeFs indicates an expected call of NewResizeFs.
+func (mr *MockMountWrapperMockRecorder) NewResizeFs() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewResizeFs", reflect.TypeOf((*MockMountWrapper)(nil).NewResizeFs))
+}
+
 // Unmount mocks base method.
 func (m *MockMountWrapper) Unmount(target string) error {
 	m.ctrl.T.Helper()
@@ -191,4 +206,42 @@ func (m *MockMountWrapper) canSafelySkipMountPointCheck() bool {
 func (mr *MockMountWrapperMockRecorder) canSafelySkipMountPointCheck() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "canSafelySkipMountPointCheck", reflect.TypeOf((*MockMountWrapper)(nil).canSafelySkipMountPointCheck))
+}
+
+// MockResizefs is a mock of Resizefs interface.
+type MockResizefs struct {
+	ctrl     *gomock.Controller
+	recorder *MockResizefsMockRecorder
+}
+
+// MockResizefsMockRecorder is the mock recorder for MockResizefs.
+type MockResizefsMockRecorder struct {
+	mock *MockResizefs
+}
+
+// NewMockResizefs creates a new mock instance.
+func NewMockResizefs(ctrl *gomock.Controller) *MockResizefs {
+	mock := &MockResizefs{ctrl: ctrl}
+	mock.recorder = &MockResizefsMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockResizefs) EXPECT() *MockResizefsMockRecorder {
+	return m.recorder
+}
+
+// Resize mocks base method.
+func (m *MockResizefs) Resize(devicePath, deviceMountPath string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Resize", devicePath, deviceMountPath)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Resize indicates an expected call of Resize.
+func (mr *MockResizefsMockRecorder) Resize(devicePath, deviceMountPath interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Resize", reflect.TypeOf((*MockResizefs)(nil).Resize), devicePath, deviceMountPath)
 }
