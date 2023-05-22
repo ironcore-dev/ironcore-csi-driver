@@ -25,6 +25,8 @@ GOMOD=$(GOCMD) mod
 BINARY_NAME=onmetal-csi-driver
 DOCKER_IMAGE=onmetal-csi-driver
 
+BUILDARGS ?=
+
 # For Development Build #################################################################
 # Docker.io username and tag
 DOCKER_USER=onmetal
@@ -109,7 +111,7 @@ build-linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BINARY_NAME) -v ./cmd/
 
 docker-build: 
-	docker build -t ${IMG} -f Dockerfile .
+	docker build $(BUILDARGS) -t ${IMG} -f Dockerfile .
 
 docker-push:
 	docker push ${IMG}
