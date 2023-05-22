@@ -21,11 +21,14 @@ import (
 	"path/filepath"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"golang.org/x/sys/unix"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/onmetal/onmetal-csi-driver/pkg/utils/mount"
 )
 
 var (
@@ -345,6 +348,24 @@ func (d *driver) GetMountDeviceName(mountPath string) (device string, err error)
 		}
 	}
 	return device, nil
+}
+
+func (d *driver) GetDeviceStats(path string) (*mount.DeviceStats, error) {
+	var statfs unix.Statfs_t
+	err := unix.Statfs(path, &statfs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &mount.DeviceStats{
+		AvailableBytes: int64(statfs.Bavail) * int64(statfs.Bsize),
+		TotalBytes:     int64(statfs.Blocks) * int64(statfs.Bsize),
+		UsedBytes:      (int64(statfs.Blocks) - int64(statfs.Bfree)) * int64(statfs.Bsize),
+
+		AvailableInodes: int64(statfs.Ffree),
+		TotalInodes:     int64(statfs.Files),
+		UsedInodes:      int64(statfs.Files) - int64(statfs.Ffree),
+	}, nil
 }
 
 func getZoneFromNode(ctx context.Context, nodeName string, t client.Client) (string, error) {
