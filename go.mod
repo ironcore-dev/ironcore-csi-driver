@@ -11,6 +11,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.9.5
 	github.com/onsi/gomega v1.27.6
 	golang.org/x/exp v0.0.0-20221212164502-fae10dda9338
+	golang.org/x/sys v0.8.0
 	google.golang.org/grpc v1.55.0
 	k8s.io/api v0.26.3
 	k8s.io/apimachinery v0.26.3
@@ -84,7 +85,6 @@ require (
 	go4.org/netipx v0.0.0-20220812043211-3cc044ffd68d // indirect
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/oauth2 v0.6.0 // indirect
-	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/term v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/time v0.3.0 // indirect

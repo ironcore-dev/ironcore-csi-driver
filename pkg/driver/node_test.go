@@ -21,14 +21,15 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/mock/gomock"
-	testutils "github.com/onmetal/onmetal-api/utils/testing"
-	"github.com/onmetal/onmetal-csi-driver/pkg/utils/mount"
-	osutils "github.com/onmetal/onmetal-csi-driver/pkg/utils/os"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	k8smountutils "k8s.io/mount-utils"
+
+	testutils "github.com/onmetal/onmetal-api/utils/testing"
+	"github.com/onmetal/onmetal-csi-driver/pkg/utils/mount"
+	osutils "github.com/onmetal/onmetal-csi-driver/pkg/utils/os"
 )
 
 var _ = Describe("Node", func() {
@@ -419,6 +420,13 @@ var _ = Describe("Node", func() {
 					},
 				},
 			},
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
+					},
+				},
+			},
 		}
 		Expect(res.Capabilities).To(Equal(expectedCaps))
 	})
@@ -545,11 +553,71 @@ var _ = Describe("Node", func() {
 		})
 	})
 
-	It("should return unimplemented error for NodeGetVolumeStats", func() {
-		res, err := drv.NodeGetVolumeStats(ctx, &csi.NodeGetVolumeStatsRequest{})
-		Expect(res).To(BeNil())
-		status, ok := status.FromError(err)
-		Expect(ok).To(BeTrue())
-		Expect(status.Code()).To(Equal(codes.Unimplemented))
+	Describe("NodeGetVolumeStats", func() {
+		var (
+			req               *csi.NodeGetVolumeStatsRequest
+			stagingTargetPath string
+		)
+
+		BeforeEach(func() {
+			stagingTargetPath = "/target/path/"
+			req = &csi.NodeGetVolumeStatsRequest{
+				VolumeId:          volumeId,
+				StagingTargetPath: stagingTargetPath,
+				VolumePath:        "/volume/path",
+			}
+		})
+
+		It("should return an error if the volume ID is empty", func() {
+			req.VolumeId = ""
+			_, err := drv.NodeGetVolumeStats(ctx, req)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Volume Id not provided"))
+			statusErr, ok := status.FromError(err)
+			Expect(ok).To(BeTrue())
+			Expect(statusErr.Code()).To(Equal(codes.InvalidArgument))
+		})
+
+		It("should fail if check for volumePath exists fails", func() {
+			mockOS.EXPECT().Exists(gomock.Any(), gomock.Any()).Return(false, errors.New("error"))
+			_, err := drv.NodeGetVolumeStats(ctx, req)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to check whether volumePath exists"))
+			statusErr, ok := status.FromError(err)
+			Expect(ok).To(BeTrue())
+			Expect(statusErr.Code()).To(Equal(codes.Internal))
+		})
+
+		It("should fail if the volume path is empty", func() {
+			req.VolumePath = ""
+			_, err := drv.NodeGetVolumeStats(ctx, req)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Volume path not provided"))
+			statusErr, ok := status.FromError(err)
+			Expect(ok).To(BeTrue())
+			Expect(statusErr.Code()).To(Equal(codes.InvalidArgument))
+		})
+
+		It("should fail if check if GetDeviceStats fails", func() {
+			mockOS.EXPECT().Exists(gomock.Any(), gomock.Any()).Return(true, nil)
+			mockOS.EXPECT().Statfs(gomock.Any(), gomock.Any()).Return(errors.New("error"))
+			_, err := drv.NodeGetVolumeStats(ctx, req)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to get stats by path"))
+			statusErr, ok := status.FromError(err)
+			Expect(ok).To(BeTrue())
+			Expect(statusErr.Code()).To(Equal(codes.Internal))
+		})
+
+		It("should return volume stats", func() {
+			mockOS.EXPECT().Exists(gomock.Any(), gomock.Any()).Return(true, nil)
+			mockOS.EXPECT().Statfs(gomock.Any(), gomock.Any()).Return(nil)
+			res, err := drv.NodeGetVolumeStats(ctx, req)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).To(SatisfyAll(
+				HaveField("Usage", Not(BeNil())),
+			))
+		})
+
 	})
 })

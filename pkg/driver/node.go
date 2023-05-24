@@ -26,6 +26,7 @@ import (
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
+	utilpath "k8s.io/utils/path"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/onmetal/onmetal-csi-driver/pkg/utils/mount"
@@ -36,6 +37,7 @@ var (
 	nodeCaps = []csi.NodeServiceCapability_RPC_Type{
 		csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
 		csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
+		csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
 	}
 )
 
@@ -290,8 +292,37 @@ func (d *driver) getBlockSizeBytes(devicePath string) (int64, error) {
 	return size, nil
 }
 
-func (d *driver) NodeGetVolumeStats(_ context.Context, _ *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "Method NodeGetVolumeStats not implemented")
+func (d *driver) NodeGetVolumeStats(_ context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+	klog.InfoS("NodeGetVolumeStats", "Volume", req.GetVolumeId())
+
+	volumeID := req.GetVolumeId()
+	if len(volumeID) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume Id not provided")
+	}
+
+	volumePath := req.GetVolumePath()
+	if len(volumePath) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume path not provided")
+	}
+
+	exists, err := d.os.Exists(utilpath.CheckFollowSymlink, req.VolumePath)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to check whether volumePath exists: %s", err)
+	}
+	if !exists {
+		return nil, status.Errorf(codes.NotFound, "target: %s not found", volumePath)
+	}
+	stats, err := d.GetDeviceStats(volumePath)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get stats by path: %s", err)
+	}
+
+	return &csi.NodeGetVolumeStatsResponse{
+		Usage: []*csi.VolumeUsage{
+			{Total: stats.TotalBytes, Available: stats.AvailableBytes, Used: stats.UsedBytes, Unit: csi.VolumeUsage_BYTES},
+			{Total: stats.TotalInodes, Available: stats.AvailableInodes, Used: stats.UsedInodes, Unit: csi.VolumeUsage_INODES},
+		},
+	}, nil
 }
 
 func (d *driver) NodeGetInfo(ctx context.Context, _ *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
@@ -352,7 +383,7 @@ func (d *driver) GetMountDeviceName(mountPath string) (device string, err error)
 
 func (d *driver) GetDeviceStats(path string) (*mount.DeviceStats, error) {
 	var statfs unix.Statfs_t
-	err := unix.Statfs(path, &statfs)
+	err := d.os.Statfs(path, &statfs)
 	if err != nil {
 		return nil, err
 	}
