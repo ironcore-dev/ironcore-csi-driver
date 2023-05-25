@@ -554,17 +554,12 @@ var _ = Describe("Node", func() {
 	})
 
 	Describe("NodeGetVolumeStats", func() {
-		var (
-			req               *csi.NodeGetVolumeStatsRequest
-			stagingTargetPath string
-		)
+		var req *csi.NodeGetVolumeStatsRequest
 
 		BeforeEach(func() {
-			stagingTargetPath = "/target/path/"
 			req = &csi.NodeGetVolumeStatsRequest{
-				VolumeId:          volumeId,
-				StagingTargetPath: stagingTargetPath,
-				VolumePath:        "/volume/path",
+				VolumeId:   volumeId,
+				VolumePath: "/volume/path",
 			}
 		})
 
@@ -598,7 +593,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.InvalidArgument))
 		})
 
-		It("should fail if check if GetDeviceStats fails", func() {
+		It("should fail if check GetDeviceStats fails", func() {
 			mockOS.EXPECT().Exists(gomock.Any(), gomock.Any()).Return(true, nil)
 			mockOS.EXPECT().Statfs(gomock.Any(), gomock.Any()).Return(errors.New("error"))
 			_, err := drv.NodeGetVolumeStats(ctx, req)
