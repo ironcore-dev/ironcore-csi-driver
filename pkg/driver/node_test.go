@@ -611,6 +611,22 @@ var _ = Describe("Node", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(SatisfyAll(
 				HaveField("Usage", Not(BeNil())),
+				HaveField("Usage", ContainElements([]*csi.VolumeUsage{
+
+					{
+						Available: 0,
+						Total:     0,
+						Used:      0,
+						Unit:      1,
+					},
+					{
+						Available: 0,
+						Total:     0,
+						Used:      0,
+						Unit:      2,
+					},
+				},
+				)),
 			))
 		})
 

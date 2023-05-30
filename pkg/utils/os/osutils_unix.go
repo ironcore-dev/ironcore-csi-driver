@@ -61,8 +61,7 @@ func (o OsOps) Open(path string) (*os.File, error) {
 }
 
 func (o OsOps) Statfs(path string, buf *unix.Statfs_t) (err error) {
-	var statfs unix.Statfs_t
-	return unix.Statfs(path, &statfs)
+	return unix.Statfs(path, buf)
 }
 
 func (o OsOps) Exists(linkBehavior utilpath.LinkTreatment, filename string) (bool, error) {
