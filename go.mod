@@ -7,7 +7,7 @@ require (
 	github.com/dell/gocsi v1.7.0
 	github.com/golang/mock v1.6.0
 	github.com/onmetal/controller-utils v0.8.0
-	github.com/onmetal/onmetal-api v0.1.2-0.20230504233623-404af45a21a5
+	github.com/onmetal/onmetal-api v0.1.2-0.20230530094909-67f87469764c
 	github.com/onsi/ginkgo/v2 v2.9.5
 	github.com/onsi/gomega v1.27.7
 	golang.org/x/exp v0.0.0-20221212164502-fae10dda9338
@@ -99,7 +99,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.27.2 // indirect
 	k8s.io/apiserver v0.27.2 // indirect
 	k8s.io/component-base v0.27.2 // indirect
-	k8s.io/kube-aggregator v0.26.3 // indirect
+	k8s.io/kube-aggregator v0.27.2 // indirect
 	k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.1.2 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
