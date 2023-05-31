@@ -610,7 +610,6 @@ var _ = Describe("Node", func() {
 			res, err := drv.NodeGetVolumeStats(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(SatisfyAll(
-				HaveField("Usage", Not(BeNil())),
 				HaveField("Usage", ContainElements([]*csi.VolumeUsage{
 
 					{
