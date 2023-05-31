@@ -9,7 +9,7 @@ require (
 	github.com/onmetal/controller-utils v0.7.0
 	github.com/onmetal/onmetal-api v0.1.2-0.20230504233623-404af45a21a5
 	github.com/onsi/ginkgo/v2 v2.9.5
-	github.com/onsi/gomega v1.27.6
+	github.com/onsi/gomega v1.27.7
 	golang.org/x/exp v0.0.0-20221212164502-fae10dda9338
 	golang.org/x/sys v0.8.0
 	google.golang.org/grpc v1.55.0
