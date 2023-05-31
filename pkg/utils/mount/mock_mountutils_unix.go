@@ -35,6 +35,20 @@ func (m *MockMountWrapper) EXPECT() *MockMountWrapperMockRecorder {
 	return m.recorder
 }
 
+// CanSafelySkipMountPointCheck mocks base method.
+func (m *MockMountWrapper) CanSafelySkipMountPointCheck() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CanSafelySkipMountPointCheck")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// CanSafelySkipMountPointCheck indicates an expected call of CanSafelySkipMountPointCheck.
+func (mr *MockMountWrapperMockRecorder) CanSafelySkipMountPointCheck() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CanSafelySkipMountPointCheck", reflect.TypeOf((*MockMountWrapper)(nil).CanSafelySkipMountPointCheck))
+}
+
 // FormatAndMount mocks base method.
 func (m *MockMountWrapper) FormatAndMount(source, target, fstype string, options []string) error {
 	m.ctrl.T.Helper()
@@ -192,20 +206,6 @@ func (m *MockMountWrapper) Unmount(target string) error {
 func (mr *MockMountWrapperMockRecorder) Unmount(target interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unmount", reflect.TypeOf((*MockMountWrapper)(nil).Unmount), target)
-}
-
-// canSafelySkipMountPointCheck mocks base method.
-func (m *MockMountWrapper) canSafelySkipMountPointCheck() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "canSafelySkipMountPointCheck")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// canSafelySkipMountPointCheck indicates an expected call of canSafelySkipMountPointCheck.
-func (mr *MockMountWrapperMockRecorder) canSafelySkipMountPointCheck() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "canSafelySkipMountPointCheck", reflect.TypeOf((*MockMountWrapper)(nil).canSafelySkipMountPointCheck))
 }
 
 // MockResizefs is a mock of Resizefs interface.
