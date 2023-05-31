@@ -9,6 +9,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	unix "golang.org/x/sys/unix"
+	path "k8s.io/utils/path"
 )
 
 // MockOSWrapper is a mock of OSWrapper interface.
@@ -32,6 +34,21 @@ func NewMockOSWrapper(ctrl *gomock.Controller) *MockOSWrapper {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockOSWrapper) EXPECT() *MockOSWrapperMockRecorder {
 	return m.recorder
+}
+
+// Exists mocks base method.
+func (m *MockOSWrapper) Exists(linkBehavior path.LinkTreatment, filename string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Exists", linkBehavior, filename)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Exists indicates an expected call of Exists.
+func (mr *MockOSWrapperMockRecorder) Exists(linkBehavior, filename interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exists", reflect.TypeOf((*MockOSWrapper)(nil).Exists), linkBehavior, filename)
 }
 
 // IsNotExist mocks base method.
@@ -104,4 +121,18 @@ func (m *MockOSWrapper) Stat(name string) (os.FileInfo, error) {
 func (mr *MockOSWrapperMockRecorder) Stat(name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stat", reflect.TypeOf((*MockOSWrapper)(nil).Stat), name)
+}
+
+// Statfs mocks base method.
+func (m *MockOSWrapper) Statfs(path string, buf *unix.Statfs_t) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Statfs", path, buf)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Statfs indicates an expected call of Statfs.
+func (mr *MockOSWrapperMockRecorder) Statfs(path, buf interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Statfs", reflect.TypeOf((*MockOSWrapper)(nil).Statfs), path, buf)
 }

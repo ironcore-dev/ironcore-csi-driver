@@ -19,6 +19,9 @@ package os
 
 import (
 	"os"
+
+	"golang.org/x/sys/unix"
+	utilpath "k8s.io/utils/path"
 )
 
 //go:generate $MOCKGEN -package os -destination=mock_osutils_unix.go -source osutils_unix.go
@@ -31,6 +34,8 @@ type OSWrapper interface {
 	Stat(name string) (os.FileInfo, error)
 	IsNotExist(err error) bool
 	Open(path string) (*os.File, error)
+	Statfs(path string, buf *unix.Statfs_t) (err error)
+	Exists(linkBehavior utilpath.LinkTreatment, filename string) (bool, error)
 }
 
 type OsOps struct{}
@@ -53,4 +58,12 @@ func (o OsOps) IsNotExist(err error) bool {
 
 func (o OsOps) Open(path string) (*os.File, error) {
 	return os.Open(path)
+}
+
+func (o OsOps) Statfs(path string, buf *unix.Statfs_t) (err error) {
+	return unix.Statfs(path, buf)
+}
+
+func (o OsOps) Exists(linkBehavior utilpath.LinkTreatment, filename string) (bool, error) {
+	return utilpath.Exists(utilpath.CheckFollowSymlink, filename)
 }
