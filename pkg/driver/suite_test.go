@@ -15,7 +15,6 @@
 package driver
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -97,20 +96,20 @@ var _ = BeforeSuite(func() {
 	Expect(envtestutils.WaitUntilAPIServicesReadyWithTimeout(apiServiceTimeout, testEnvExt, k8sClient, clientgoscheme.Scheme)).To(Succeed())
 })
 
-func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
+func SetupTest() (*corev1.Namespace, *driver) {
 	var (
 		ns = &corev1.Namespace{}
 		d  = &driver{}
 	)
 
-	BeforeEach(func() {
+	BeforeEach(func(ctx SpecContext) {
 		*ns = corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "test-ns-",
 			},
 		}
 		Expect(k8sClient.Create(ctx, ns)).To(Succeed(), "failed to create test namespace")
-		DeferCleanup(k8sClient.Delete, ctx, ns)
+		DeferCleanup(k8sClient.Delete, ns)
 
 		// Create a test node with providerID spec and labels
 		node := &corev1.Node{
@@ -126,7 +125,7 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 			},
 		}
 		Expect(k8sClient.Create(ctx, node)).To(Succeed())
-		DeferCleanup(k8sClient.Delete, ctx, node)
+		DeferCleanup(k8sClient.Delete, node)
 
 		config := &options.Config{
 			NodeID:          "node",
@@ -146,7 +145,7 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 			},
 		}
 		Expect(k8sClient.Create(ctx, machineClass)).To(Succeed())
-		DeferCleanup(k8sClient.Delete, ctx, machineClass)
+		DeferCleanup(k8sClient.Delete, machineClass)
 
 		machinePool := &computev1alpha1.MachinePool{
 			ObjectMeta: metav1.ObjectMeta{
@@ -166,7 +165,7 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 			},
 		}
 		Expect(k8sClient.Status().Patch(ctx, machinePool, client.MergeFrom(machinePoolBase))).To(Succeed())
-		DeferCleanup(k8sClient.Delete, ctx, machinePool)
+		DeferCleanup(k8sClient.Delete, machinePool)
 
 		//create a test onmetal machine
 		machine := &computev1alpha1.Machine{
@@ -190,7 +189,6 @@ func SetupTest(ctx context.Context) (*corev1.Namespace, *driver) {
 		machineBase := machine.DeepCopy()
 		machine.Status.State = computev1alpha1.MachineStateRunning
 		Expect(k8sClient.Status().Patch(ctx, machine, client.MergeFrom(machineBase))).To(Succeed())
-		DeferCleanup(k8sClient.Delete, ctx, machine)
 	})
 
 	return ns, d

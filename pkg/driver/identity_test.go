@@ -16,16 +16,14 @@ package driver
 
 import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	testutils "github.com/onmetal/onmetal-api/utils/testing"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Identity", func() {
-	ctx := testutils.SetupContext()
-	_, drv := SetupTest(ctx)
+	_, drv := SetupTest()
 
-	It("should get the correct driver plugin information", func() {
+	It("should get the correct driver plugin information", func(ctx SpecContext) {
 		By("calling GetPluginInfo")
 		res, err := drv.GetPluginInfo(ctx, &csi.GetPluginInfoRequest{})
 		Expect(err).NotTo(HaveOccurred())
@@ -35,7 +33,7 @@ var _ = Describe("Identity", func() {
 		))
 	})
 
-	It("should get the correct driver plugin capabilities", func() {
+	It("should get the correct driver plugin capabilities", func(ctx SpecContext) {
 		By("calling GetPluginCapabilities")
 		res, err := drv.GetPluginCapabilities(ctx, &csi.GetPluginCapabilitiesRequest{})
 		Expect(err).NotTo(HaveOccurred())
@@ -57,7 +55,7 @@ var _ = Describe("Identity", func() {
 		))
 	})
 
-	It("should return no error when Probe is called", func() {
+	It("should return no error when Probe is called", func(ctx SpecContext) {
 		By("calling Probe")
 		_, err := drv.Probe(ctx, &csi.ProbeRequest{})
 		Expect(err).NotTo(HaveOccurred())
