@@ -27,14 +27,12 @@ import (
 	"google.golang.org/grpc/status"
 	k8smountutils "k8s.io/mount-utils"
 
-	testutils "github.com/onmetal/onmetal-api/utils/testing"
 	"github.com/onmetal/onmetal-csi-driver/pkg/utils/mount"
 	osutils "github.com/onmetal/onmetal-csi-driver/pkg/utils/os"
 )
 
 var _ = Describe("Node", func() {
-	ctx := testutils.SetupContext()
-	_, drv := SetupTest(ctx)
+	_, drv := SetupTest()
 
 	var (
 		ctrl         *gomock.Controller
@@ -48,7 +46,7 @@ var _ = Describe("Node", func() {
 		fstype     string
 	)
 
-	BeforeEach(func() {
+	BeforeEach(func(ctx SpecContext) {
 		ctrl = gomock.NewController(GinkgoT())
 		mockMounter = mount.NewMockMountWrapper(ctrl)
 		mockOS = osutils.NewMockOSWrapper(ctrl)
@@ -94,13 +92,13 @@ var _ = Describe("Node", func() {
 			}
 		})
 
-		It("should fail if the volume is already mounted", func() {
+		It("should fail if the volume is already mounted", func(ctx SpecContext) {
 			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, nil)
 			_, err := drv.NodeStageVolume(ctx, req)
 			Expect(err).NotTo(BeNil())
 		})
 
-		It("should fail if the mount point validation fails", func() {
+		It("should fail if the mount point validation fails", func(ctx SpecContext) {
 			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("failed to validate mount point"))
 			mockOS.EXPECT().IsNotExist(gomock.Any()).Return(false)
 			_, err := drv.NodeStageVolume(ctx, req)
@@ -111,7 +109,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.Internal))
 		})
 
-		It("should fail if the target directory creation fails", func() {
+		It("should fail if the target directory creation fails", func(ctx SpecContext) {
 			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(true, nil)
 			mockOS.EXPECT().MkdirAll(targetPath, os.FileMode(0750)).Return(errors.New("failed to create target directory"))
 			_, err := drv.NodeStageVolume(ctx, req)
@@ -123,7 +121,7 @@ var _ = Describe("Node", func() {
 
 		})
 
-		It("should fail if the mount operation fails", func() {
+		It("should fail if the mount operation fails", func(ctx SpecContext) {
 			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(true, nil)
 			mockOS.EXPECT().MkdirAll(targetPath, os.FileMode(0750)).Return(nil)
 			mockMounter.EXPECT().FormatAndMount(devicePath, targetPath, fstype, mountOptions).Return(errors.New("failed to mount volume"))
@@ -135,7 +133,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.Internal))
 		})
 
-		It("should stage the volume", func() {
+		It("should stage the volume", func(ctx SpecContext) {
 			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(true, nil)
 			mockOS.EXPECT().MkdirAll(targetPath, os.FileMode(0750)).Return(nil)
 			mockMounter.EXPECT().FormatAndMount(devicePath, targetPath, fstype, mountOptions).Return(nil)
@@ -175,7 +173,7 @@ var _ = Describe("Node", func() {
 			}
 		})
 
-		It("should return an error if the volume ID is empty", func() {
+		It("should return an error if the volume ID is empty", func(ctx SpecContext) {
 			req.VolumeId = ""
 			_, err := drv.NodePublishVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -185,7 +183,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.InvalidArgument))
 		})
 
-		It("should fail if the staging target path is empty", func() {
+		It("should fail if the staging target path is empty", func(ctx SpecContext) {
 			req.StagingTargetPath = ""
 			_, err := drv.NodePublishVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -195,7 +193,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.InvalidArgument))
 		})
 
-		It("should fail if the target path is empty", func() {
+		It("should fail if the target path is empty", func(ctx SpecContext) {
 			req.TargetPath = ""
 			_, err := drv.NodePublishVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -205,7 +203,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.InvalidArgument))
 		})
 
-		It("should fail if the volume capability is nil", func() {
+		It("should fail if the volume capability is nil", func(ctx SpecContext) {
 			req.VolumeCapability = nil
 			_, err := drv.NodePublishVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -215,7 +213,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.InvalidArgument))
 		})
 
-		It("should fail if the mount point validation fails", func() {
+		It("should fail if the mount point validation fails", func(ctx SpecContext) {
 			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("failed to validate mount point"))
 			mockOS.EXPECT().IsNotExist(gomock.Any()).Return(false)
 			_, err := drv.NodePublishVolume(ctx, req)
@@ -226,13 +224,13 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.Internal))
 		})
 
-		It("should publish volume on node if mount point already exist", func() {
+		It("should publish volume on node if mount point already exist", func(ctx SpecContext) {
 			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, nil)
 			_, err := drv.NodePublishVolume(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should publish volume on node if mount directory does not exist", func() {
+		It("should publish volume on node if mount directory does not exist", func(ctx SpecContext) {
 			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(true, errors.New("file does not exist"))
 			mockOS.EXPECT().IsNotExist(errors.New("file does not exist")).Return(true)
 			mockOS.EXPECT().IsNotExist(errors.New("file does not exist")).Return(true)
@@ -257,7 +255,7 @@ var _ = Describe("Node", func() {
 			}
 		})
 
-		It("should return an error if the volume ID is empty", func() {
+		It("should return an error if the volume ID is empty", func(ctx SpecContext) {
 			req.VolumeId = ""
 			_, err := drv.NodeUnstageVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -267,7 +265,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.InvalidArgument))
 		})
 
-		It("should fail if the list mounted filesystems operation fails", func() {
+		It("should fail if the list mounted filesystems operation fails", func(ctx SpecContext) {
 			mockMounter.EXPECT().List().Return(nil, errors.New("error"))
 			_, err := drv.NodeUnstageVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -277,7 +275,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.Internal))
 		})
 
-		It("should fail if the unmount operation fails", func() {
+		It("should fail if the unmount operation fails", func(ctx SpecContext) {
 			mockMounter.EXPECT().List().Return([]k8smountutils.MountPoint{{Device: "/dev/sda1", Path: stagingTargetPath}}, nil)
 			mockMounter.EXPECT().Unmount(stagingTargetPath).Return(errors.New("error"))
 			_, err := drv.NodeUnstageVolume(ctx, req)
@@ -288,7 +286,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.Internal))
 		})
 
-		It("should fail if the remove mount directory operation fails", func() {
+		It("should fail if the remove mount directory operation fails", func(ctx SpecContext) {
 			mockMounter.EXPECT().List().Return([]k8smountutils.MountPoint{{Device: "/dev/sda1", Path: stagingTargetPath}}, nil)
 			mockMounter.EXPECT().Unmount(stagingTargetPath).Return(nil)
 			mockOS.EXPECT().RemoveAll(stagingTargetPath).Return(errors.New("error"))
@@ -300,7 +298,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.Internal))
 		})
 
-		It("should unstage the volume", func() {
+		It("should unstage the volume", func(ctx SpecContext) {
 			mockMounter.EXPECT().List().Return([]k8smountutils.MountPoint{{Device: "/dev/sda1", Path: stagingTargetPath}}, nil)
 			mockMounter.EXPECT().Unmount(stagingTargetPath).Return(nil)
 			mockOS.EXPECT().RemoveAll(stagingTargetPath).Return(nil)
@@ -321,7 +319,7 @@ var _ = Describe("Node", func() {
 			}
 		})
 
-		It("should return an error if the volume ID is empty", func() {
+		It("should return an error if the volume ID is empty", func(ctx SpecContext) {
 			req.VolumeId = ""
 			_, err := drv.NodeUnpublishVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -331,7 +329,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.InvalidArgument))
 		})
 
-		It("should fail if the target path is empty", func() {
+		It("should fail if the target path is empty", func(ctx SpecContext) {
 			req.TargetPath = ""
 			_, err := drv.NodeUnpublishVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -341,7 +339,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.InvalidArgument))
 		})
 
-		It("should fail if the stat operation fails", func() {
+		It("should fail if the stat operation fails", func(ctx SpecContext) {
 			mockOS.EXPECT().Stat(targetPath).Return(nil, errors.New("error"))
 			_, err := drv.NodeUnpublishVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -351,7 +349,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.Internal))
 		})
 
-		It("should fail if the mount point validation fails", func() {
+		It("should fail if the mount point validation fails", func(ctx SpecContext) {
 			mockOS.EXPECT().Stat(targetPath).Return(nil, nil)
 			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("failed to validate mount point"))
 			mockOS.EXPECT().IsNotExist(gomock.Any()).Return(false)
@@ -363,7 +361,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.Internal))
 		})
 
-		It("should fail if the unmount operation fails", func() {
+		It("should fail if the unmount operation fails", func(ctx SpecContext) {
 			mockOS.EXPECT().Stat(targetPath).Return(nil, nil)
 			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("error"))
 			mockOS.EXPECT().IsNotExist(errors.New("error")).Return(true)
@@ -376,7 +374,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.Internal))
 		})
 
-		It("should fail if the remove mount directory operation fails", func() {
+		It("should fail if the remove mount directory operation fails", func(ctx SpecContext) {
 			mockOS.EXPECT().Stat(targetPath).Return(nil, nil)
 			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("error"))
 			mockOS.EXPECT().IsNotExist(errors.New("error")).Return(true)
@@ -390,7 +388,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.Internal))
 		})
 
-		It("should unpublish volume from node", func() {
+		It("should unpublish volume from node", func(ctx SpecContext) {
 			mockOS.EXPECT().Stat(targetPath).Return(nil, nil)
 			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, errors.New("error"))
 			mockOS.EXPECT().IsNotExist(errors.New("error")).Return(true)
@@ -402,7 +400,7 @@ var _ = Describe("Node", func() {
 
 	})
 
-	It("should return node capabilities", func() {
+	It("should return node capabilities", func(ctx SpecContext) {
 		res, err := drv.NodeGetCapabilities(ctx, nil)
 		Expect(err).NotTo(HaveOccurred())
 		expectedCaps := []*csi.NodeServiceCapability{
@@ -431,7 +429,7 @@ var _ = Describe("Node", func() {
 		Expect(res.Capabilities).To(Equal(expectedCaps))
 	})
 
-	It("should return node info", func() {
+	It("should return node info", func(ctx SpecContext) {
 		res, err := drv.NodeGetInfo(ctx, nil)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res).To(SatisfyAll(
@@ -468,7 +466,7 @@ var _ = Describe("Node", func() {
 			}
 		})
 
-		It("should return an error if volume ID is not provided", func() {
+		It("should return an error if volume ID is not provided", func(ctx SpecContext) {
 			req.VolumeId = ""
 			resp, err := drv.NodeExpandVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -478,7 +476,7 @@ var _ = Describe("Node", func() {
 			Expect(status.Code()).To(Equal(codes.InvalidArgument))
 		})
 
-		It("should return an error if volume path is not provided", func() {
+		It("should return an error if volume path is not provided", func(ctx SpecContext) {
 			req.VolumePath = ""
 			resp, err := drv.NodeExpandVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -488,7 +486,7 @@ var _ = Describe("Node", func() {
 			Expect(status.Code()).To(Equal(codes.InvalidArgument))
 		})
 
-		It("should return an error if invalid required bytes capacity is provided", func() {
+		It("should return an error if invalid required bytes capacity is provided", func(ctx SpecContext) {
 			req.CapacityRange.RequiredBytes = 0
 			resp, err := drv.NodeExpandVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -498,7 +496,7 @@ var _ = Describe("Node", func() {
 			Expect(status.Code()).To(Equal(codes.InvalidArgument))
 		})
 
-		It("should return an error if the required bytes capacity is greater than maximum limit capacity", func() {
+		It("should return an error if the required bytes capacity is greater than maximum limit capacity", func(ctx SpecContext) {
 			req.CapacityRange.RequiredBytes = 100 * 1024 * 1024 // 100 MiB
 			resp, err := drv.NodeExpandVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -508,7 +506,7 @@ var _ = Describe("Node", func() {
 			Expect(status.Code()).To(Equal(codes.OutOfRange))
 		})
 
-		It("should return an error if an invalid volume capability is provided", func() {
+		It("should return an error if an invalid volume capability is provided", func(ctx SpecContext) {
 			req.VolumeCapability = &csi.VolumeCapability{
 				AccessMode: &csi.VolumeCapability_AccessMode{
 					Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY,
@@ -527,7 +525,7 @@ var _ = Describe("Node", func() {
 			Expect(status.Code()).To(Equal(codes.InvalidArgument))
 		})
 
-		It("should resize the device path", func() {
+		It("should resize the device path", func(ctx SpecContext) {
 			mockMounter.EXPECT().List().Return([]k8smountutils.MountPoint{{Device: "/device/path", Path: "/volume/path"}}, nil)
 			mockMounter.EXPECT().NewResizeFs().Return(mockResizefs, nil)
 			mockResizefs.EXPECT().Resize("/device/path", req.VolumePath).Return(true, nil)
@@ -563,7 +561,7 @@ var _ = Describe("Node", func() {
 			}
 		})
 
-		It("should return an error if the volume ID is empty", func() {
+		It("should return an error if the volume ID is empty", func(ctx SpecContext) {
 			req.VolumeId = ""
 			_, err := drv.NodeGetVolumeStats(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -573,7 +571,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.InvalidArgument))
 		})
 
-		It("should fail if check for volumePath exists fails", func() {
+		It("should fail if check for volumePath exists fails", func(ctx SpecContext) {
 			mockOS.EXPECT().Exists(gomock.Any(), gomock.Any()).Return(false, errors.New("error"))
 			_, err := drv.NodeGetVolumeStats(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -583,7 +581,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.Internal))
 		})
 
-		It("should fail if the volume path is empty", func() {
+		It("should fail if the volume path is empty", func(ctx SpecContext) {
 			req.VolumePath = ""
 			_, err := drv.NodeGetVolumeStats(ctx, req)
 			Expect(err).To(HaveOccurred())
@@ -593,7 +591,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.InvalidArgument))
 		})
 
-		It("should fail if check GetDeviceStats fails", func() {
+		It("should fail if check GetDeviceStats fails", func(ctx SpecContext) {
 			mockOS.EXPECT().Exists(gomock.Any(), gomock.Any()).Return(true, nil)
 			mockOS.EXPECT().Statfs(gomock.Any(), gomock.Any()).Return(errors.New("error"))
 			_, err := drv.NodeGetVolumeStats(ctx, req)
@@ -604,7 +602,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.Internal))
 		})
 
-		It("should return volume stats", func() {
+		It("should return volume stats", func(ctx SpecContext) {
 			mockOS.EXPECT().Exists(gomock.Any(), gomock.Any()).Return(true, nil)
 			mockOS.EXPECT().Statfs(gomock.Any(), gomock.Any()).Return(nil)
 			res, err := drv.NodeGetVolumeStats(ctx, req)

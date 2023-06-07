@@ -22,7 +22,6 @@ import (
 	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
 	corev1alpha1 "github.com/onmetal/onmetal-api/api/core/v1alpha1"
 	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
-	testutils "github.com/onmetal/onmetal-api/utils/testing"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -38,8 +37,7 @@ import (
 )
 
 var _ = Describe("Controller", func() {
-	ctx := testutils.SetupContext()
-	ns, drv := SetupTest(ctx)
+	ns, drv := SetupTest()
 
 	var (
 		volume                = &storagev1alpha1.Volume{}
@@ -47,7 +45,7 @@ var _ = Describe("Controller", func() {
 		volumeClassExpandOnly = &storagev1alpha1.VolumeClass{}
 	)
 
-	BeforeEach(func() {
+	BeforeEach(func(ctx SpecContext) {
 		By("creating a volume pool")
 		volumePool = &storagev1alpha1.VolumePool{
 			ObjectMeta: metav1.ObjectMeta{
@@ -58,6 +56,8 @@ var _ = Describe("Controller", func() {
 			},
 		}
 		Expect(k8sClient.Create(ctx, volumePool)).To(Succeed())
+		DeferCleanup(k8sClient.Delete, volumePool)
+
 		By("creating an expand only VolumeClass")
 		volumeClassExpandOnly = &storagev1alpha1.VolumeClass{
 			ObjectMeta: metav1.ObjectMeta{
@@ -70,6 +70,8 @@ var _ = Describe("Controller", func() {
 			ResizePolicy: storagev1alpha1.ResizePolicyExpandOnly,
 		}
 		Expect(k8sClient.Create(ctx, volumeClassExpandOnly)).To(Succeed())
+		DeferCleanup(k8sClient.Delete, volumeClassExpandOnly)
+
 		By("creating a volume through the csi driver")
 		volSize := int64(5 * 1024 * 1024 * 1024)
 		res, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
@@ -133,7 +135,7 @@ var _ = Describe("Controller", func() {
 		Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
 	})
 
-	It("should not assign the volume to a volume pool if the pool is not available", func() {
+	It("should not assign the volume to a volume pool if the pool is not available", func(ctx SpecContext) {
 		By("creating a volume through the csi driver")
 		volSize := int64(5 * 1024 * 1024 * 1024)
 		res, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
@@ -183,7 +185,7 @@ var _ = Describe("Controller", func() {
 		))
 	})
 
-	It("should delete a volume", func() {
+	It("should delete a volume", func(ctx SpecContext) {
 		By("creating a volume through the csi driver")
 		volSize := int64(5 * 1024 * 1024 * 1024)
 		_, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
@@ -234,7 +236,8 @@ var _ = Describe("Controller", func() {
 		}
 		Eventually(Get(deletedVolume)).Should(Satisfy(apierrors.IsNotFound))
 	})
-	It("should expand the volume size", func() {
+
+	It("should expand the volume size", func(ctx SpecContext) {
 		By("resizing the volume")
 		newVolumeSize := int64(10 * 1024 * 1024 * 1024)
 		_, err := drv.ControllerExpandVolume(ctx, &csi.ControllerExpandVolumeRequest{
@@ -251,7 +254,8 @@ var _ = Describe("Controller", func() {
 			})),
 		))
 	})
-	It("should fail to expand the volume size", func() {
+
+	It("should fail to expand the volume size", func(ctx SpecContext) {
 		By("resizing the volume with new volume size lesser than the existing volume size")
 		newVolumeSize := int64(3 * 1024 * 1024 * 1024)
 		_, err := drv.ControllerExpandVolume(ctx, &csi.ControllerExpandVolumeRequest{
@@ -262,7 +266,8 @@ var _ = Describe("Controller", func() {
 		})
 		Expect((err)).Should(MatchError("new volume size can not be less than existing volume size"))
 	})
-	It("should fail to resize volume if volume class is not ExpandOnly", func() {
+
+	It("should fail to resize volume if volume class is not ExpandOnly", func(ctx SpecContext) {
 		By("creating a VolumeClass other than expand only")
 		volumeClass := &storagev1alpha1.VolumeClass{
 			ObjectMeta: metav1.ObjectMeta{
@@ -275,7 +280,7 @@ var _ = Describe("Controller", func() {
 			ResizePolicy: storagev1alpha1.ResizePolicyStatic,
 		}
 		Expect(k8sClient.Create(ctx, volumeClass)).To(Succeed())
-		DeferCleanup(k8sClient.Delete, ctx, volumeClass)
+		DeferCleanup(k8sClient.Delete, volumeClass)
 
 		By("creating a volume with volume class other than expand only")
 		volSize := int64(5 * 1024 * 1024 * 1024)
@@ -323,7 +328,7 @@ var _ = Describe("Controller", func() {
 		Expect((err)).Should(MatchError("volume class resize policy does not allow resizing"))
 	})
 
-	It("should publish/unpublish a volume on a node", func() {
+	It("should publish/unpublish a volume on a node", func(ctx SpecContext) {
 		By("calling ControllerPublishVolume")
 		_, err := drv.ControllerPublishVolume(ctx, &csi.ControllerPublishVolumeRequest{
 			VolumeId:         "volume",
@@ -416,7 +421,7 @@ var _ = Describe("Controller", func() {
 		Eventually(Object(machine)).Should(SatisfyAll(HaveField("Spec.Volumes", volumeAttachments)))
 	})
 
-	It("should return controller capabilities", func() {
+	It("should return controller capabilities", func(ctx SpecContext) {
 		By("calling ControllerGetCapabilities")
 		res, err := drv.ControllerGetCapabilities(ctx, &csi.ControllerGetCapabilitiesRequest{})
 		Expect(err).NotTo(HaveOccurred())
@@ -446,7 +451,7 @@ var _ = Describe("Controller", func() {
 		Expect(res.Capabilities).To(Equal(expectedCaps))
 	})
 
-	It("should validate volume capabilities", func() {
+	It("should validate volume capabilities", func(ctx SpecContext) {
 		volCaps := []*csi.VolumeCapability{
 			{
 				AccessMode: &csi.VolumeCapability_AccessMode{
@@ -466,43 +471,37 @@ var _ = Describe("Controller", func() {
 
 	})
 
-	DescribeTable("Unimplemented controller methods",
-		func(callFunc func() (interface{}, error)) {
-			res, err := callFunc()
+	DescribeTable("Unimplemented",
+		func(ctx SpecContext, callFunc func(ctx SpecContext) (interface{}, error)) {
+			res, err := callFunc(ctx)
 			Expect(res).To(BeNil())
 			status, ok := status.FromError(err)
 			Expect(ok).To(BeTrue())
 			Expect(status.Code()).To(Equal(codes.Unimplemented))
 		},
 
-		Entry("ControllerGetVolume", func() (interface{}, error) {
+		Entry("ControllerGetVolume", func(ctx SpecContext) (interface{}, error) {
 			return drv.ControllerGetVolume(ctx, &csi.ControllerGetVolumeRequest{})
 		}),
 
-		Entry("ListVolumes", func() (interface{}, error) {
+		Entry("ListVolumes", func(ctx SpecContext) (interface{}, error) {
 			return drv.ListVolumes(ctx, &csi.ListVolumesRequest{})
 		}),
 
-		Entry("ListSnapshots", func() (interface{}, error) {
+		Entry("ListSnapshots", func(ctx SpecContext) (interface{}, error) {
 			return drv.ListSnapshots(ctx, &csi.ListSnapshotsRequest{})
 		}),
 
-		Entry("GetCapacity", func() (interface{}, error) {
+		Entry("GetCapacity", func(ctx SpecContext) (interface{}, error) {
 			return drv.GetCapacity(ctx, &csi.GetCapacityRequest{})
 		}),
 
-		Entry("CreateSnapshot", func() (interface{}, error) {
+		Entry("CreateSnapshot", func(ctx SpecContext) (interface{}, error) {
 			return drv.CreateSnapshot(ctx, &csi.CreateSnapshotRequest{})
 		}),
 
-		Entry("DeleteSnapshot", func() (interface{}, error) {
+		Entry("DeleteSnapshot", func(ctx SpecContext) (interface{}, error) {
 			return drv.DeleteSnapshot(ctx, &csi.DeleteSnapshotRequest{})
 		}),
 	)
-
-	AfterEach(func() {
-		DeferCleanup(k8sClient.Delete, ctx, volume)
-		DeferCleanup(k8sClient.Delete, ctx, volumePool)
-		DeferCleanup(k8sClient.Delete, ctx, volumeClassExpandOnly)
-	})
 })
