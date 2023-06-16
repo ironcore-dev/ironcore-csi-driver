@@ -15,6 +15,7 @@
 package driver
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -241,7 +242,7 @@ var _ = Describe("Controller", func() {
 		By("resizing the volume")
 		newVolumeSize := int64(10 * 1024 * 1024 * 1024)
 		_, err := drv.ControllerExpandVolume(ctx, &csi.ControllerExpandVolumeRequest{
-			VolumeId: "volume",
+			VolumeId: volume.Name,
 			CapacityRange: &csi.CapacityRange{
 				RequiredBytes: newVolumeSize,
 			},
@@ -257,14 +258,23 @@ var _ = Describe("Controller", func() {
 
 	It("should fail to expand the volume size", func(ctx SpecContext) {
 		By("resizing the volume with new volume size lesser than the existing volume size")
+		volSize := int64(5 * 1024 * 1024 * 1024)
 		newVolumeSize := int64(3 * 1024 * 1024 * 1024)
 		_, err := drv.ControllerExpandVolume(ctx, &csi.ControllerExpandVolumeRequest{
-			VolumeId: "volume",
+			VolumeId: volume.Name,
 			CapacityRange: &csi.CapacityRange{
 				RequiredBytes: newVolumeSize,
 			},
+			VolumeCapability: &csi.VolumeCapability{
+				AccessType: &csi.VolumeCapability_Mount{Mount: &csi.VolumeCapability_MountVolume{
+					FsType: "ext4",
+				}},
+				AccessMode: &csi.VolumeCapability_AccessMode{
+					Mode: 1,
+				},
+			},
 		})
-		Expect((err)).Should(MatchError("new volume size can not be less than existing volume size"))
+		Expect((err)).Should(MatchError(fmt.Sprintf("new volume size %d can not be less than existing volume size %d", newVolumeSize, volSize)))
 	})
 
 	It("should fail to resize volume if volume class is not ExpandOnly", func(ctx SpecContext) {
@@ -331,7 +341,7 @@ var _ = Describe("Controller", func() {
 	It("should publish/unpublish a volume on a node", func(ctx SpecContext) {
 		By("calling ControllerPublishVolume")
 		_, err := drv.ControllerPublishVolume(ctx, &csi.ControllerPublishVolumeRequest{
-			VolumeId:         "volume",
+			VolumeId:         volume.Name,
 			NodeId:           "node",
 			VolumeCapability: nil,
 			Readonly:         false,
@@ -396,7 +406,7 @@ var _ = Describe("Controller", func() {
 
 		By("calling ControllerPublishVolume")
 		publishRes, err := drv.ControllerPublishVolume(ctx, &csi.ControllerPublishVolumeRequest{
-			VolumeId:         "volume",
+			VolumeId:         volume.Name,
 			NodeId:           "node",
 			VolumeCapability: nil,
 			Readonly:         false,
@@ -405,13 +415,13 @@ var _ = Describe("Controller", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(publishRes.PublishContext).To(Equal(map[string]string{
 			ParameterNodeID:     "node",
-			ParameterVolumeID:   "volume",
+			ParameterVolumeID:   volume.Name,
 			ParameterDeviceName: "/dev/disk/by-id/virtio-oda-bar",
 		}))
 
 		By("calling ControllerUnpublishVolume")
 		_, err = drv.ControllerUnpublishVolume(ctx, &csi.ControllerUnpublishVolumeRequest{
-			VolumeId: "volume",
+			VolumeId: volume.Name,
 			NodeId:   "node",
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -462,7 +472,7 @@ var _ = Describe("Controller", func() {
 		}
 
 		res, err := drv.ValidateVolumeCapabilities(ctx, &csi.ValidateVolumeCapabilitiesRequest{
-			VolumeId:           "volume",
+			VolumeId:           volume.Name,
 			VolumeCapabilities: volCaps,
 		})
 
