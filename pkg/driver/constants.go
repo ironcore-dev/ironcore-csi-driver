@@ -20,6 +20,9 @@ import (
 )
 
 const (
+	// FSTypeExt4 represents the ext4 filesystem type
+	FSTypeExt4 = "ext4"
+
 	// DefaultVolumeSize represents the default volume size.
 	DefaultVolumeSize int64 = 10 * utils.GiB
 

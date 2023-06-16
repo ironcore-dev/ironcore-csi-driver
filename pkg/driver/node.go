@@ -121,7 +121,7 @@ func (d *driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 
 	fstype := req.GetVolumeContext()["fstype"]
 	if len(fstype) == 0 {
-		fstype = "ext4"
+		fstype = FSTypeExt4
 	}
 
 	notMnt, err := d.mounter.IsLikelyNotMountPoint(targetMountPath)
@@ -157,7 +157,7 @@ func (d *driver) NodeUnstageVolume(_ context.Context, req *csi.NodeUnstageVolume
 		return nil, status.Error(codes.InvalidArgument, "StagingTargetPath is not set")
 	}
 
-	devicePath, err := d.GetMountDeviceName(stagePath)
+	devicePath, err := d.getMountDeviceName(stagePath)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to get device path for device %s: %v", stagePath, err)
 	}
@@ -248,19 +248,19 @@ func (d *driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolume
 	}
 
 	klog.InfoS("Get device path from volume path", "volumePath", volumePath, "volumeID", volumeID)
-	deviceName, err := d.GetMountDeviceName(volumePath)
+	deviceName, err := d.getMountDeviceName(volumePath)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get device name from mount path %s: %v", volumePath, err)
 	}
 	klog.InfoS("Device name for volume", "path", volumePath, "name", deviceName)
 
-	resizefs, err := d.mounter.NewResizeFs()
+	fs, err := d.mounter.NewResizeFs()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error attempting to create new ResizeFs:  %v", err)
 	}
 
 	klog.InfoS("Resizing filesystem on volume", "volumeID", volumeID, "deviceName", deviceName, "volumePath", volumePath)
-	if _, err = resizefs.Resize(deviceName, volumePath); err != nil {
+	if _, err = fs.Resize(deviceName, volumePath); err != nil {
 		return nil, status.Errorf(codes.Internal, "could not resize volume %q (%q):  %v", volumeID, deviceName, err)
 	}
 
@@ -294,7 +294,6 @@ func (d *driver) getBlockSizeBytes(devicePath string) (int64, error) {
 
 func (d *driver) NodeGetVolumeStats(_ context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
 	klog.InfoS("NodeGetVolumeStats", "Volume", req.GetVolumeId())
-
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume Id not provided")
@@ -312,7 +311,7 @@ func (d *driver) NodeGetVolumeStats(_ context.Context, req *csi.NodeGetVolumeSta
 	if !exists {
 		return nil, status.Errorf(codes.NotFound, "target: %s not found", volumePath)
 	}
-	stats, err := d.GetDeviceStats(volumePath)
+	stats, err := d.getDeviceStats(volumePath)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get stats by path: %s", err)
 	}
@@ -326,6 +325,7 @@ func (d *driver) NodeGetVolumeStats(_ context.Context, req *csi.NodeGetVolumeSta
 }
 
 func (d *driver) NodeGetInfo(ctx context.Context, _ *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
+	klog.InfoS("NodeGetInfo: called")
 	resp := &csi.NodeGetInfoResponse{
 		NodeId: d.config.NodeID,
 	}
@@ -345,11 +345,11 @@ func (d *driver) NodeGetInfo(ctx context.Context, _ *csi.NodeGetInfoRequest) (*c
 func (d *driver) NodeGetCapabilities(_ context.Context, _ *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	klog.InfoS("NodeGetCapabilities: called")
 	var caps []*csi.NodeServiceCapability
-	for _, cap := range nodeCaps {
+	for _, nodeCap := range nodeCaps {
 		c := &csi.NodeServiceCapability{
 			Type: &csi.NodeServiceCapability_Rpc{
 				Rpc: &csi.NodeServiceCapability_RPC{
-					Type: cap,
+					Type: nodeCap,
 				},
 			},
 		}
@@ -358,11 +358,11 @@ func (d *driver) NodeGetCapabilities(_ context.Context, _ *csi.NodeGetCapabiliti
 	return &csi.NodeGetCapabilitiesResponse{Capabilities: caps}, nil
 }
 
-// GetMountDeviceName returns the device name associated with the specified
+// getMountDeviceName returns the device name associated with the specified
 // mount path. It lists all the mount points, evaluates the symlink of the given
 // mount path and compares it with the paths of all the available mounts. If a
 // matching mount is found, it returns the corresponding device name.
-func (d *driver) GetMountDeviceName(mountPath string) (device string, err error) {
+func (d *driver) getMountDeviceName(mountPath string) (device string, err error) {
 	mountPoints, err := d.mounter.List()
 	if err != nil {
 		return device, err
@@ -381,7 +381,7 @@ func (d *driver) GetMountDeviceName(mountPath string) (device string, err error)
 	return device, nil
 }
 
-func (d *driver) GetDeviceStats(path string) (*mount.DeviceStats, error) {
+func (d *driver) getDeviceStats(path string) (*mount.DeviceStats, error) {
 	var statfs unix.Statfs_t
 	err := d.os.Statfs(path, &statfs)
 	if err != nil {

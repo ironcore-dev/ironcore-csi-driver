@@ -64,7 +64,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	params := req.GetParameters()
 	fstype, ok := params[ParameterFSType]
 	if !ok {
-		fstype = "ext4"
+		fstype = FSTypeExt4
 	}
 
 	volumeClass, ok := params[ParameterType]
@@ -288,6 +288,12 @@ func (d *driver) ControllerExpandVolume(ctx context.Context, req *csi.Controller
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
 	}
+
+	capRange := req.GetCapacityRange()
+	if capRange == nil {
+		return nil, status.Error(codes.InvalidArgument, "Capacity range not provided")
+	}
+
 	volume := &storagev1alpha1.Volume{}
 	if err := d.onmetalClient.Get(ctx, client.ObjectKey{Namespace: d.config.DriverNamespace, Name: volumeID}, volume); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -309,17 +315,13 @@ func (d *driver) ControllerExpandVolume(ctx context.Context, req *csi.Controller
 		return nil, apierrors.NewBadRequest("volume class resize policy does not allow resizing")
 	}
 
-	if req.CapacityRange == nil {
-		return nil, status.Error(codes.InvalidArgument, "capacity range not provided")
-	}
-
 	volSize, ok := volume.Spec.Resources[corev1alpha1.ResourceStorage]
 	if !ok {
 		return nil, apierrors.NewBadRequest("existing Volume does not contain any capacity information")
 	}
-	newVolSize := utils.RoundUpBytes(req.CapacityRange.GetRequiredBytes())
-	if newVolSize <= volSize.Value() {
-		return nil, apierrors.NewBadRequest("new volume size can not be less than existing volume size")
+	newVolSize := utils.RoundUpBytes(capRange.GetRequiredBytes())
+	if newVolSize < volSize.Value() {
+		return nil, apierrors.NewBadRequest(fmt.Sprintf("new volume size %d can not be less than existing volume size %d", newVolSize, volSize.Value()))
 	}
 
 	volumeBase := volume.DeepCopy()

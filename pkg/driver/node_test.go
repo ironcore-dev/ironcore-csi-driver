@@ -591,7 +591,7 @@ var _ = Describe("Node", func() {
 			Expect(statusErr.Code()).To(Equal(codes.InvalidArgument))
 		})
 
-		It("should fail if check GetDeviceStats fails", func(ctx SpecContext) {
+		It("should fail if check getDeviceStats fails", func(ctx SpecContext) {
 			mockOS.EXPECT().Exists(gomock.Any(), gomock.Any()).Return(true, nil)
 			mockOS.EXPECT().Statfs(gomock.Any(), gomock.Any()).Return(errors.New("error"))
 			_, err := drv.NodeGetVolumeStats(ctx, req)
