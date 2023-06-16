@@ -22,7 +22,7 @@ import (
 )
 
 func (d *driver) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
-	klog.V(6).InfoS("GetPluginInfo: called", "args", *req)
+	klog.InfoS("GetPluginInfo: called", "args", *req)
 	return &csi.GetPluginInfoResponse{
 		Name:          d.name,
 		VendorVersion: Version(),
@@ -30,7 +30,7 @@ func (d *driver) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoReques
 }
 
 func (d *driver) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
-	klog.V(6).InfoS("GetPluginCapabilities: called", "args", *req)
+	klog.InfoS("GetPluginCapabilities: called", "args", *req)
 	return &csi.GetPluginCapabilitiesResponse{
 		Capabilities: []*csi.PluginCapability{
 			{

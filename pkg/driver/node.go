@@ -215,7 +215,7 @@ func (d *driver) NodeUnpublishVolume(_ context.Context, req *csi.NodeUnpublishVo
 }
 
 func (d *driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
-	klog.V(4).InfoS("NodeExpandVolume: called", "args", *req)
+	klog.InfoS("NodeExpandVolume: called", "args", *req)
 
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
@@ -252,7 +252,7 @@ func (d *driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolume
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get device name from mount path %s: %v", volumePath, err)
 	}
-	klog.V(4).InfoS("Device name for volume", "path", volumePath, "name", deviceName)
+	klog.InfoS("Device name for volume", "path", volumePath, "name", deviceName)
 
 	resizefs, err := d.mounter.NewResizeFs()
 	if err != nil {
@@ -271,11 +271,11 @@ func (d *driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolume
 	}
 
 	if diskSizeBytes < reqBytes {
-		// It's possible that the somewhere the volume size was rounded up, getting more size than requested is a success
+		// It's possible that somewhere the volume size was rounded up, getting more size than requested is a success
 		return nil, status.Errorf(codes.Internal, "resize requested for %v but after resize volume was size %v", reqBytes, diskSizeBytes)
 	}
 
-	klog.V(4).InfoS("Expanded volume on node", "volumeID", volumeID, "CapacityBytes", diskSizeBytes)
+	klog.InfoS("Expanded volume on node", "volumeID", volumeID, "CapacityBytes", diskSizeBytes)
 	return &csi.NodeExpandVolumeResponse{CapacityBytes: diskSizeBytes}, nil
 }
 
@@ -343,7 +343,7 @@ func (d *driver) NodeGetInfo(ctx context.Context, _ *csi.NodeGetInfoRequest) (*c
 }
 
 func (d *driver) NodeGetCapabilities(_ context.Context, _ *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
-	klog.V(4).InfoS("NodeGetCapabilities: called")
+	klog.InfoS("NodeGetCapabilities: called")
 	var caps []*csi.NodeServiceCapability
 	for _, cap := range nodeCaps {
 		c := &csi.NodeServiceCapability{
