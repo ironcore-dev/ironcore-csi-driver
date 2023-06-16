@@ -216,15 +216,14 @@ func (d *driver) NodeUnpublishVolume(_ context.Context, req *csi.NodeUnpublishVo
 
 func (d *driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
 	klog.InfoS("NodeExpandVolume: called", "args", *req)
-
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
+		return nil, status.Error(codes.InvalidArgument, "VolumeID not provided")
 	}
 
 	volumePath := req.GetVolumePath()
 	if len(volumePath) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "volume path must be provided")
+		return nil, status.Error(codes.InvalidArgument, "Volume path not provided")
 	}
 
 	// CapacityRange is optional, if specified validate required bytes and limit bytes
@@ -276,7 +275,9 @@ func (d *driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolume
 	}
 
 	klog.InfoS("Expanded volume on node", "volumeID", volumeID, "CapacityBytes", diskSizeBytes)
-	return &csi.NodeExpandVolumeResponse{CapacityBytes: diskSizeBytes}, nil
+	return &csi.NodeExpandVolumeResponse{
+		CapacityBytes: diskSizeBytes,
+	}, nil
 }
 
 func (d *driver) getBlockSizeBytes(devicePath string) (int64, error) {
@@ -296,7 +297,7 @@ func (d *driver) NodeGetVolumeStats(_ context.Context, req *csi.NodeGetVolumeSta
 	klog.InfoS("NodeGetVolumeStats", "Volume", req.GetVolumeId())
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Volume Id not provided")
+		return nil, status.Error(codes.InvalidArgument, "VolumeID not provided")
 	}
 
 	volumePath := req.GetVolumePath()
@@ -304,22 +305,33 @@ func (d *driver) NodeGetVolumeStats(_ context.Context, req *csi.NodeGetVolumeSta
 		return nil, status.Error(codes.InvalidArgument, "Volume path not provided")
 	}
 
-	exists, err := d.os.Exists(utilpath.CheckFollowSymlink, req.VolumePath)
+	exists, err := d.os.Exists(utilpath.CheckFollowSymlink, volumePath)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to check whether volumePath exists: %s", err)
+		return nil, status.Errorf(codes.Internal, "failed to check existence of volume path %s: %v", volumePath, err)
 	}
 	if !exists {
-		return nil, status.Errorf(codes.NotFound, "target: %s not found", volumePath)
+		return nil, status.Errorf(codes.NotFound, "volume path %s not found", volumePath)
 	}
+
 	stats, err := d.getDeviceStats(volumePath)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get stats by path: %s", err)
+		return nil, status.Errorf(codes.Internal, "failed to get device stats for volume path %s: %v", volumePath, err)
 	}
 
 	return &csi.NodeGetVolumeStatsResponse{
 		Usage: []*csi.VolumeUsage{
-			{Total: stats.TotalBytes, Available: stats.AvailableBytes, Used: stats.UsedBytes, Unit: csi.VolumeUsage_BYTES},
-			{Total: stats.TotalInodes, Available: stats.AvailableInodes, Used: stats.UsedInodes, Unit: csi.VolumeUsage_INODES},
+			{
+				Unit:      csi.VolumeUsage_BYTES,
+				Total:     stats.TotalBytes,
+				Available: stats.AvailableBytes,
+				Used:      stats.UsedBytes,
+			},
+			{
+				Unit:      csi.VolumeUsage_INODES,
+				Total:     stats.TotalInodes,
+				Available: stats.AvailableInodes,
+				Used:      stats.UsedInodes,
+			},
 		},
 	}, nil
 }
