@@ -319,19 +319,19 @@ func (d *driver) ControllerExpandVolume(ctx context.Context, req *csi.Controller
 	if !ok {
 		return nil, apierrors.NewBadRequest("existing Volume does not contain any capacity information")
 	}
-	newVolSize := utils.RoundUpBytes(capRange.GetRequiredBytes())
-	if newVolSize < volSize.Value() {
-		return nil, apierrors.NewBadRequest(fmt.Sprintf("new volume size %d can not be less than existing volume size %d", newVolSize, volSize.Value()))
+	newSize := utils.RoundUpBytes(capRange.GetRequiredBytes())
+	if newSize < volSize.Value() {
+		return nil, apierrors.NewBadRequest(fmt.Sprintf("new volume size %d can not be less than existing volume size %d", newSize, volSize.Value()))
 	}
 
 	volumeBase := volume.DeepCopy()
-	volume.Spec.Resources[corev1alpha1.ResourceStorage] = *resource.NewQuantity(newVolSize, resource.BinarySI)
+	volume.Spec.Resources[corev1alpha1.ResourceStorage] = *resource.NewQuantity(newSize, resource.BinarySI)
 	klog.InfoS("Patching volume with new volume size", "Volume", client.ObjectKeyFromObject(volume))
 	if err := d.onmetalClient.Patch(ctx, volume, client.MergeFrom(volumeBase)); err != nil {
 		return nil, apierrors.NewBadRequest("failed to patch volume with new volume size")
 	}
 	return &csi.ControllerExpandVolumeResponse{
-		CapacityBytes:         utils.GiBToBytes(newVolSize),
+		CapacityBytes:         newSize,
 		NodeExpansionRequired: true,
 	}, nil
 }
