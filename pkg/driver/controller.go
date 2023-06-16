@@ -283,7 +283,7 @@ func (d *driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequ
 }
 
 func (d *driver) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
-	klog.V(4).InfoS("ControllerExpandVolume: called", "args", *req)
+	klog.InfoS("ControllerExpandVolume: called", "args", *req)
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
@@ -324,7 +324,7 @@ func (d *driver) ControllerExpandVolume(ctx context.Context, req *csi.Controller
 
 	volumeBase := volume.DeepCopy()
 	volume.Spec.Resources[corev1alpha1.ResourceStorage] = *resource.NewQuantity(newVolSize, resource.BinarySI)
-	klog.V(4).InfoS("Patching volume with new volume size", "Volume", client.ObjectKeyFromObject(volume))
+	klog.InfoS("Patching volume with new volume size", "Volume", client.ObjectKeyFromObject(volume))
 	if err := d.onmetalClient.Patch(ctx, volume, client.MergeFrom(volumeBase)); err != nil {
 		return nil, apierrors.NewBadRequest("failed to patch volume with new volume size")
 	}
@@ -335,7 +335,7 @@ func (d *driver) ControllerExpandVolume(ctx context.Context, req *csi.Controller
 }
 
 func (d *driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	klog.V(4).InfoS("ValidateVolumeCapabilities: called", "args", *req)
+	klog.InfoS("ValidateVolumeCapabilities: called", "args", *req)
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
@@ -364,7 +364,7 @@ func (d *driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.Valida
 }
 
 func (d *driver) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
-	klog.V(4).InfoS("ControllerGetCapabilities: called", "args", *req)
+	klog.InfoS("ControllerGetCapabilities: called", "args", *req)
 	var caps []*csi.ControllerServiceCapability
 	for _, cap := range controllerCaps {
 		c := &csi.ControllerServiceCapability{
