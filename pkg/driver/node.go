@@ -233,7 +233,7 @@ func (d *driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolume
 	}
 
 	limitBytes := req.CapacityRange.GetLimitBytes()
-	if req.CapacityRange != nil && limitBytes < reqBytes {
+	if req.CapacityRange != nil && limitBytes > 0 && limitBytes < reqBytes {
 		return nil, status.Error(codes.OutOfRange, "requested capacity exceeds maximum limit")
 	}
 
