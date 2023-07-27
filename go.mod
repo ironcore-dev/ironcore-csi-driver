@@ -5,11 +5,11 @@ go 1.20
 require (
 	github.com/container-storage-interface/spec v1.8.0
 	github.com/dell/gocsi v1.7.0
-	github.com/golang/mock v1.6.0
 	github.com/onmetal/controller-utils v0.8.0
 	github.com/onmetal/onmetal-api v0.1.2-0.20230530094909-67f87469764c
 	github.com/onsi/ginkgo/v2 v2.11.0
 	github.com/onsi/gomega v1.27.9
+	go.uber.org/mock v0.2.0
 	golang.org/x/exp v0.0.0-20221212164502-fae10dda9338
 	golang.org/x/sys v0.10.0
 	google.golang.org/grpc v1.56.2
