@@ -7,13 +7,13 @@ package mount
 import (
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-	mount_utils "k8s.io/mount-utils"
+	gomock "go.uber.org/mock/gomock"
+	mount "k8s.io/mount-utils"
 )
 
 // MockMountWrapper is a mock of MountWrapper interface.
 type MockMountWrapper struct {
-	mount_utils.Interface
+	mount.Interface
 	ctrl     *gomock.Controller
 	recorder *MockMountWrapperMockRecorder
 }
@@ -109,10 +109,10 @@ func (mr *MockMountWrapperMockRecorder) IsMountPoint(file interface{}) *gomock.C
 }
 
 // List mocks base method.
-func (m *MockMountWrapper) List() ([]mount_utils.MountPoint, error) {
+func (m *MockMountWrapper) List() ([]mount.MountPoint, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List")
-	ret0, _ := ret[0].([]mount_utils.MountPoint)
+	ret0, _ := ret[0].([]mount.MountPoint)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

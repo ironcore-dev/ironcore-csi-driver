@@ -13,7 +13,7 @@ ADDLICENSE ?= $(LOCALBIN)/addlicense
 KUSTOMIZE_VERSION ?= v3.8.7
 CONTROLLER_TOOLS_VERSION ?= v0.9.2
 ADDLICENSE_VERSION ?= v1.1.0
-MOCKGEN_VERSION ?= v1.6.0
+MOCKGEN_VERSION ?= v0.2.0
 
 # Go parameters
 GOCMD=go
@@ -38,7 +38,7 @@ DOCKER_IMAGE_TAG=latest
 ifeq ($(env),prod)
 	# For Production
 	# Do not change following values unless change in production version or username
-	#For docker.io  
+	#For docker.io
 	DOCKER_USER=your_docker_user_name
 	DOCKER_IMAGE_TAG=1.1.0
 endif
@@ -88,7 +88,7 @@ clean:
 	rm -f $(BINARY_NAME)
 
 build:
-	$(GOBUILD) -o $(BINARY_NAME) -v  ./cmd/ 
+	$(GOBUILD) -o $(BINARY_NAME) -v  ./cmd/
 
 lint: ## Run golangci-lint against code.
 	golangci-lint run ./...
@@ -110,7 +110,7 @@ moddownload:
 build-linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BINARY_NAME) -v ./cmd/
 
-docker-build: 
+docker-build:
 	docker build $(BUILDARGS) -t ${IMG} -f Dockerfile .
 
 docker-push:
@@ -171,4 +171,4 @@ generate-mocks: mockgen ## Generate code (mocks etc.).
 .PHONY: mockgen
 mockgen: $(MOCKGEN)
 $(MOCKGEN): $(LOCALBIN)
-	test -s $(LOCALBIN)/mockgen || GOBIN=$(LOCALBIN) go install github.com/golang/mock/mockgen@$(MOCKGEN_VERSION)
+	test -s $(LOCALBIN)/mockgen || GOBIN=$(LOCALBIN) go install go.uber.org/mock/mockgen@$(MOCKGEN_VERSION)
