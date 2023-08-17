@@ -31,6 +31,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -129,7 +130,12 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	if err := d.onmetalClient.Patch(ctx, volume, client.Apply, volumeFieldOwner, client.ForceOwnership); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to patch volume %s: %v", client.ObjectKeyFromObject(volume), err)
 	}
-	klog.InfoS("Applied volume", "Volume", client.ObjectKeyFromObject(volume))
+
+	if err := waitForVolumeAvailability(ctx, d.onmetalClient, volume); err != nil {
+		return nil, fmt.Errorf("failed to confirm availability of the volume: %w", err)
+	}
+
+	klog.InfoS("Volume applied and is now available", "Volume", client.ObjectKeyFromObject(volume))
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
@@ -148,6 +154,31 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	}, nil
 }
 
+// waitForVolumeAvailability is a helper function that waits for a volume to become available.
+// It uses an exponential backoff strategy to periodically check the status of the volume.
+// The function returns an error if the volume does not become available within the specified number of attempts.
+func waitForVolumeAvailability(ctx context.Context, onmetalClient client.Client, volume *storagev1alpha1.Volume) error {
+	backoff := wait.Backoff{
+		Duration: waitVolumeInitDelay,
+		Factor:   waitVolumeFactor,
+		Steps:    waitVolumeActiveSteps,
+	}
+
+	err := wait.ExponentialBackoffWithContext(ctx, backoff, func(ctx context.Context) (bool, error) {
+		err := onmetalClient.Get(ctx, client.ObjectKey{Namespace: volume.Namespace, Name: volume.Name}, volume)
+		if err == nil && volume.Status.State == storagev1alpha1.VolumeStateAvailable {
+			return true, nil
+		}
+		return false, err
+	})
+
+	if wait.Interrupted(err) {
+		return fmt.Errorf("volume %s did not reach 'Available' state within the defined timeout: %w", client.ObjectKeyFromObject(volume), err)
+	}
+
+	return err
+}
+
 func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	klog.InfoS("Deleting volume", "Volume", req.GetVolumeId())
 	if req.GetVolumeId() == "" {
@@ -162,7 +193,7 @@ func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 	if err := d.onmetalClient.Delete(ctx, vol); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to delete volume %s: %v", client.ObjectKeyFromObject(vol), err)
 	}
-	klog.InfoS("Deleted deleted volume", "Volume", req.GetVolumeId())
+	klog.InfoS("Deleted volume", "Volume", req.GetVolumeId())
 	return &csi.DeleteVolumeResponse{}, nil
 }
 

@@ -75,53 +75,60 @@ var _ = Describe("Controller", func() {
 
 		By("creating a volume through the csi driver")
 		volSize := int64(5 * 1024 * 1024 * 1024)
-		res, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
-			Name:          "volume",
-			CapacityRange: &csi.CapacityRange{RequiredBytes: volSize},
-			VolumeCapabilities: []*csi.VolumeCapability{
-				{
-					AccessMode: &csi.VolumeCapability_AccessMode{
-						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
-					},
-				},
-			},
-			Parameters: map[string]string{
-				"type":   volumeClassExpandOnly.Name,
-				"fstype": "ext4",
-			},
-			AccessibilityRequirements: &csi.TopologyRequirement{
-				Requisite: []*csi.Topology{
-					{
-						Segments: map[string]string{
-							topologyKey: "volumepool",
-						},
-					},
-				},
-				Preferred: []*csi.Topology{
-					{
-						Segments: map[string]string{
-							topologyKey: "volumepool",
-						},
-					},
-				},
-			},
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Expect(res.Volume).To(SatisfyAll(
-			HaveField("VolumeId", "volume"),
-			HaveField("CapacityBytes", volSize),
-			HaveField("AccessibleTopology", ContainElement(
-				HaveField("Segments", HaveKeyWithValue("topology.csi.onmetal.de/zone", "volumepool"))),
-			),
-			HaveField("VolumeContext", SatisfyAll(
-				HaveKeyWithValue("volume_id", "volume"),
-				HaveKeyWithValue("volume_name", "volume"),
-				HaveKeyWithValue("volume_pool", "volumepool"),
-				HaveKeyWithValue("fstype", "ext4"),
-				HaveKeyWithValue("creation_time", ContainSubstring(strconv.Itoa(time.Now().Year()))))),
-		))
+		errCh := make(chan error)
 
-		By("patching the volume state to be available")
+		go func() {
+			defer GinkgoRecover()
+			res, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
+				Name:          "volume",
+				CapacityRange: &csi.CapacityRange{RequiredBytes: volSize},
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					},
+				},
+				Parameters: map[string]string{
+					"type":   volumeClassExpandOnly.Name,
+					"fstype": "ext4",
+				},
+				AccessibilityRequirements: &csi.TopologyRequirement{
+					Requisite: []*csi.Topology{
+						{
+							Segments: map[string]string{
+								topologyKey: "volumepool",
+							},
+						},
+					},
+					Preferred: []*csi.Topology{
+						{
+							Segments: map[string]string{
+								topologyKey: "volumepool",
+							},
+						},
+					},
+				},
+			})
+			errCh <- err
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res.Volume).To(SatisfyAll(
+				HaveField("VolumeId", "volume"),
+				HaveField("CapacityBytes", volSize),
+				HaveField("AccessibleTopology", ContainElement(
+					HaveField("Segments", HaveKeyWithValue("topology.csi.onmetal.de/zone", "volumepool"))),
+				),
+				HaveField("VolumeContext", SatisfyAll(
+					HaveKeyWithValue("volume_id", "volume"),
+					HaveKeyWithValue("volume_name", "volume"),
+					HaveKeyWithValue("volume_pool", "volumepool"),
+					HaveKeyWithValue("fstype", "ext4"),
+					HaveKeyWithValue("creation_time", ContainSubstring(strconv.Itoa(time.Now().Year()))))),
+			))
+		}()
+
+		By("waiting for the volume to be created")
 		volume = &storagev1alpha1.Volume{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: ns.Name,
@@ -131,95 +138,158 @@ var _ = Describe("Controller", func() {
 		Eventually(Object(volume)).Should(SatisfyAll(
 			HaveField("Status.State", storagev1alpha1.VolumeStatePending),
 		))
+
+		By("patching the volume state to make it available")
 		volumeBase := volume.DeepCopy()
 		volume.Status.State = storagev1alpha1.VolumeStateAvailable
 		Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
+		Eventually(Object(volume)).Should(SatisfyAll(
+			HaveField("Status.State", storagev1alpha1.VolumeStateAvailable),
+		))
+
+		err := <-errCh
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("should not assign the volume to a volume pool if the pool is not available", func(ctx SpecContext) {
 		By("creating a volume through the csi driver")
 		volSize := int64(5 * 1024 * 1024 * 1024)
-		res, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
-			Name:          "volume-wrong-pool",
-			CapacityRange: &csi.CapacityRange{RequiredBytes: volSize},
-			VolumeCapabilities: []*csi.VolumeCapability{
-				{
-					AccessMode: &csi.VolumeCapability_AccessMode{
-						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
-					},
-				},
-			},
-			Parameters: map[string]string{
-				"type":   "slow",
-				"fstype": "ext4",
-			},
-			AccessibilityRequirements: &csi.TopologyRequirement{
-				Requisite: []*csi.Topology{
+		errCh := make(chan error)
+		go func() {
+			defer GinkgoRecover()
+			res, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
+				Name:          "volume-wrong-pool",
+				CapacityRange: &csi.CapacityRange{RequiredBytes: volSize},
+				VolumeCapabilities: []*csi.VolumeCapability{
 					{
-						Segments: map[string]string{
-							topologyKey: "foo",
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 						},
 					},
 				},
-				Preferred: []*csi.Topology{
-					{
-						Segments: map[string]string{
-							topologyKey: "foo",
+				Parameters: map[string]string{
+					"type":   "slow",
+					"fstype": "ext4",
+				},
+				AccessibilityRequirements: &csi.TopologyRequirement{
+					Requisite: []*csi.Topology{
+						{
+							Segments: map[string]string{
+								topologyKey: "foo",
+							},
+						},
+					},
+					Preferred: []*csi.Topology{
+						{
+							Segments: map[string]string{
+								topologyKey: "foo",
+							},
 						},
 					},
 				},
+			})
+			errCh <- err
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res.Volume).To(SatisfyAll(
+				HaveField("VolumeId", "volume-wrong-pool"),
+				HaveField("CapacityBytes", volSize),
+				HaveField("AccessibleTopology", ContainElement(
+					HaveField("Segments", HaveKeyWithValue("topology.csi.onmetal.de/zone", "foo"))),
+				),
+				HaveField("VolumeContext", SatisfyAll(
+					HaveKeyWithValue("volume_id", "volume-wrong-pool"),
+					HaveKeyWithValue("volume_name", "volume-wrong-pool"),
+					HaveKeyWithValue("volume_pool", ""),
+					HaveKeyWithValue("fstype", "ext4"),
+					HaveKeyWithValue("creation_time", ContainSubstring(strconv.Itoa(time.Now().Year()))))),
+			))
+		}()
+
+		By("waiting for the volume to be created")
+		volume := &storagev1alpha1.Volume{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: ns.Name,
+				Name:      "volume-wrong-pool",
 			},
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Expect(res.Volume).To(SatisfyAll(
-			HaveField("VolumeId", "volume-wrong-pool"),
-			HaveField("CapacityBytes", volSize),
-			HaveField("AccessibleTopology", ContainElement(
-				HaveField("Segments", HaveKeyWithValue("topology.csi.onmetal.de/zone", "foo"))),
-			),
-			HaveField("VolumeContext", SatisfyAll(
-				HaveKeyWithValue("volume_id", "volume-wrong-pool"),
-				HaveKeyWithValue("volume_name", "volume-wrong-pool"),
-				HaveKeyWithValue("volume_pool", ""),
-				HaveKeyWithValue("fstype", "ext4"),
-				HaveKeyWithValue("creation_time", ContainSubstring(strconv.Itoa(time.Now().Year()))))),
+		}
+		Eventually(Object(volume)).Should(SatisfyAll(
+			HaveField("Status.State", storagev1alpha1.VolumeStatePending),
 		))
+
+		By("patching the volume state to make it available")
+		volumeBase := volume.DeepCopy()
+		volume.Status.State = storagev1alpha1.VolumeStateAvailable
+		Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
+		Eventually(Object(volume)).Should(SatisfyAll(
+			HaveField("Status.State", storagev1alpha1.VolumeStateAvailable),
+		))
+		err := <-errCh
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("should delete a volume", func(ctx SpecContext) {
 		By("creating a volume through the csi driver")
 		volSize := int64(5 * 1024 * 1024 * 1024)
-		_, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
-			Name:          "volume-to-delete",
-			CapacityRange: &csi.CapacityRange{RequiredBytes: volSize},
-			VolumeCapabilities: []*csi.VolumeCapability{
-				{
-					AccessMode: &csi.VolumeCapability_AccessMode{
-						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
-					},
-				},
-			},
-			Parameters: map[string]string{
-				"type":   "slow",
-				"fstype": "ext4",
-			},
-			AccessibilityRequirements: &csi.TopologyRequirement{
-				Requisite: []*csi.Topology{
+		errCh := make(chan error)
+
+		go func() {
+			_, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
+				Name:          "volume-to-delete",
+				CapacityRange: &csi.CapacityRange{RequiredBytes: volSize},
+				VolumeCapabilities: []*csi.VolumeCapability{
 					{
-						Segments: map[string]string{
-							topologyKey: "volumepool",
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 						},
 					},
 				},
-				Preferred: []*csi.Topology{
-					{
-						Segments: map[string]string{
-							topologyKey: "volumepool",
+				Parameters: map[string]string{
+					"type":   "slow",
+					"fstype": "ext4",
+				},
+				AccessibilityRequirements: &csi.TopologyRequirement{
+					Requisite: []*csi.Topology{
+						{
+							Segments: map[string]string{
+								topologyKey: "volumepool",
+							},
+						},
+					},
+					Preferred: []*csi.Topology{
+						{
+							Segments: map[string]string{
+								topologyKey: "volumepool",
+							},
 						},
 					},
 				},
+			})
+			errCh <- err
+			Expect(err).NotTo(HaveOccurred())
+
+		}()
+
+		By("waiting for the volume to be created")
+		volume := &storagev1alpha1.Volume{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: ns.Name,
+				Name:      "volume-to-delete",
 			},
-		})
+		}
+		Eventually(Object(volume)).Should(SatisfyAll(
+			HaveField("Status.State", storagev1alpha1.VolumeStatePending),
+		))
+
+		By("patching the volume state to make it available")
+		volumeBase := volume.DeepCopy()
+		volume.Status.State = storagev1alpha1.VolumeStateAvailable
+		Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
+		Eventually(Object(volume)).Should(SatisfyAll(
+			HaveField("Status.State", storagev1alpha1.VolumeStateAvailable),
+		))
+
+		err := <-errCh
 		Expect(err).NotTo(HaveOccurred())
 
 		By("deleting the volume through the csi driver")
@@ -294,37 +364,65 @@ var _ = Describe("Controller", func() {
 
 		By("creating a volume with volume class other than expand only")
 		volSize := int64(5 * 1024 * 1024 * 1024)
-		_, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
-			Name:          "volume-not-expand",
-			CapacityRange: &csi.CapacityRange{RequiredBytes: volSize},
-			VolumeCapabilities: []*csi.VolumeCapability{
-				{
-					AccessMode: &csi.VolumeCapability_AccessMode{
-						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
-					},
-				},
-			},
-			Parameters: map[string]string{
-				"type":   volumeClass.Name,
-				"fstype": "ext4",
-			},
-			AccessibilityRequirements: &csi.TopologyRequirement{
-				Requisite: []*csi.Topology{
+		errCh := make(chan error)
+
+		go func() {
+			defer GinkgoRecover()
+			_, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
+				Name:          "volume-not-expand",
+				CapacityRange: &csi.CapacityRange{RequiredBytes: volSize},
+				VolumeCapabilities: []*csi.VolumeCapability{
 					{
-						Segments: map[string]string{
-							topologyKey: "volumepool",
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 						},
 					},
 				},
-				Preferred: []*csi.Topology{
-					{
-						Segments: map[string]string{
-							topologyKey: "volumepool",
+				Parameters: map[string]string{
+					"type":   volumeClass.Name,
+					"fstype": "ext4",
+				},
+				AccessibilityRequirements: &csi.TopologyRequirement{
+					Requisite: []*csi.Topology{
+						{
+							Segments: map[string]string{
+								topologyKey: "volumepool",
+							},
+						},
+					},
+					Preferred: []*csi.Topology{
+						{
+							Segments: map[string]string{
+								topologyKey: "volumepool",
+							},
 						},
 					},
 				},
+			})
+			errCh <- err
+			Expect(err).NotTo(HaveOccurred())
+		}()
+
+		By("waiting for the volume to be created")
+		volume := &storagev1alpha1.Volume{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: ns.Name,
+				Name:      "volume-not-expand",
 			},
-		})
+		}
+		Eventually(Object(volume)).Should(SatisfyAll(
+			HaveField("Status.State", storagev1alpha1.VolumeStatePending),
+		))
+
+		By("patching the volume state to make it available")
+		volumeBase := volume.DeepCopy()
+		volume.Status.State = storagev1alpha1.VolumeStateAvailable
+		Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
+		Eventually(Object(volume)).Should(SatisfyAll(
+			HaveField("Status.State", storagev1alpha1.VolumeStateAvailable),
+		))
+
+		err := <-errCh
 		Expect(err).NotTo(HaveOccurred())
 
 		By("resizing the volume")
