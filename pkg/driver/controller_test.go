@@ -75,6 +75,32 @@ var _ = Describe("Controller", func() {
 
 		By("creating a volume through the csi driver")
 		volSize := int64(5 * 1024 * 1024 * 1024)
+
+		// Start a go routine to patch the created Volume to an available state in order to succeed
+		// the CreateVolume call as it waits for a Volume to reach an available state.
+		go func() {
+			defer GinkgoRecover()
+			By("waiting for the volume to be created")
+			volume = &storagev1alpha1.Volume{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: ns.Name,
+					Name:      "volume",
+				},
+			}
+			Eventually(Object(volume)).Should(SatisfyAll(
+				HaveField("Status.State", storagev1alpha1.VolumeStatePending),
+			))
+
+			By("patching the volume state to make it available")
+			volumeBase := volume.DeepCopy()
+			volume.Status.State = storagev1alpha1.VolumeStateAvailable
+			Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
+			Eventually(Object(volume)).Should(SatisfyAll(
+				HaveField("Status.State", storagev1alpha1.VolumeStateAvailable),
+			))
+		}()
+
+		By("creating a Volume")
 		res, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
 			Name:          "volume",
 			CapacityRange: &csi.CapacityRange{RequiredBytes: volSize},
@@ -120,25 +146,35 @@ var _ = Describe("Controller", func() {
 				HaveKeyWithValue("fstype", "ext4"),
 				HaveKeyWithValue("creation_time", ContainSubstring(strconv.Itoa(time.Now().Year()))))),
 		))
-
-		By("patching the volume state to be available")
-		volume = &storagev1alpha1.Volume{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ns.Name,
-				Name:      "volume",
-			},
-		}
-		Eventually(Object(volume)).Should(SatisfyAll(
-			HaveField("Status.State", storagev1alpha1.VolumeStatePending),
-		))
-		volumeBase := volume.DeepCopy()
-		volume.Status.State = storagev1alpha1.VolumeStateAvailable
-		Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
 	})
 
 	It("should not assign the volume to a volume pool if the pool is not available", func(ctx SpecContext) {
 		By("creating a volume through the csi driver")
 		volSize := int64(5 * 1024 * 1024 * 1024)
+
+		go func() {
+			defer GinkgoRecover()
+			By("waiting for the volume to be created")
+			volume := &storagev1alpha1.Volume{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: ns.Name,
+					Name:      "volume-wrong-pool",
+				},
+			}
+			Eventually(Object(volume)).Should(SatisfyAll(
+				HaveField("Status.State", storagev1alpha1.VolumeStatePending),
+			))
+
+			By("patching the volume state to make it available")
+			volumeBase := volume.DeepCopy()
+			volume.Status.State = storagev1alpha1.VolumeStateAvailable
+			Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
+			Eventually(Object(volume)).Should(SatisfyAll(
+				HaveField("Status.State", storagev1alpha1.VolumeStateAvailable),
+			))
+		}()
+
+		By("creating a Volume")
 		res, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
 			Name:          "volume-wrong-pool",
 			CapacityRange: &csi.CapacityRange{RequiredBytes: volSize},
@@ -189,6 +225,29 @@ var _ = Describe("Controller", func() {
 	It("should delete a volume", func(ctx SpecContext) {
 		By("creating a volume through the csi driver")
 		volSize := int64(5 * 1024 * 1024 * 1024)
+
+		go func() {
+			By("waiting for the volume to be created")
+			volume := &storagev1alpha1.Volume{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: ns.Name,
+					Name:      "volume-to-delete",
+				},
+			}
+			Eventually(Object(volume)).Should(SatisfyAll(
+				HaveField("Status.State", storagev1alpha1.VolumeStatePending),
+			))
+
+			By("patching the volume state to make it available")
+			volumeBase := volume.DeepCopy()
+			volume.Status.State = storagev1alpha1.VolumeStateAvailable
+			Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
+			Eventually(Object(volume)).Should(SatisfyAll(
+				HaveField("Status.State", storagev1alpha1.VolumeStateAvailable),
+			))
+		}()
+
+		By("creating a Volume")
 		_, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
 			Name:          "volume-to-delete",
 			CapacityRange: &csi.CapacityRange{RequiredBytes: volSize},
@@ -294,6 +353,30 @@ var _ = Describe("Controller", func() {
 
 		By("creating a volume with volume class other than expand only")
 		volSize := int64(5 * 1024 * 1024 * 1024)
+
+		go func() {
+			defer GinkgoRecover()
+			By("waiting for the volume to be created")
+			volume := &storagev1alpha1.Volume{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: ns.Name,
+					Name:      "volume-not-expand",
+				},
+			}
+			Eventually(Object(volume)).Should(SatisfyAll(
+				HaveField("Status.State", storagev1alpha1.VolumeStatePending),
+			))
+
+			By("patching the volume state to make it available")
+			volumeBase := volume.DeepCopy()
+			volume.Status.State = storagev1alpha1.VolumeStateAvailable
+			Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
+			Eventually(Object(volume)).Should(SatisfyAll(
+				HaveField("Status.State", storagev1alpha1.VolumeStateAvailable),
+			))
+		}()
+
+		By("creating a Volume")
 		_, err := drv.CreateVolume(ctx, &csi.CreateVolumeRequest{
 			Name:          "volume-not-expand",
 			CapacityRange: &csi.CapacityRange{RequiredBytes: volSize},
@@ -335,7 +418,7 @@ var _ = Describe("Controller", func() {
 				RequiredBytes: newVolumeSize,
 			},
 		})
-		Expect((err)).Should(MatchError("volume class resize policy does not allow resizing"))
+		Expect(err).Should(MatchError("volume class resize policy does not allow resizing"))
 	})
 
 	It("should publish/unpublish a volume on a node", func(ctx SpecContext) {

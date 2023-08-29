@@ -15,6 +15,8 @@
 package driver
 
 import (
+	"time"
+
 	"github.com/onmetal/onmetal-csi-driver/pkg/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -46,4 +48,10 @@ const (
 	CSIDriverName    = "csi.onmetal.de"
 	topologyKey      = "topology." + CSIDriverName + "/zone"
 	volumeFieldOwner = client.FieldOwner("csi.onmetal.de/volume")
+
+	// Constants for volume polling mechanism
+
+	waitVolumeInitDelay   = 1 * time.Second // Initial delay before starting to poll for volume status
+	waitVolumeFactor      = 1.1             // Factor by which the delay increases with each poll attempt
+	waitVolumeActiveSteps = 5               // Number of consecutive active steps to wait for volume status change
 )
