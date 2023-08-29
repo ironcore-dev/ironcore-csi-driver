@@ -135,7 +135,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		return nil, fmt.Errorf("failed to confirm availability of the volume: %w", err)
 	}
 
-	klog.InfoS("Volume applied and is now available", "Volume", client.ObjectKeyFromObject(volume))
+	klog.InfoS("Applied volume", "Volume", client.ObjectKeyFromObject(volume), "State", storagev1alpha1.VolumeStateAvailable)
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
@@ -173,7 +173,7 @@ func waitForVolumeAvailability(ctx context.Context, onmetalClient client.Client,
 	})
 
 	if wait.Interrupted(err) {
-		return fmt.Errorf("volume %s did not reach 'Available' state within the defined timeout: %w", client.ObjectKeyFromObject(volume), err)
+		return fmt.Errorf("volume %s did not reach '%s' state within the defined timeout: %w", client.ObjectKeyFromObject(volume), storagev1alpha1.VolumeStateAvailable, err)
 	}
 
 	return err
