@@ -17,6 +17,7 @@ package driver
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -41,6 +42,7 @@ var _ = Describe("Controller", func() {
 	ns, drv := SetupTest()
 
 	var (
+		wg                    sync.WaitGroup
 		volume                = &storagev1alpha1.Volume{}
 		volumePool            = &storagev1alpha1.VolumePool{}
 		volumeClassExpandOnly = &storagev1alpha1.VolumeClass{}
@@ -78,8 +80,11 @@ var _ = Describe("Controller", func() {
 
 		// Start a go routine to patch the created Volume to an available state in order to succeed
 		// the CreateVolume call as it waits for a Volume to reach an available state.
+		wg.Add(1)
 		go func() {
 			defer GinkgoRecover()
+			defer wg.Done()
+
 			By("waiting for the volume to be created")
 			volume = &storagev1alpha1.Volume{
 				ObjectMeta: metav1.ObjectMeta{
@@ -146,14 +151,19 @@ var _ = Describe("Controller", func() {
 				HaveKeyWithValue("fstype", "ext4"),
 				HaveKeyWithValue("creation_time", ContainSubstring(strconv.Itoa(time.Now().Year()))))),
 		))
+
+		wg.Wait()
 	})
 
 	It("should not assign the volume to a volume pool if the pool is not available", func(ctx SpecContext) {
 		By("creating a volume through the csi driver")
 		volSize := int64(5 * 1024 * 1024 * 1024)
 
+		wg.Add(1)
 		go func() {
 			defer GinkgoRecover()
+			defer wg.Done()
+
 			By("waiting for the volume to be created")
 			volume := &storagev1alpha1.Volume{
 				ObjectMeta: metav1.ObjectMeta{
@@ -220,13 +230,19 @@ var _ = Describe("Controller", func() {
 				HaveKeyWithValue("fstype", "ext4"),
 				HaveKeyWithValue("creation_time", ContainSubstring(strconv.Itoa(time.Now().Year()))))),
 		))
+
+		wg.Wait()
 	})
 
 	It("should delete a volume", func(ctx SpecContext) {
 		By("creating a volume through the csi driver")
 		volSize := int64(5 * 1024 * 1024 * 1024)
 
+		wg.Add(1)
 		go func() {
+			defer GinkgoRecover()
+			defer wg.Done()
+
 			By("waiting for the volume to be created")
 			volume := &storagev1alpha1.Volume{
 				ObjectMeta: metav1.ObjectMeta{
@@ -295,6 +311,8 @@ var _ = Describe("Controller", func() {
 			},
 		}
 		Eventually(Get(deletedVolume)).Should(Satisfy(apierrors.IsNotFound))
+
+		wg.Wait()
 	})
 
 	It("should expand the volume size", func(ctx SpecContext) {
@@ -354,8 +372,11 @@ var _ = Describe("Controller", func() {
 		By("creating a volume with volume class other than expand only")
 		volSize := int64(5 * 1024 * 1024 * 1024)
 
+		wg.Add(1)
 		go func() {
 			defer GinkgoRecover()
+			defer wg.Done()
+
 			By("waiting for the volume to be created")
 			volume := &storagev1alpha1.Volume{
 				ObjectMeta: metav1.ObjectMeta{
@@ -419,6 +440,8 @@ var _ = Describe("Controller", func() {
 			},
 		})
 		Expect(err).Should(MatchError("volume class resize policy does not allow resizing"))
+
+		wg.Wait()
 	})
 
 	It("should publish/unpublish a volume on a node", func(ctx SpecContext) {
