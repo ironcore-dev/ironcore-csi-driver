@@ -71,8 +71,8 @@ github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ3
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/dell/gocsi v1.7.0 h1:fMQO2zwAXCaIsUoPCcnnuPMwfQMoaI1/0aqkQVndlxU=
-github.com/dell/gocsi v1.7.0/go.mod h1:X/8Ll8qqKAKCenmd1gPJMUvUmgY8cK0LiS8Pck12UaU=
+github.com/dell/gocsi v1.8.0 h1:0qsC/Ts6QeAWBBVaQvFrZYBXdoR7bmjrDUb3QpcMfHM=
+github.com/dell/gocsi v1.8.0/go.mod h1:X/8Ll8qqKAKCenmd1gPJMUvUmgY8cK0LiS8Pck12UaU=
 github.com/emicklei/go-restful/v3 v3.9.0 h1:XwGDlfxEnQZzuopoqxwSEllNcCOM9DhhFyhFIIGKwxE=
 github.com/emicklei/go-restful/v3 v3.9.0/go.mod h1:6n3XBCmQQb25CM2LCACGz8ukIrRry+4bhvbpWn3mrbc=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
