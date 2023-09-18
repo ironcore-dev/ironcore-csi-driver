@@ -5,15 +5,16 @@ ENVTEST_K8S_VERSION = 1.26.0
 
 ## Tool Binaries
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
-#CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 ADDLICENSE ?= $(LOCALBIN)/addlicense
+GOIMPORTS ?= $(LOCALBIN)/goimports
+MOCKGEN ?= $(LOCALBIN)/mockgen
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7
-CONTROLLER_TOOLS_VERSION ?= v0.9.2
-ADDLICENSE_VERSION ?= v1.1.0
-MOCKGEN_VERSION ?= v0.2.0
+ADDLICENSE_VERSION ?= v1.1.1
+MOCKGEN_VERSION ?= v0.3.0
+GOIMPORTS_VERSION ?= v0.13.0
 
 # Go parameters
 GOCMD=go
@@ -49,15 +50,6 @@ endif
 LOCALBIN ?= $(shell pwd)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
-
-## Tool Binaries
-KUSTOMIZE ?= $(LOCALBIN)/kustomize
-GOIMPORTS ?= $(LOCALBIN)/goimports
-MOCKGEN ?= $(LOCALBIN)/mockgen
-
-## Tool Versions
-KUSTOMIZE_VERSION ?= v5.0.0
-GOIMPORTS_VERSION ?= v0.5.0
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
@@ -169,6 +161,6 @@ generate-mocks: mockgen ## Generate code (mocks etc.).
 	./hack/fix-mountwrapper-mock.sh
 
 .PHONY: mockgen
-mockgen: $(MOCKGEN)
+mockgen: $(MOCKGEN) ## Download mockgen locally if necessary.
 $(MOCKGEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/mockgen || GOBIN=$(LOCALBIN) go install go.uber.org/mock/mockgen@$(MOCKGEN_VERSION)
