@@ -7,7 +7,7 @@ require (
 	github.com/dell/gocsi v1.8.0
 	github.com/onmetal/controller-utils v0.8.1
 	github.com/onmetal/onmetal-api v0.1.2-0.20230530094909-67f87469764c
-	github.com/onsi/ginkgo/v2 v2.12.0
+	github.com/onsi/ginkgo/v2 v2.12.1
 	github.com/onsi/gomega v1.27.10
 	go.uber.org/mock v0.3.0
 	golang.org/x/exp v0.0.0-20221212164502-fae10dda9338
