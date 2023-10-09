@@ -234,7 +234,7 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 		return nil, status.Errorf(codes.Internal, "Failed to get volume %s: %v", client.ObjectKeyFromObject(volume), err)
 	}
 
-	if volume.Status.State != storagev1alpha1.VolumeStateAvailable || volume.Status.Phase != storagev1alpha1.VolumePhaseBound {
+	if volume.Status.State != storagev1alpha1.VolumeStateAvailable {
 		return nil, status.Errorf(codes.Internal, "Volume is not in state available or is already bound")
 	}
 	deviceName, err := validateDeviceName(volume, machine, volumeAttachmentName)

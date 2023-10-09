@@ -1,12 +1,12 @@
 module github.com/onmetal/onmetal-csi-driver
 
-go 1.20
+go 1.21
 
 require (
 	github.com/container-storage-interface/spec v1.8.0
 	github.com/dell/gocsi v1.8.0
 	github.com/onmetal/controller-utils v0.8.2
-	github.com/onmetal/onmetal-api v0.1.2-0.20230530094909-67f87469764c
+	github.com/onmetal/onmetal-api v0.1.2-0.20231006124132-8ad37e778d15
 	github.com/onsi/ginkgo/v2 v2.12.1
 	github.com/onsi/gomega v1.28.0
 	go.uber.org/mock v0.3.0
@@ -100,10 +100,10 @@ require (
 	k8s.io/apiextensions-apiserver v0.28.2 // indirect
 	k8s.io/apiserver v0.28.2 // indirect
 	k8s.io/component-base v0.28.2 // indirect
-	k8s.io/kube-aggregator v0.27.2 // indirect
+	k8s.io/kube-aggregator v0.28.2 // indirect
 	k8s.io/kube-openapi v0.0.0-20230717233707-2695361300d9 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.1.2 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.3.0 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
