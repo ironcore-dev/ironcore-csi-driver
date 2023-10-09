@@ -29,7 +29,6 @@ import (
 	. "github.com/onsi/gomega/gstruct"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -456,9 +455,9 @@ var _ = Describe("Controller", func() {
 		// as long as the volume is pending or not available we fail
 		Expect(err).To(HaveOccurred())
 
-		By("patching the volume phase to be bound")
+		By("patching the volume state to be available")
 		volumeBase := volume.DeepCopy()
-		volume.Status.Phase = storagev1alpha1.VolumePhaseBound
+		volume.Status.State = storagev1alpha1.VolumeStateAvailable
 		Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
 
 		By("ensuring that the volume attachment is reflected in the machine spec")
@@ -472,7 +471,7 @@ var _ = Describe("Controller", func() {
 			HaveField("Spec.Volumes", ConsistOf(
 				MatchFields(IgnoreMissing|IgnoreExtras, Fields{
 					"Name":   Equal("volume-attachment"),
-					"Phase":  Equal(computev1alpha1.VolumePhaseBound),
+					"State":  Equal(computev1alpha1.VolumeStateAttached),
 					"Device": Equal(pointer.String("oda")),
 					// TODO: validate VolumeSource
 				}),
@@ -485,7 +484,6 @@ var _ = Describe("Controller", func() {
 			{
 				Name:  "volume-attachment",
 				State: computev1alpha1.VolumeStateAttached,
-				Phase: computev1alpha1.VolumePhaseBound,
 			},
 		}
 		Expect(k8sClient.Patch(ctx, machine, client.MergeFrom(machineBase))).To(Succeed())
@@ -494,13 +492,6 @@ var _ = Describe("Controller", func() {
 		volumeBase = volume.DeepCopy()
 		volume.Status = storagev1alpha1.VolumeStatus{
 			State: storagev1alpha1.VolumeStateAvailable,
-			Phase: storagev1alpha1.VolumePhaseBound,
-			Conditions: []storagev1alpha1.VolumeCondition{
-				{
-					Type:   storagev1alpha1.VolumeConditionType(storagev1alpha1.VolumePhaseBound),
-					Status: corev1.ConditionTrue,
-				},
-			},
 			Access: &storagev1alpha1.VolumeAccess{
 				Handle: "bar",
 				VolumeAttributes: map[string]string{
