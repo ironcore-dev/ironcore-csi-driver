@@ -367,6 +367,11 @@ func (d *driver) ControllerExpandVolume(ctx context.Context, req *csi.Controller
 	}, nil
 }
 
+func (d *driver) ControllerModifyVolume(ctx context.Context, req *csi.ControllerModifyVolumeRequest) (*csi.ControllerModifyVolumeResponse, error) {
+	klog.V(4).InfoS("ControllerModifyVolume: called", "args", req)
+	return nil, status.Errorf(codes.Unimplemented, "Method ControllerModifyVolume not implemented")
+}
+
 func (d *driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	klog.InfoS("ValidateVolumeCapabilities: called", "args", *req)
 	volumeID := req.GetVolumeId()
