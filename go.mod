@@ -13,8 +13,8 @@ require (
 	golang.org/x/exp v0.0.0-20221212164502-fae10dda9338
 	golang.org/x/sys v0.13.0
 	google.golang.org/grpc v1.59.0
-	k8s.io/api v0.28.2
-	k8s.io/apimachinery v0.28.2
+	k8s.io/api v0.28.3
+	k8s.io/apimachinery v0.28.3
 	k8s.io/client-go v0.28.2
 	k8s.io/klog/v2 v2.100.1
 	k8s.io/mount-utils v0.28.2
