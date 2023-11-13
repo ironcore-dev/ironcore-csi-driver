@@ -7,7 +7,7 @@ require (
 	github.com/dell/gocsi v1.8.0
 	github.com/onmetal/controller-utils v0.8.2
 	github.com/onmetal/onmetal-api v0.1.2-0.20231006124132-8ad37e778d15
-	github.com/onsi/ginkgo/v2 v2.13.0
+	github.com/onsi/ginkgo/v2 v2.13.1
 	github.com/onsi/gomega v1.30.0
 	go.uber.org/mock v0.3.0
 	golang.org/x/exp v0.0.0-20221212164502-fae10dda9338
@@ -86,7 +86,7 @@ require (
 	golang.org/x/term v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.12.0 // indirect
+	golang.org/x/tools v0.14.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230822172742-b8732ec3820d // indirect
