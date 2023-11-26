@@ -3,7 +3,7 @@ module github.com/onmetal/onmetal-csi-driver
 go 1.21
 
 require (
-	github.com/container-storage-interface/spec v1.8.0
+	github.com/container-storage-interface/spec v1.9.0
 	github.com/dell/gocsi v1.8.0
 	github.com/onmetal/controller-utils v0.8.3
 	github.com/onmetal/onmetal-api v0.1.2-0.20231006124132-8ad37e778d15

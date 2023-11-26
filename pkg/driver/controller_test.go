@@ -610,5 +610,9 @@ var _ = Describe("Controller", func() {
 		Entry("DeleteSnapshot", func(ctx SpecContext) (interface{}, error) {
 			return drv.DeleteSnapshot(ctx, &csi.DeleteSnapshotRequest{})
 		}),
+
+		Entry("ControllerModifyVolume", func(ctx SpecContext) (interface{}, error) {
+			return drv.ControllerModifyVolume(ctx, &csi.ControllerModifyVolumeRequest{})
+		}),
 	)
 })
