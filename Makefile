@@ -9,12 +9,14 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 ADDLICENSE ?= $(LOCALBIN)/addlicense
 GOIMPORTS ?= $(LOCALBIN)/goimports
 MOCKGEN ?= $(LOCALBIN)/mockgen
+GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7
 ADDLICENSE_VERSION ?= v1.1.1
 MOCKGEN_VERSION ?= v0.3.0
 GOIMPORTS_VERSION ?= v0.13.0
+GOLANGCI_LINT_VERSION ?= v1.55.2
 
 # Go parameters
 GOCMD=go
@@ -82,8 +84,9 @@ clean:
 build:
 	$(GOBUILD) -o $(BINARY_NAME) -v  ./cmd/
 
-lint: ## Run golangci-lint against code.
-	golangci-lint run ./...
+.PHONY: lint
+lint: golangci-lint ## Run golangci-lint on the code.
+	$(GOLANGCI_LINT) run ./...
 
 run:
 	$(GOBUILD) -o $(BINARY_NAME) -v ./...
@@ -164,3 +167,8 @@ generate-mocks: mockgen ## Generate code (mocks etc.).
 mockgen: $(MOCKGEN) ## Download mockgen locally if necessary.
 $(MOCKGEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/mockgen || GOBIN=$(LOCALBIN) go install go.uber.org/mock/mockgen@$(MOCKGEN_VERSION)
+
+.PHONY: golangci-lint
+golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
+$(GOLANGCI_LINT): $(LOCALBIN)
+	test -s $(LOCALBIN)/golangci-lint || GOBIN=$(LOCALBIN) go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)

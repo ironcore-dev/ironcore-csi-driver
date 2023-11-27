@@ -4,6 +4,7 @@ run:
 linters:
   enable:
     - revive
+    - ginkgolinter
     - ineffassign
     - misspell
     - goimports

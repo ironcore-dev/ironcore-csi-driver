@@ -95,7 +95,7 @@ var _ = Describe("Node", func() {
 		It("should fail if the volume is already mounted", func(ctx SpecContext) {
 			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(false, nil)
 			_, err := drv.NodeStageVolume(ctx, req)
-			Expect(err).NotTo(BeNil())
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should fail if the mount point validation fails", func(ctx SpecContext) {
