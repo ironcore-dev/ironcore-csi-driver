@@ -1,9 +1,10 @@
 # IronCore CSI Driver
 
+[![REUSE status](https://api.reuse.software/badge/github.com/ironcore-dev/ironcore-csi-driver)](https://api.reuse.software/info/github.com/ironcore-dev/ironcore-csi-driver)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ironcore-dev/ironcore-csi-driver)](https://goreportcard.com/report/github.com/ironcore-dev/ironcore-csi-driver)
 [![Test](https://github.com/ironcore-dev/ironcore-csi-driver/actions/workflows/test.yml/badge.svg)](https://github.com/ironcore-dev/ironcore-csi-driver/actions/workflows/test.yml)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://makeapullrequest.com)
-[![GitHub License](https://img.shields.io/static/v1?label=License&message=Apache-2.0&color=blue&style=flat-square)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://makeapullrequest.com)
+[![GitHub License](https://img.shields.io/static/v1?label=License&message=Apache-2.0&color=blue)](LICENSE)
 
 This document provides an overview of the IronCore CSI Driver, its components, and usage instructions.
 
