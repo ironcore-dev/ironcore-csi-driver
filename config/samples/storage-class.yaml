@@ -7,6 +7,6 @@ metadata:
 parameters:
   type: "volume_class"
 allowVolumeExpansion: true
-provisioner: csi.onmetal.de
+provisioner: csi.ironcore.dev
 reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer

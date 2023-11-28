@@ -17,7 +17,7 @@ package driver
 import (
 	"time"
 
-	"github.com/onmetal/onmetal-csi-driver/pkg/utils"
+	"github.com/ironcore-dev/ironcore-csi-driver/pkg/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -45,9 +45,9 @@ const (
 	// ParameterDeviceName is the device name parameter
 	ParameterDeviceName = "device_name"
 
-	CSIDriverName    = "csi.onmetal.de"
+	CSIDriverName    = "csi.ironcore.dev"
 	topologyKey      = "topology." + CSIDriverName + "/zone"
-	volumeFieldOwner = client.FieldOwner("csi.onmetal.de/volume")
+	volumeFieldOwner = client.FieldOwner("csi.ironcore.dev/volume")
 
 	// Constants for volume polling mechanism
 

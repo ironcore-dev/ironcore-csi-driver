@@ -28,7 +28,7 @@ var _ = Describe("Identity", func() {
 		res, err := drv.GetPluginInfo(ctx, &csi.GetPluginInfoRequest{})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res).To(SatisfyAll(
-			HaveField("Name", "csi.onmetal.de"),
+			HaveField("Name", "csi.ironcore.dev"),
 			HaveField("VendorVersion", Version()),
 		))
 	})

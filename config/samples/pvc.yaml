@@ -2,11 +2,11 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: pvc-demo
-  namespace: onmetal-csi
+  namespace: ironcore-csi
 spec:
   accessModes:
   - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
-  storageClassName: onmetal-storageclass-demo
+  storageClassName: ironcore-storageclass-demo

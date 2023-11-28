@@ -1,15 +1,15 @@
 apiVersion: v1
 kind: ServiceAccount
 imagePullSecrets:
-- name: onmetal-csi-creds
+- name: ironcore-csi-creds
 metadata:
-  name: onmetal-csi-driver
+  name: ironcore-csi-driver
   namespace: default
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: onmetal-csi-driver
+  name: ironcore-csi-driver
 rules:
   - apiGroups: [""]
     resources: ["events"]
@@ -65,46 +65,46 @@ rules:
   - apiGroups: ["apiextensions.k8s.io"]
     resources: ["customresourcedefinitions"]
     verbs: ["create", "list", "watch", "delete", "get", "update"]
-  - apiGroups: ["storage.api.onmetal.de"]
+  - apiGroups: ["storage.ironcore.dev"]
     resources: ["volumeclaims"]
     verbs: ["get", "list", "watch", "update", "create", "delete", "patch"]
-  - apiGroups: ["compute.api.onmetal.de"]
+  - apiGroups: ["compute.ironcore.dev"]
     resources: ["machines"]
     verbs: ["get", "list", "watch", "update", "patch"]
-  - apiGroups: ["storage.api.onmetal.de"]
+  - apiGroups: ["storage.ironcore.dev"]
     resources: ["volumes"]
     verbs: ["get", "list", "watch", "update", "patch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: onmetal-csi-driver
+  name: ironcore-csi-driver
 subjects:
   - kind: ServiceAccount
-    name: onmetal-csi-driver
+    name: ironcore-csi-driver
     namespace: default
 roleRef:
   kind: ClusterRole
-  name: onmetal-csi-driver
+  name: ironcore-csi-driver
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: StatefulSet
 apiVersion: apps/v1
 metadata:
-  name: onmetal-csi-driver
+  name: ironcore-csi-driver
   namespace: default
 spec:
   selector:
     matchLabels:
-      app: onmetal-csi-driver
-  serviceName: onmetal-csi-driver
+      app: ironcore-csi-driver
+  serviceName: ironcore-csi-driver
   replicas: 1
   template:
     metadata:
       labels:
-        app: onmetal-csi-driver
+        app: ironcore-csi-driver
     spec:
-      serviceAccountName: onmetal-csi-driver
+      serviceAccountName: ironcore-csi-driver
       containers:
         - name: attacher
           image: k8s.gcr.io/sig-storage/csi-attacher:v3.4.0
@@ -134,7 +134,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "--csi-address=$(ADDRESS)"
-            - "--volume-name-prefix=csi-onmetal"
+            - "--volume-name-prefix=csi-ironcore"
             - "--volume-name-uuid-length=10"
             - "--feature-gates=Topology=true"
             - "--timeout=300s"
@@ -175,11 +175,11 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true  
-          image: onmetal-csi-driver:latest
+          image: ironcore-csi-driver:latest
           imagePullPolicy: IfNotPresent
           args:
-          - "--target-kubeconfig=/etc/csi.onmetal.de/target-kubeconfig"
-          - "--onmetal-kubeconfig=/etc/csi.onmetal.de/onmetal-kubeconfig"
+          - "--target-kubeconfig=/etc/csi.ironcore.dev/target-kubeconfig"
+          - "--ironcore-kubeconfig=/etc/csi.ironcore.dev/ironcore-kubeconfig"
           env:
             - name: CSI_ENDPOINT
               value: /csi/csi.sock
@@ -198,7 +198,7 @@ spec:
             - name: VOLUME_NS
               valueFrom:
                 secretKeyRef:
-                  name: onmetal-csi
+                  name: ironcore-csi
                   key: namespace
           resources:
             requests:
@@ -210,7 +210,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
             - name: kubeconfig-volume
-              mountPath: /etc/csi.onmetal.de
+              mountPath: /etc/csi.ironcore.dev
           ports:
             - name: healthz
               containerPort: 9808
@@ -243,4 +243,4 @@ spec:
           emptyDir: {}
         - name: kubeconfig-volume
           secret:
-            secretName: onmetal-csi
+            secretName: ironcore-csi

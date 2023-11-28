@@ -27,8 +27,8 @@ import (
 	"google.golang.org/grpc/status"
 	k8smountutils "k8s.io/mount-utils"
 
-	"github.com/onmetal/onmetal-csi-driver/pkg/utils/mount"
-	osutils "github.com/onmetal/onmetal-csi-driver/pkg/utils/os"
+	"github.com/ironcore-dev/ironcore-csi-driver/pkg/utils/mount"
+	osutils "github.com/ironcore-dev/ironcore-csi-driver/pkg/utils/os"
 )
 
 var _ = Describe("Node", func() {

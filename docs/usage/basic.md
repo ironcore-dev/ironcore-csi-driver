@@ -7,13 +7,13 @@
 - Create a `StorageClass` (SC)
 
     ```
-    kubectl apply -f onmetal-csi-driver/config/samples/storage-class.yaml
+    kubectl apply -f ironcore-csi-driver/config/samples/storage-class.yaml
     ```
 
 - Create a `PersistentVolumeClaim` (PVC)
 
     ```
-    kubectl apply -f onmetal-csi-driver/config/samples/pvc.yaml
+    kubectl apply -f ironcore-csi-driver/config/samples/pvc.yaml
     ```
 
 - Check the `PVC` status
@@ -25,7 +25,7 @@
 - After creating the `StorageClass` and `PersistentVolumeClaim`, create a `Pod` that uses the `PersistentVolumeClaim` as a volume
 
     ```
-    kubectl apply -f onmetal-csi-driver/config/samples/pod.yaml
+    kubectl apply -f ironcore-csi-driver/config/samples/pod.yaml
     ```
 
 - Check that the volume has been created, staged and published
@@ -48,10 +48,10 @@
 - To expand the volume, first make sure that the `StorageClass` that the `PVC` is referring to has field `allowVolumeExpansion: true`.
 `StorageClass` should also have a `parameters.type` field set to the name of the volume class that supports `ExpandOnly` resize policy
 
-- Update the `PVC` with the desired size by editing the pvc.yaml file present at `onmetal-csi-driver/config/samples/pvc.yaml` then re-apply the `PVC`
+- Update the `PVC` with the desired size by editing the pvc.yaml file present at `ironcore-csi-driver/config/samples/pvc.yaml` then re-apply the `PVC`
 
     ```
-    kubectl apply -f onmetal-csi-driver/config/samples/pvc.yaml
+    kubectl apply -f ironcore-csi-driver/config/samples/pvc.yaml
     ```
 
 ## Delete volume

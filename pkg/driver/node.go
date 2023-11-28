@@ -29,7 +29,7 @@ import (
 	utilpath "k8s.io/utils/path"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/onmetal/onmetal-csi-driver/pkg/utils/mount"
+	"github.com/ironcore-dev/ironcore-csi-driver/pkg/utils/mount"
 )
 
 var (

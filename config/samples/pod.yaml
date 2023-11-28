@@ -2,16 +2,16 @@ kind: Pod
 apiVersion: v1
 metadata:
   name: pod-demo
-  namespace: onmetal-csi
+  namespace: ironcore-csi
 spec:
   containers:
     - name: my-frontend
       image: busybox
       volumeMounts:
       - mountPath: "/tmp/data"
-        name: onmetal-csi-volume
+        name: ironcore-csi-volume
       command: [ "sleep", "1000" ]
   volumes:
-    - name: onmetal-csi-volume
+    - name: ironcore-csi-volume
       persistentVolumeClaim:
         claimName: pvc-demo

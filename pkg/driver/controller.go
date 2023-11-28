@@ -20,10 +20,10 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
-	corev1alpha1 "github.com/onmetal/onmetal-api/api/core/v1alpha1"
-	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
-	"github.com/onmetal/onmetal-csi-driver/pkg/utils"
+	"github.com/ironcore-dev/ironcore-csi-driver/pkg/utils"
+	computev1alpha1 "github.com/ironcore-dev/ironcore/api/compute/v1alpha1"
+	corev1alpha1 "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
+	storagev1alpha1 "github.com/ironcore-dev/ironcore/api/storage/v1alpha1"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -39,7 +39,7 @@ import (
 
 var (
 	// volumeCaps represents how the volume could be accessed.
-	// It is SINGLE_NODE_WRITER since an onmetal volume could only be
+	// It is SINGLE_NODE_WRITER since an ironcore volume could only be
 	// attached to a single node at any given time.
 	volumeCaps = []csi.VolumeCapability_AccessMode{
 		{
@@ -92,7 +92,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	// Ensure that the VolumePool exists. If that is not the case, clear the VolumePoolRef and let the scheduler
 	// decide which VolumePool to use.
 	volumePool := &storagev1alpha1.VolumePool{}
-	if err := d.onmetalClient.Get(ctx, client.ObjectKey{Name: volumePoolName}, volumePool); err != nil {
+	if err := d.ironcoreClient.Get(ctx, client.ObjectKey{Name: volumePoolName}, volumePool); err != nil {
 		if apierrors.IsNotFound(err) {
 			volumePoolName = ""
 		} else {
@@ -127,11 +127,11 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	}
 
 	klog.InfoS("Applying volume", "Volume", client.ObjectKeyFromObject(volume))
-	if err := d.onmetalClient.Patch(ctx, volume, client.Apply, volumeFieldOwner, client.ForceOwnership); err != nil {
+	if err := d.ironcoreClient.Patch(ctx, volume, client.Apply, volumeFieldOwner, client.ForceOwnership); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to patch volume %s: %v", client.ObjectKeyFromObject(volume), err)
 	}
 
-	if err := waitForVolumeAvailability(ctx, d.onmetalClient, volume); err != nil {
+	if err := waitForVolumeAvailability(ctx, d.ironcoreClient, volume); err != nil {
 		return nil, fmt.Errorf("failed to confirm availability of the volume: %w", err)
 	}
 
@@ -157,7 +157,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 // waitForVolumeAvailability is a helper function that waits for a volume to become available.
 // It uses an exponential backoff strategy to periodically check the status of the volume.
 // The function returns an error if the volume does not become available within the specified number of attempts.
-func waitForVolumeAvailability(ctx context.Context, onmetalClient client.Client, volume *storagev1alpha1.Volume) error {
+func waitForVolumeAvailability(ctx context.Context, ironcoreClient client.Client, volume *storagev1alpha1.Volume) error {
 	backoff := wait.Backoff{
 		Duration: waitVolumeInitDelay,
 		Factor:   waitVolumeFactor,
@@ -165,7 +165,7 @@ func waitForVolumeAvailability(ctx context.Context, onmetalClient client.Client,
 	}
 
 	err := wait.ExponentialBackoffWithContext(ctx, backoff, func(ctx context.Context) (bool, error) {
-		err := onmetalClient.Get(ctx, client.ObjectKey{Namespace: volume.Namespace, Name: volume.Name}, volume)
+		err := ironcoreClient.Get(ctx, client.ObjectKey{Namespace: volume.Namespace, Name: volume.Name}, volume)
 		if err == nil && volume.Status.State == storagev1alpha1.VolumeStateAvailable {
 			return true, nil
 		}
@@ -190,7 +190,7 @@ func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 			Name:      req.GetVolumeId(),
 		},
 	}
-	if err := d.onmetalClient.Delete(ctx, vol); err != nil {
+	if err := d.ironcoreClient.Delete(ctx, vol); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to delete volume %s: %v", client.ObjectKeyFromObject(vol), err)
 	}
 	klog.InfoS("Deleted volume", "Volume", req.GetVolumeId())
@@ -204,7 +204,7 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 	machineKey := client.ObjectKey{Namespace: d.config.DriverNamespace, Name: req.GetNodeId()}
 
 	klog.InfoS("Get machine for volume attachment", "Machine", machineKey, "Volume", req.GetVolumeId())
-	if err := d.onmetalClient.Get(ctx, machineKey, machine); err != nil {
+	if err := d.ironcoreClient.Get(ctx, machineKey, machine); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to get machine %s: %v", client.ObjectKeyFromObject(machine), err)
 	}
 	volumeAttachmentName := req.GetVolumeId() + "-attachment"
@@ -220,14 +220,14 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 				},
 			},
 		})
-		if err := d.onmetalClient.Patch(ctx, machine, client.StrategicMergeFrom(machineBase)); err != nil {
+		if err := d.ironcoreClient.Patch(ctx, machine, client.StrategicMergeFrom(machineBase)); err != nil {
 			return nil, status.Errorf(codes.Internal, "Failed to patch machine %s: %v", client.ObjectKeyFromObject(machine), err)
 		}
 	}
 
 	volume := &storagev1alpha1.Volume{}
 	volumeKey := client.ObjectKey{Namespace: d.config.DriverNamespace, Name: req.GetVolumeId()}
-	if err := d.onmetalClient.Get(ctx, volumeKey, volume); err != nil {
+	if err := d.ironcoreClient.Get(ctx, volumeKey, volume); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, status.Errorf(codes.Internal, "Volume %s could not be found: %v", client.ObjectKeyFromObject(volume), err)
 		}
@@ -265,7 +265,7 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 
 	machine := &computev1alpha1.Machine{}
 	klog.InfoS("Get machine to detach volume", "Machine", client.ObjectKeyFromObject(machine), "Volume", req.GetVolumeId())
-	if err = d.onmetalClient.Get(ctx, client.ObjectKey{Namespace: d.config.DriverNamespace, Name: req.GetNodeId()}, machine); err != nil {
+	if err = d.ironcoreClient.Get(ctx, client.ObjectKey{Namespace: d.config.DriverNamespace, Name: req.GetNodeId()}, machine); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to get machine %s: %v", client.ObjectKeyFromObject(machine), err)
 	}
 
@@ -275,7 +275,7 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 	if idx >= 0 {
 		machineBase := machine.DeepCopy()
 		machine.Spec.Volumes = slices.Delete(machine.Spec.Volumes, idx, idx+1)
-		if err := d.onmetalClient.Patch(ctx, machine, client.StrategicMergeFrom(machineBase)); err != nil {
+		if err := d.ironcoreClient.Patch(ctx, machine, client.StrategicMergeFrom(machineBase)); err != nil {
 			return nil, status.Errorf(codes.Internal, "Failed to patch machine %s: %v", client.ObjectKeyFromObject(machine), err)
 		}
 	}
@@ -326,7 +326,7 @@ func (d *driver) ControllerExpandVolume(ctx context.Context, req *csi.Controller
 	}
 
 	volume := &storagev1alpha1.Volume{}
-	if err := d.onmetalClient.Get(ctx, client.ObjectKey{Namespace: d.config.DriverNamespace, Name: volumeID}, volume); err != nil {
+	if err := d.ironcoreClient.Get(ctx, client.ObjectKey{Namespace: d.config.DriverNamespace, Name: volumeID}, volume); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, status.Error(codes.NotFound, "Volume not found")
 		}
@@ -335,7 +335,7 @@ func (d *driver) ControllerExpandVolume(ctx context.Context, req *csi.Controller
 
 	volumeClassName := volume.Spec.VolumeClassRef.Name
 	volumeClass := &storagev1alpha1.VolumeClass{}
-	if err := d.onmetalClient.Get(ctx, client.ObjectKey{Namespace: d.config.DriverNamespace, Name: volumeClassName}, volumeClass); err != nil {
+	if err := d.ironcoreClient.Get(ctx, client.ObjectKey{Namespace: d.config.DriverNamespace, Name: volumeClassName}, volumeClass); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, status.Error(codes.NotFound, "VolumeClass not found")
 		}
@@ -358,7 +358,7 @@ func (d *driver) ControllerExpandVolume(ctx context.Context, req *csi.Controller
 	volumeBase := volume.DeepCopy()
 	volume.Spec.Resources[corev1alpha1.ResourceStorage] = *resource.NewQuantity(newSize, resource.BinarySI)
 	klog.InfoS("Patching volume with new volume size", "Volume", client.ObjectKeyFromObject(volume))
-	if err := d.onmetalClient.Patch(ctx, volume, client.MergeFrom(volumeBase)); err != nil {
+	if err := d.ironcoreClient.Patch(ctx, volume, client.MergeFrom(volumeBase)); err != nil {
 		return nil, apierrors.NewBadRequest("failed to patch volume with new volume size")
 	}
 	return &csi.ControllerExpandVolumeResponse{
@@ -385,7 +385,7 @@ func (d *driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.Valida
 	}
 
 	volume := &storagev1alpha1.Volume{}
-	if err := d.onmetalClient.Get(ctx, client.ObjectKey{Namespace: d.config.DriverNamespace, Name: req.VolumeId}, volume); err != nil {
+	if err := d.ironcoreClient.Get(ctx, client.ObjectKey{Namespace: d.config.DriverNamespace, Name: req.VolumeId}, volume); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, status.Error(codes.NotFound, "Volume not found")
 		}

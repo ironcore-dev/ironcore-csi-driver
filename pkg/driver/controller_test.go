@@ -21,9 +21,9 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
-	corev1alpha1 "github.com/onmetal/onmetal-api/api/core/v1alpha1"
-	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
+	computev1alpha1 "github.com/ironcore-dev/ironcore/api/compute/v1alpha1"
+	corev1alpha1 "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
+	storagev1alpha1 "github.com/ironcore-dev/ironcore/api/storage/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -141,7 +141,7 @@ var _ = Describe("Controller", func() {
 			HaveField("VolumeId", "volume"),
 			HaveField("CapacityBytes", volSize),
 			HaveField("AccessibleTopology", ContainElement(
-				HaveField("Segments", HaveKeyWithValue("topology.csi.onmetal.de/zone", "volumepool"))),
+				HaveField("Segments", HaveKeyWithValue("topology.csi.ironcore.dev/zone", "volumepool"))),
 			),
 			HaveField("VolumeContext", SatisfyAll(
 				HaveKeyWithValue("volume_id", "volume"),
@@ -220,7 +220,7 @@ var _ = Describe("Controller", func() {
 			HaveField("VolumeId", "volume-wrong-pool"),
 			HaveField("CapacityBytes", volSize),
 			HaveField("AccessibleTopology", ContainElement(
-				HaveField("Segments", HaveKeyWithValue("topology.csi.onmetal.de/zone", "foo"))),
+				HaveField("Segments", HaveKeyWithValue("topology.csi.ironcore.dev/zone", "foo"))),
 			),
 			HaveField("VolumeContext", SatisfyAll(
 				HaveKeyWithValue("volume_id", "volume-wrong-pool"),

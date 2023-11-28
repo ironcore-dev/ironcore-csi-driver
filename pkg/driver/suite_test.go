@@ -18,14 +18,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onmetal/controller-utils/buildutils"
-	"github.com/onmetal/controller-utils/modutils"
-	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
-	corev1alpha1 "github.com/onmetal/onmetal-api/api/core/v1alpha1"
-	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
-	envtestutils "github.com/onmetal/onmetal-api/utils/envtest"
-	"github.com/onmetal/onmetal-api/utils/envtest/apiserver"
-	"github.com/onmetal/onmetal-csi-driver/cmd/options"
+	"github.com/ironcore-dev/controller-utils/buildutils"
+	"github.com/ironcore-dev/controller-utils/modutils"
+	"github.com/ironcore-dev/ironcore-csi-driver/cmd/options"
+	computev1alpha1 "github.com/ironcore-dev/ironcore/api/compute/v1alpha1"
+	corev1alpha1 "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
+	storagev1alpha1 "github.com/ironcore-dev/ironcore/api/storage/v1alpha1"
+	envtestutils "github.com/ironcore-dev/ironcore/utils/envtest"
+	"github.com/ironcore-dev/ironcore/utils/envtest/apiserver"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -62,7 +62,7 @@ var _ = BeforeSuite(func() {
 	testEnv = &envtest.Environment{}
 	testEnvExt = &envtestutils.EnvironmentExtensions{
 		APIServiceDirectoryPaths: []string{
-			modutils.Dir("github.com/onmetal/onmetal-api", "config", "apiserver", "apiservice", "bases"),
+			modutils.Dir("github.com/ironcore-dev/ironcore", "config", "apiserver", "apiservice", "bases"),
 		},
 		ErrorIfAPIServicePathIsMissing: true,
 	}
@@ -82,7 +82,7 @@ var _ = BeforeSuite(func() {
 	SetClient(k8sClient)
 
 	apiSrv, err := apiserver.New(cfg, apiserver.Options{
-		MainPath:     "github.com/onmetal/onmetal-api/cmd/onmetal-apiserver",
+		MainPath:     "github.com/ironcore-dev/ironcore/cmd/ironcore-apiserver",
 		BuildOptions: []buildutils.BuildOption{buildutils.ModModeMod},
 		ETCDServers:  []string{testEnv.ControlPlane.Etcd.URL.String()},
 		Host:         testEnvExt.APIServiceInstallOptions.LocalServingHost,
@@ -121,7 +121,7 @@ func SetupTest() (*corev1.Namespace, *driver) {
 				},
 			},
 			Spec: corev1.NodeSpec{
-				ProviderID: "onmetal://" + ns.Name + "/node",
+				ProviderID: "ironcore://" + ns.Name + "/node",
 			},
 		}
 		Expect(k8sClient.Create(ctx, node)).To(Succeed())
@@ -153,7 +153,7 @@ func SetupTest() (*corev1.Namespace, *driver) {
 				Name:      "machinepool",
 			},
 			Spec: computev1alpha1.MachinePoolSpec{
-				ProviderID: "onmetal://foo",
+				ProviderID: "ironcore://foo",
 			},
 		}
 		Expect(k8sClient.Create(ctx, machinePool)).To(Succeed())
@@ -167,7 +167,7 @@ func SetupTest() (*corev1.Namespace, *driver) {
 		Expect(k8sClient.Status().Patch(ctx, machinePool, client.MergeFrom(machinePoolBase))).To(Succeed())
 		DeferCleanup(k8sClient.Delete, machinePool)
 
-		//create a test onmetal machine
+		//create a test ironcore machine
 		machine := &computev1alpha1.Machine{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      node.Name,
@@ -185,7 +185,7 @@ func SetupTest() (*corev1.Namespace, *driver) {
 		}
 		Expect(k8sClient.Create(ctx, machine)).To(Succeed())
 
-		//patch onmetal-machine status to running
+		//patch ironcore-machine status to running
 		machineBase := machine.DeepCopy()
 		machine.Status.State = computev1alpha1.MachineStateRunning
 		Expect(k8sClient.Status().Patch(ctx, machine, client.MergeFrom(machineBase))).To(Succeed())

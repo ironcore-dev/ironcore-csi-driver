@@ -24,11 +24,11 @@ import (
 
 	"github.com/dell/gocsi"
 	csictx "github.com/dell/gocsi/context"
-	"github.com/onmetal/controller-utils/configutils"
-	computev1alpha1 "github.com/onmetal/onmetal-api/api/compute/v1alpha1"
-	storagev1alpha1 "github.com/onmetal/onmetal-api/api/storage/v1alpha1"
-	"github.com/onmetal/onmetal-csi-driver/cmd/options"
-	"github.com/onmetal/onmetal-csi-driver/pkg/driver"
+	"github.com/ironcore-dev/controller-utils/configutils"
+	"github.com/ironcore-dev/ironcore-csi-driver/cmd/options"
+	"github.com/ironcore-dev/ironcore-csi-driver/pkg/driver"
+	computev1alpha1 "github.com/ironcore-dev/ironcore/api/compute/v1alpha1"
+	storagev1alpha1 "github.com/ironcore-dev/ironcore/api/storage/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -39,9 +39,9 @@ import (
 var scheme = runtime.NewScheme()
 
 var (
-	targetKubeconfig  string
-	onmetalKubeconfig string
-	driverName        string
+	targetKubeconfig   string
+	ironcoreKubeconfig string
+	driverName         string
 )
 
 func init() {
@@ -50,7 +50,7 @@ func init() {
 	utilruntime.Must(storagev1alpha1.AddToScheme(scheme))
 
 	flag.StringVar(&targetKubeconfig, "target-kubeconfig", "", "Path pointing to the target kubeconfig.")
-	flag.StringVar(&onmetalKubeconfig, "onmetal-kubeconfig", "", "Path pointing to the onmetal kubeconfig.")
+	flag.StringVar(&ironcoreKubeconfig, "ironcore-kubeconfig", "", "Path pointing to the ironcore kubeconfig.")
 	flag.StringVar(&driverName, "driver-name", driver.CSIDriverName, "Override the default driver name.")
 	flag.Parse()
 }
@@ -72,17 +72,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	targetClient, onMetalClient, err := initClients()
+	targetClient, ironCoreClient, err := initClients()
 	if err != nil {
 		klog.Errorf("error getting clients: %v", err)
 		os.Exit(1)
 	}
 
-	drv := driver.NewDriver(config, targetClient, onMetalClient, driverName)
+	drv := driver.NewDriver(config, targetClient, ironCoreClient, driverName)
 	gocsi.Run(
 		ctx,
 		driverName,
-		"onmetal CSI Driver Plugin",
+		"ironcore CSI Driver Plugin",
 		"",
 		&gocsi.StoragePlugin{
 			Controller:  drv,
@@ -115,7 +115,7 @@ func initialConfiguration(ctx context.Context) (*options.Config, error) {
 
 	driverNamespace, ok := csictx.LookupEnv(ctx, "VOLUME_NS")
 	if !ok && mode == "controller" {
-		return nil, fmt.Errorf("no onmetal driver namespace has been provided to driver controller")
+		return nil, fmt.Errorf("no ironcore driver namespace has been provided to driver controller")
 	}
 
 	return &options.Config{
@@ -131,12 +131,12 @@ func initClients() (client.Client, client.Client, error) {
 		return nil, nil, fmt.Errorf("error getting target client %w", err)
 	}
 
-	onMetalClient, err := buildKubernetesClient(onmetalKubeconfig)
+	ironCoreClient, err := buildKubernetesClient(ironcoreKubeconfig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error getting onMetal client %w", err)
+		return nil, nil, fmt.Errorf("error getting ironCore client %w", err)
 	}
 
-	return targetClient, onMetalClient, nil
+	return targetClient, ironCoreClient, nil
 }
 
 func buildKubernetesClient(kubeconfig string) (client.Client, error) {
