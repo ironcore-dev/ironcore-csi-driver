@@ -1,1 +1,1 @@
-Please refer to the [Gardener on Metal code of conduct](https://onmetal.github.io/documentation/contribute/overview/#code-of-conduct).
+Please refer to the [Gardener IronCore code of conduct](https://onmetal.github.io/documentation/contribute/overview/#code-of-conduct).

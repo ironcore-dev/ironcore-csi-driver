@@ -25,7 +25,7 @@ ARG TARGETARCH
 # Build
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg \
-    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GO111MODULE=on go build -ldflags="-s -w" -a -o onmetal-csi-driver cmd/main.go
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GO111MODULE=on go build -ldflags="-s -w" -a -o ironcore-csi-driver cmd/main.go
 
 # Start from Kubernetes Debian base.
 FROM registry.k8s.io/build-image/debian-base:bullseye-v1.4.3 as debian
@@ -46,7 +46,7 @@ ENV LIB_DIR_PREFIX aarch64
 FROM distroless-$TARGETARCH as output-image
 
 # Copy necessary dependencies into distroless base.
-COPY --from=builder /workspace/onmetal-csi-driver /onmetal-csi-driver
+COPY --from=builder /workspace/ironcore-csi-driver /ironcore-csi-driver
 COPY --from=debian /etc/mke2fs.conf /etc/mke2fs.conf
 COPY --from=debian /lib/udev/scsi_id /lib/udev_containerized/scsi_id
 COPY --from=debian /bin/mount /bin/mount
@@ -113,4 +113,4 @@ RUN /print-missing-deps.sh
 # Final build stage, create the real Docker image with ENTRYPOINT
 FROM output-image
 
-ENTRYPOINT ["/onmetal-csi-driver"]
+ENTRYPOINT ["/ironcore-csi-driver"]

@@ -1,5 +1,5 @@
 # Image URL to use all building/pushing image targets
-IMG ?= onmetal-csi-driver:latest
+IMG ?= ironcore-csi-driver:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.26.0
 
@@ -25,14 +25,14 @@ GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 GOMOD=$(GOCMD) mod
 
-BINARY_NAME=onmetal-csi-driver
-DOCKER_IMAGE=onmetal-csi-driver
+BINARY_NAME=ironcore-csi-driver
+DOCKER_IMAGE=ironcore-csi-driver
 
 BUILDARGS ?=
 
 # For Development Build #################################################################
 # Docker.io username and tag
-DOCKER_USER=onmetal
+DOCKER_USER=ironcore
 DOCKER_IMAGE_TAG=latest
 # For Development Build #################################################################
 
@@ -116,7 +116,7 @@ buildlocal: build docker-build clean
 all: build docker-build docker-push clean
 
 deploy:
-	cd config/manager && $(KUSTOMIZE) edit set image onmetal-csi-driver=${IMG}
+	cd config/manager && $(KUSTOMIZE) edit set image ironcore-csi-driver=${IMG}
 	kubectl apply -k config/default
 
 undeploy:
@@ -134,11 +134,11 @@ test: generate-mocks fmt vet envtest ## Run tests.
 
 .PHONY: add-license
 add-license: addlicense ## Add license headers to all go files.
-	find . -name '*.go' -exec $(ADDLICENSE) -c 'OnMetal authors' {} +
+	find . -name '*.go' -exec $(ADDLICENSE) -c 'IronCore authors' {} +
 
 .PHONY: check-license
 check-license: addlicense ## Check that every file has a license header present.
-	find . -name '*.go' -exec $(ADDLICENSE) -check -c 'OnMetal authors' {} +
+	find . -name '*.go' -exec $(ADDLICENSE) -check -c 'IronCore authors' {} +
 
 .PHONY: check
 check: add-license fmt lint test # Generate manifests, code, lint, add licenses, test

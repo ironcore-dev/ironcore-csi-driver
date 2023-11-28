@@ -2,7 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
 - ../manager
-namespace: onmetal-csi
+namespace: ironcore-csi
 patchesStrategicMerge:
 - controller_setenv_replicas.yaml
 - node_setenv.yaml

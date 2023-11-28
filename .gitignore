@@ -18,7 +18,7 @@ bin/
 .vscode/*
 
 # Build artifacts
-onmetal-csi-driver
+ironcore-csi-driver
 
 /.idea/
 /*.iml

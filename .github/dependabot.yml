@@ -7,18 +7,18 @@ updates:
       interval: "daily"
     open-pull-requests-limit: 10
     reviewers:
-      - "onmetal/csi-maintainers"
+      - "ironcore-dev/csi-maintainers"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
     reviewers:
-      - "onmetal/csi-maintainers"
+      - "ironcore-dev/csi-maintainers"
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
     reviewers:
-      - "onmetal/csi-maintainers"
+      - "ironcore-dev/csi-maintainers"

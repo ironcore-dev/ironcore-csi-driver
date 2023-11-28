@@ -32,7 +32,7 @@ jobs:
         id: meta
         with:
           images: |
-            ghcr.io/${{ github.repository_owner }}/onmetal-csi-driver
+            ghcr.io/${{ github.repository_owner }}/ironcore-csi-driver
           tags: |
             type=semver,pattern={{version}}
             type=schedule

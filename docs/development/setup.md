@@ -1,1 +1,1 @@
-Please follow the instructions mentioned in [docs/deployment/deploy_manually.md](https://github.com/onmetal/onmetal-csi-driver/blob/main/docs/deployment/deploy_manually.md)
+Please follow the instructions mentioned in [docs/deployment/deploy_manually.md](https://github.com/ironcore-dev/ironcore-csi-driver/blob/main/docs/deployment/deploy_manually.md)

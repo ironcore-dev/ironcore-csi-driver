@@ -1,7 +1,7 @@
 kind: StatefulSet
 apiVersion: apps/v1
 metadata:
-  name: onmetal-csi-driver
+  name: ironcore-csi-driver
 spec:
   replicas: 1
   template:
@@ -13,8 +13,8 @@ spec:
             - name: APP_LOG_LEVEL
               value: "info"
             - name: CSI_DRIVER_NAME
-              value: "onmetal-csi-driver"
+              value: "ironcore-csi-driver"
             - name: CSI_DRIVER_VERSION
               value: "1.0.0"
             - name: PARENT_KUBE_CONFIG
-              value: "/etc/csi.onmetal.de/kubeconfig"
+              value: "/etc/csi.ironcore.dev/kubeconfig"
