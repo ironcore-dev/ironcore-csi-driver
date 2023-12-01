@@ -14,8 +14,6 @@ Persistent Volumes (PVs). The driver supports dynamic provisioning, mounting, an
 
 ## Table of Contents
 
-## Table of Contents
-
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Configuration](#configuration)
