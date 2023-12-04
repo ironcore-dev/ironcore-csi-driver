@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/container-storage-interface/spec v1.9.0
-	github.com/dell/gocsi v1.8.0
+	github.com/dell/gocsi v1.9.0
 	github.com/ironcore-dev/controller-utils v0.9.0
 	github.com/ironcore-dev/ironcore v0.1.2-0.20231120151107-b5c3fa09890e
 	github.com/onsi/ginkgo/v2 v2.13.2
