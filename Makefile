@@ -1,7 +1,7 @@
 # Image URL to use all building/pushing image targets
 IMG ?= ironcore-csi-driver:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.26.0
+ENVTEST_K8S_VERSION = 1.28.0
 
 ## Tool Binaries
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
@@ -128,6 +128,10 @@ check-license: addlicense ## Check that every file has a license header present.
 
 .PHONY: check
 check: add-license fmt lint test # Generate manifests, code, lint, add licenses, test
+
+.PHONY: clean-local-bin
+clean-local-bin:
+	rm -rf $(LOCALBIN)/*
 
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
