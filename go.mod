@@ -9,7 +9,7 @@ require (
 	github.com/ironcore-dev/ironcore v0.1.2-0.20231120151107-b5c3fa09890e
 	github.com/onsi/ginkgo/v2 v2.13.2
 	github.com/onsi/gomega v1.30.0
-	go.uber.org/mock v0.3.0
+	go.uber.org/mock v0.4.0
 	golang.org/x/exp v0.0.0-20221212164502-fae10dda9338
 	golang.org/x/sys v0.15.0
 	google.golang.org/grpc v1.60.1
