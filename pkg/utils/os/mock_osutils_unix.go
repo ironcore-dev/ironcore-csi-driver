@@ -9,6 +9,7 @@
 //
 //	mockgen -copyright_file ../../../hack/license-header.txt -package os -destination=mock_osutils_unix.go -source osutils_unix.go
 //
+
 // Package os is a generated GoMock package.
 package os
 

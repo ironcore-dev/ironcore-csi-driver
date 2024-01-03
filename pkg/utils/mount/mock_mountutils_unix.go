@@ -9,6 +9,7 @@
 //
 //	mockgen -copyright_file ../../../hack/license-header.txt -package mount -destination=mock_mountutils_unix.go -source mountutils_unix.go MountWrapper,NodeMounter,Resizefs
 //
+
 // Package mount is a generated GoMock package.
 package mount
 
