@@ -22,7 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -454,7 +454,7 @@ func validateDeviceName(volume *storagev1alpha1.Volume, machine *computev1alpha1
 	if volume.Status.Access != nil && volume.Status.Access.VolumeAttributes != nil {
 		handle := volume.Status.Access.Handle
 		for _, va := range machine.Spec.Volumes {
-			device := pointer.StringDeref(va.Device, "")
+			device := ptr.Deref[string](va.Device, "")
 			if va.Name == vaName && device != "" {
 				klog.InfoS("Found device in machine status to use for volume", "Device", device, "Volume", client.ObjectKeyFromObject(volume))
 				return "/dev/disk/by-id/virtio-" + device + "-" + handle, nil
