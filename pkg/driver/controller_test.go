@@ -21,7 +21,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	. "sigs.k8s.io/controller-runtime/pkg/envtest/komega"
 )
@@ -461,7 +461,7 @@ var _ = Describe("Controller", func() {
 				MatchFields(IgnoreMissing|IgnoreExtras, Fields{
 					"Name":   Equal("volume-attachment"),
 					"State":  Equal(computev1alpha1.VolumeStateAttached),
-					"Device": Equal(pointer.String("oda")),
+					"Device": Equal(ptr.To("oda")),
 					// TODO: validate VolumeSource
 				}),
 			)),
