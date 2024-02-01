@@ -33,8 +33,8 @@ var (
 
 func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	klog.InfoS("Staging volume on node ", "Volume", req.GetVolumeId(), "StagingTargetPath", req.GetStagingTargetPath())
-	fstype := req.GetVolumeContext()["fstype"]
-	devicePath := req.PublishContext["device_name"]
+	fstype := req.GetVolumeContext()[ParameterFSType]
+	devicePath := req.PublishContext[ParameterDeviceName]
 
 	klog.InfoS("Check if the device path exists")
 	if _, err := d.os.Stat(devicePath); err != nil {
@@ -119,7 +119,7 @@ func (d *driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 		}
 	}
 
-	fstype := req.GetVolumeContext()["fstype"]
+	fstype := req.GetVolumeContext()[ParameterFSType]
 	if len(fstype) == 0 {
 		fstype = FSTypeExt4
 	}
