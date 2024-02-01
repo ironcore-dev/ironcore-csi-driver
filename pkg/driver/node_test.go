@@ -48,7 +48,7 @@ var _ = Describe("Node", func() {
 		volumeId = "test-volume-id"
 		devicePath = "/dev/sdb"
 		targetPath = "/target/path"
-		fstype = "ext4"
+		fstype = FSTypeExt4
 	})
 
 	AfterEach(func() {
@@ -66,8 +66,8 @@ var _ = Describe("Node", func() {
 			req = &csi.NodeStageVolumeRequest{
 				VolumeId:          volumeId,
 				StagingTargetPath: targetPath,
-				VolumeContext:     map[string]string{"fstype": fstype, "readOnly": "false"},
-				PublishContext:    map[string]string{"device_name": devicePath},
+				VolumeContext:     map[string]string{ParameterFSType: fstype, "readOnly": "false"},
+				PublishContext:    map[string]string{ParameterDeviceName: devicePath},
 				VolumeCapability: &csi.VolumeCapability{
 					AccessMode: &csi.VolumeCapability_AccessMode{
 						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
@@ -154,11 +154,11 @@ var _ = Describe("Node", func() {
 					},
 					AccessType: &csi.VolumeCapability_Mount{
 						Mount: &csi.VolumeCapability_MountVolume{
-							FsType: "ext4",
+							FsType: FSTypeExt4,
 						},
 					},
 				},
-				PublishContext: map[string]string{"device_name": devicePath},
+				PublishContext: map[string]string{ParameterDeviceName: devicePath},
 			}
 		})
 

@@ -105,8 +105,8 @@ var _ = Describe("Controller", func() {
 				},
 			},
 			Parameters: map[string]string{
-				"type":   volumeClassExpandOnly.Name,
-				"fstype": "ext4",
+				ParameterType:   volumeClassExpandOnly.Name,
+				ParameterFSType: FSTypeExt4,
 			},
 			AccessibilityRequirements: &csi.TopologyRequirement{
 				Requisite: []*csi.Topology{
@@ -133,11 +133,11 @@ var _ = Describe("Controller", func() {
 				HaveField("Segments", HaveKeyWithValue("topology.csi.ironcore.dev/zone", "volumepool"))),
 			),
 			HaveField("VolumeContext", SatisfyAll(
-				HaveKeyWithValue("volume_id", "volume"),
-				HaveKeyWithValue("volume_name", "volume"),
-				HaveKeyWithValue("volume_pool", "volumepool"),
-				HaveKeyWithValue("fstype", "ext4"),
-				HaveKeyWithValue("creation_time", ContainSubstring(strconv.Itoa(time.Now().Year()))))),
+				HaveKeyWithValue(ParameterVolumeID, "volume"),
+				HaveKeyWithValue(ParameterVolumeName, "volume"),
+				HaveKeyWithValue(ParameterVolumePool, "volumepool"),
+				HaveKeyWithValue(ParameterFSType, FSTypeExt4),
+				HaveKeyWithValue(ParameterCreationTime, ContainSubstring(strconv.Itoa(time.Now().Year()))))),
 		))
 
 		wg.Wait()
@@ -184,8 +184,8 @@ var _ = Describe("Controller", func() {
 				},
 			},
 			Parameters: map[string]string{
-				"type":   "slow",
-				"fstype": "ext4",
+				ParameterType:   "slow",
+				ParameterFSType: FSTypeExt4,
 			},
 			AccessibilityRequirements: &csi.TopologyRequirement{
 				Requisite: []*csi.Topology{
@@ -212,11 +212,11 @@ var _ = Describe("Controller", func() {
 				HaveField("Segments", HaveKeyWithValue("topology.csi.ironcore.dev/zone", "foo"))),
 			),
 			HaveField("VolumeContext", SatisfyAll(
-				HaveKeyWithValue("volume_id", "volume-wrong-pool"),
-				HaveKeyWithValue("volume_name", "volume-wrong-pool"),
-				HaveKeyWithValue("volume_pool", ""),
-				HaveKeyWithValue("fstype", "ext4"),
-				HaveKeyWithValue("creation_time", ContainSubstring(strconv.Itoa(time.Now().Year()))))),
+				HaveKeyWithValue(ParameterVolumeID, "volume-wrong-pool"),
+				HaveKeyWithValue(ParameterVolumeName, "volume-wrong-pool"),
+				HaveKeyWithValue(ParameterVolumePool, ""),
+				HaveKeyWithValue(ParameterFSType, FSTypeExt4),
+				HaveKeyWithValue(ParameterCreationTime, ContainSubstring(strconv.Itoa(time.Now().Year()))))),
 		))
 
 		wg.Wait()
@@ -263,8 +263,8 @@ var _ = Describe("Controller", func() {
 				},
 			},
 			Parameters: map[string]string{
-				"type":   "slow",
-				"fstype": "ext4",
+				ParameterType:   "slow",
+				ParameterFSType: FSTypeExt4,
 			},
 			AccessibilityRequirements: &csi.TopologyRequirement{
 				Requisite: []*csi.Topology{
@@ -332,7 +332,7 @@ var _ = Describe("Controller", func() {
 			},
 			VolumeCapability: &csi.VolumeCapability{
 				AccessType: &csi.VolumeCapability_Mount{Mount: &csi.VolumeCapability_MountVolume{
-					FsType: "ext4",
+					FsType: FSTypeExt4,
 				}},
 				AccessMode: &csi.VolumeCapability_AccessMode{
 					Mode: 1,
@@ -397,8 +397,8 @@ var _ = Describe("Controller", func() {
 				},
 			},
 			Parameters: map[string]string{
-				"type":   volumeClass.Name,
-				"fstype": "ext4",
+				ParameterType:   volumeClass.Name,
+				ParameterFSType: FSTypeExt4,
 			},
 			AccessibilityRequirements: &csi.TopologyRequirement{
 				Requisite: []*csi.Topology{
