@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -35,6 +36,16 @@ func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 	fstype := req.GetVolumeContext()["fstype"]
 	devicePath := req.PublishContext["device_name"]
 
+	klog.InfoS("Check if the device path exists")
+	if _, err := d.os.Stat(devicePath); err != nil {
+		if os.IsNotExist(err) {
+			// We will requeue here since the device path is not ready yet.
+			return nil, status.Errorf(codes.Unavailable, "Device path %s does not exist: %v", devicePath, err)
+		} else {
+			return nil, status.Errorf(codes.Internal, "Failed to determine wether the device path %s exists: %v", devicePath, err)
+		}
+	}
+
 	readOnly := false
 	if req.GetVolumeContext()["readOnly"] == "true" {
 		readOnly = true
@@ -45,7 +56,7 @@ func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 	klog.InfoS("Validate mount point", "MountPoint", targetPath)
 	notMnt, err := d.mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil && !d.os.IsNotExist(err) {
-		return nil, status.Errorf(codes.Internal, "Failed to verify mount point %s: %v", devicePath, err)
+		return nil, status.Errorf(codes.Internal, "Failed to verify mount point %s: %v", targetPath, err)
 	}
 	klog.InfoS("Check if volume is already mounted")
 	if !notMnt {

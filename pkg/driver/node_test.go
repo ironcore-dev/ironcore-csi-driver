@@ -79,6 +79,8 @@ var _ = Describe("Node", func() {
 					},
 				},
 			}
+
+			mockOS.EXPECT().Stat(devicePath).Return(nil, nil)
 		})
 
 		It("should fail if the volume is already mounted", func(ctx SpecContext) {
@@ -107,7 +109,6 @@ var _ = Describe("Node", func() {
 			statusErr, ok := status.FromError(err)
 			Expect(ok).To(BeTrue())
 			Expect(statusErr.Code()).To(Equal(codes.Internal))
-
 		})
 
 		It("should fail if the mount operation fails", func(ctx SpecContext) {
@@ -129,7 +130,6 @@ var _ = Describe("Node", func() {
 			_, err := drv.NodeStageVolume(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
 		})
-
 	})
 
 	Describe("NodePublishVolume", func() {
@@ -598,7 +598,6 @@ var _ = Describe("Node", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(SatisfyAll(
 				HaveField("Usage", ContainElements([]*csi.VolumeUsage{
-
 					{
 						Available: 0,
 						Total:     0,
@@ -615,6 +614,5 @@ var _ = Describe("Node", func() {
 				)),
 			))
 		})
-
 	})
 })
