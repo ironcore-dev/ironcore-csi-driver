@@ -7,7 +7,7 @@ require (
 	github.com/dell/gocsi v1.10.0
 	github.com/ironcore-dev/controller-utils v0.9.2
 	github.com/ironcore-dev/ironcore v0.1.2-0.20240115125135-bd9fe9b4a160
-	github.com/onsi/ginkgo/v2 v2.15.0
+	github.com/onsi/ginkgo/v2 v2.16.0
 	github.com/onsi/gomega v1.31.1
 	go.uber.org/mock v0.4.0
 	golang.org/x/exp v0.0.0-20221212164502-fae10dda9338
@@ -86,7 +86,7 @@ require (
 	golang.org/x/term v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.16.1 // indirect
+	golang.org/x/tools v0.17.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20240123012728-ef4313101c80 // indirect
