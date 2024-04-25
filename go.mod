@@ -1,6 +1,6 @@
 module github.com/ironcore-dev/ironcore-csi-driver
 
-go 1.22
+go 1.22.2
 
 require (
 	github.com/container-storage-interface/spec v1.9.0
@@ -13,11 +13,11 @@ require (
 	golang.org/x/exp v0.0.0-20221212164502-fae10dda9338
 	golang.org/x/sys v0.19.0
 	google.golang.org/grpc v1.63.2
-	k8s.io/api v0.29.3
-	k8s.io/apimachinery v0.29.3
-	k8s.io/client-go v0.29.3
+	k8s.io/api v0.29.4
+	k8s.io/apimachinery v0.29.4
+	k8s.io/client-go v0.29.4
 	k8s.io/klog/v2 v2.120.1
-	k8s.io/mount-utils v0.29.3
+	k8s.io/mount-utils v0.29.4
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
 	sigs.k8s.io/controller-runtime v0.17.3
 )
