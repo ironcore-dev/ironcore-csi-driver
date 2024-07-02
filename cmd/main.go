@@ -7,6 +7,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,6 +19,7 @@ import (
 	"github.com/ironcore-dev/ironcore-csi-driver/pkg/driver"
 	computev1alpha1 "github.com/ironcore-dev/ironcore/api/compute/v1alpha1"
 	storagev1alpha1 "github.com/ironcore-dev/ironcore/api/storage/v1alpha1"
+	"github.com/ironcore-dev/ironcore/broker/common"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -107,6 +109,15 @@ func initialConfiguration(ctx context.Context) (*options.Config, error) {
 		return nil, fmt.Errorf("no ironcore driver namespace has been provided to driver controller")
 	}
 
+	csiEndpoint, ok := csictx.LookupEnv(ctx, "CSI_ENDPOINT")
+	if !ok {
+		return nil, fmt.Errorf("no CSI endpoint has been provided")
+	}
+
+	if err := removeUnixSocketIfExists(csiEndpoint); err != nil {
+		return nil, fmt.Errorf("failed to remove existing socket: %w", err)
+	}
+
 	return &options.Config{
 		NodeID:          nodeName,
 		NodeName:        nodeName,
@@ -141,4 +152,20 @@ func buildKubernetesClient(kubeconfig string) (client.Client, error) {
 	}
 
 	return c, nil
+}
+
+func removeUnixSocketIfExists(endpoint string) error {
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return fmt.Errorf("could not parse CSI endpoint: %w", err)
+	}
+
+	if u.Scheme == "unix" {
+		err = common.CleanupSocketIfExists(u.Path)
+		if err != nil {
+			return fmt.Errorf("error cleaning up socket: %w", err)
+		}
+	}
+
+	return nil
 }
