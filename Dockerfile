@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.22.5 as builder
+FROM --platform=$BUILDPLATFORM golang:1.22.6 as builder
 ARG DEBIAN_FRONTEND=noninteractive
 ARG GOARCH=''
 
