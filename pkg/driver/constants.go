@@ -33,6 +33,8 @@ const (
 	ParameterNodeID = "node_id"
 	// ParameterDeviceName is the device name parameter
 	ParameterDeviceName = "device_name"
+	// ParameterMkfsOptions is the name of the parameter used to specify the options for the mkfs command
+	ParameterMkfsOptions = "mkfs_options"
 
 	CSIDriverName    = "csi.ironcore.dev"
 	topologyKey      = "topology." + CSIDriverName + "/zone"

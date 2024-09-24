@@ -57,6 +57,11 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		fstype = FSTypeExt4
 	}
 
+	mkfsOptions, ok := params[ParameterMkfsOptions]
+	if !ok {
+		mkfsOptions = ""
+	}
+
 	volumeClass, ok := params[ParameterType]
 	if !ok {
 		return nil, status.Errorf(codes.Internal, "Required parameter %s is missing", ParameterType)
@@ -136,6 +141,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 				ParameterVolumePool:   volumePoolName,
 				ParameterCreationTime: time.Unix(volume.CreationTimestamp.Unix(), 0).String(),
 				ParameterFSType:       fstype,
+				ParameterMkfsOptions:  mkfsOptions,
 			},
 			ContentSource:      req.GetVolumeContentSource(),
 			AccessibleTopology: accessibleTopology,
