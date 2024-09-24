@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.23.0 as builder
+FROM --platform=$BUILDPLATFORM golang:1.23.0 AS builder
 ARG DEBIAN_FRONTEND=noninteractive
 ARG GOARCH=''
 
@@ -28,12 +28,12 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GO111MODULE=on go build -ldflags="-s -w" -a -o ironcore-csi-driver cmd/main.go
 
 # Start from Kubernetes Debian base.
-FROM registry.k8s.io/build-image/debian-base:bullseye-v1.4.3 as debian
+FROM registry.k8s.io/build-image/debian-base:bullseye-v1.4.3 AS debian
 # Install necessary dependencies
 RUN clean-install util-linux e2fsprogs mount ca-certificates udev xfsprogs xxd bash
 
 # Since we're leveraging apt to pull in dependencies, we use `gcr.io/distroless/base` because it includes glibc.
-FROM gcr.io/distroless/base-debian11 as distroless-base
+FROM gcr.io/distroless/base-debian11 AS distroless-base
 
 # The distroless amd64 image has a target triplet of x86_64
 FROM distroless-base AS distroless-amd64
@@ -43,7 +43,7 @@ ENV LIB_DIR_PREFIX x86_64
 FROM distroless-base AS distroless-arm64
 ENV LIB_DIR_PREFIX aarch64
 
-FROM distroless-$TARGETARCH as output-image
+FROM distroless-$TARGETARCH AS output-image
 
 # Copy necessary dependencies into distroless base.
 COPY --from=builder /workspace/ironcore-csi-driver /ironcore-csi-driver
@@ -103,7 +103,7 @@ COPY --from=debian /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libblkid.so.1 \
 
 # Build stage used for validation of the output-image
 # See validate-container-linux-* targets in Makefile
-FROM output-image as validation-image
+FROM output-image AS validation-image
 
 COPY --from=debian /usr/bin/ldd /usr/bin/find /usr/bin/xargs /usr/bin/
 COPY --from=builder /workspace/hack/print-missing-deps.sh /print-missing-deps.sh
