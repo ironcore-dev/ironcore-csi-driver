@@ -1,7 +1,7 @@
 # Image URL to use all building/pushing image targets
 IMG ?= ironcore-csi-driver:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.28.0
+ENVTEST_K8S_VERSION = 1.29.0
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -27,13 +27,6 @@ all: check
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-# Go parameters
-GOCMD=go
-GOBUILD=$(GOCMD) build
-GOCLEAN=$(GOCMD) clean
-GOTEST=$(GOCMD) test
-GOMOD=$(GOCMD) mod
-
 BINARY_NAME=ironcore-csi-driver
 DOCKER_IMAGE=ironcore-csi-driver
 
@@ -45,52 +38,25 @@ DOCKER_USER=ironcore
 DOCKER_IMAGE_TAG=latest
 # For Development Build #################################################################
 
-
-# For Production Build ##################################################################
-ifeq ($(env),prod)
-	# For Production
-	# Do not change following values unless change in production version or username
-	#For docker.io
-	DOCKER_USER=your_docker_user_name
-	DOCKER_IMAGE_TAG=1.1.0
-endif
-# For Production Build ##################################################################
-
 clean:
-	$(GOCLEAN)
 	rm -f $(BINARY_NAME)
 
 build:
-	$(GOBUILD) -o $(BINARY_NAME) -v  ./cmd/
+	go build -o $(BINARY_NAME) -v  ./cmd/
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint on the code.
 	$(GOLANGCI_LINT) run ./...
 
-run:
-	$(GOBUILD) -o $(BINARY_NAME) -v ./...
-	./$(BINARY_NAME)
-
-modverify:
-	$(GOMOD) verify
-
-modtidy:
-	$(GOMOD) tidy
-
-moddownload:
-	$(GOMOD) download
-
 # Cross compilation
 build-linux:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BINARY_NAME) -v ./cmd/
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $(BINARY_NAME) -v ./cmd/
 
 docker-build:
 	docker build $(BUILDARGS) -t ${IMG} -f Dockerfile .
 
 docker-push:
 	docker push ${IMG}
-
-buildlocal: build docker-build clean
 
 deploy:
 	cd config/manager && $(KUSTOMIZE) edit set image ironcore-csi-driver=${IMG}
@@ -107,7 +73,7 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 test: generate-mocks fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
 
 .PHONY: generate-mocks
 generate-mocks: mockgen ## Generate code (mocks etc.).
@@ -148,8 +114,8 @@ GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 KUSTOMIZE_VERSION ?= v5.0.0
 ADDLICENSE_VERSION ?= v1.1.1
 MOCKGEN_VERSION ?= v0.4.0
-GOIMPORTS_VERSION ?= v0.20.0
-GOLANGCI_LINT_VERSION ?= v1.57.2
+GOIMPORTS_VERSION ?= v0.25.0
+GOLANGCI_LINT_VERSION ?= v1.61.0
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize

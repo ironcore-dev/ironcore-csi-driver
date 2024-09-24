@@ -228,7 +228,7 @@ func (d *driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 	}
 	deviceName, err := validateDeviceName(volume, machine, volumeAttachmentName)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal, "Failed to validate device name for volume attachment %s: %v", volumeAttachmentName, err)
 	}
 
 	klog.InfoS("Published volume on node", "Volume", req.GetVolumeId(), "Node", req.GetNodeId())
