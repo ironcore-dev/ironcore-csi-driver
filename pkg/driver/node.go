@@ -44,15 +44,9 @@ func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 			// We will requeue here since the device path is not ready yet.
 			return nil, status.Errorf(codes.Unavailable, "Device path %s does not exist: %v", devicePath, err)
 		} else {
-			return nil, status.Errorf(codes.Internal, "Failed to determine wether the device path %s exists: %v", devicePath, err)
+			return nil, status.Errorf(codes.Internal, "Failed to determine whether the device path %s exists: %v", devicePath, err)
 		}
 	}
-
-	readOnly := false
-	if volumeContext["readOnly"] == "true" {
-		readOnly = true
-	}
-	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
 
 	targetPath := req.GetStagingTargetPath()
 	klog.InfoS("Validate mount point", "MountPoint", targetPath)
@@ -70,8 +64,13 @@ func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 		return nil, status.Errorf(codes.Internal, "Failed to create target directory %s for volume %s: %v", targetPath, req.GetVolumeId(), err)
 	}
 
+	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
+
+	readOnly, ok := volumeContext[ParameterReadOnly]
+	readOnlyFlag := ok && readOnly == "true"
+
 	var options []string
-	if readOnly {
+	if readOnlyFlag {
 		options = append(options, "ro")
 	} else {
 		options = append(options, "rw")
@@ -79,8 +78,8 @@ func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 	options = append(options, mountOptions...)
 
 	var formatOptions []string
-	mkfsOptions, exists := volumeContext[ParameterMkfsOptions]
-	if exists && mkfsOptions != "" {
+	mkfsOptions, ok := volumeContext[ParameterMkfsOptions]
+	if ok && mkfsOptions != "" {
 		formatOptions = append(formatOptions, strings.Split(mkfsOptions, " ")...)
 	}
 

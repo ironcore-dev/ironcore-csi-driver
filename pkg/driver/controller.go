@@ -467,7 +467,7 @@ func validateDeviceName(volume *storagev1alpha1.Volume, machine *computev1alpha1
 			}
 		}
 	}
-	return "", fmt.Errorf("failed to get device name of volume %s name from machine %s", client.ObjectKeyFromObject(volume), client.ObjectKeyFromObject(machine))
+	return "", fmt.Errorf("failed to get device name of volume %s from machine %s", client.ObjectKeyFromObject(volume), client.ObjectKeyFromObject(machine))
 }
 
 func isValidVolumeCapabilities(volCaps []*csi.VolumeCapability) bool {
