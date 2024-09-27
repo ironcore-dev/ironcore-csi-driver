@@ -457,7 +457,13 @@ func validateDeviceName(volume *storagev1alpha1.Volume, machine *computev1alpha1
 			device := ptr.Deref[string](va.Device, "")
 			if va.Name == vaName && device != "" {
 				klog.InfoS("Found device in machine status to use for volume", "Device", device, "Volume", client.ObjectKeyFromObject(volume))
-				return "/dev/disk/by-id/virtio-" + device + "-" + handle, nil
+				deviceName := device + "-" + handle
+				// if deviceName is longer then 20 chars truncate it
+				// see https://github.com/torvalds/linux/blob/v6.6/include/uapi/linux/virtio_blk.h#L58
+				if len(deviceName) > 20 {
+					deviceName = deviceName[:20]
+				}
+				return "/dev/disk/by-id/virtio-" + deviceName, nil
 			}
 		}
 	}
