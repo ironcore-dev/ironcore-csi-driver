@@ -18,7 +18,7 @@ import (
 // SafeFormatAndMount). Defined it explicitly so that it can be mocked.
 type MountWrapper interface {
 	k8smountutils.Interface
-	FormatAndMount(source string, target string, fstype string, options []string) error
+	FormatAndMountSensitiveWithFormatOptions(source string, target string, fstype string, options []string, sensitiveOptions []string, formatOptions []string) error
 	NewResizeFs() (Resizefs, error)
 }
 

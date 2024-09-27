@@ -53,7 +53,7 @@ build-linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $(BINARY_NAME) -v ./cmd/
 
 docker-build:
-	docker build $(BUILDARGS) -t ${IMG} -f Dockerfile .
+	docker build $(BUILDARGS) -t ${IMG} -f Dockerfile . --load
 
 docker-push:
 	docker push ${IMG}

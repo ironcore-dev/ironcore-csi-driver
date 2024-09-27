@@ -114,7 +114,7 @@ var _ = Describe("Node", func() {
 		It("should fail if the mount operation fails", func(ctx SpecContext) {
 			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(true, nil)
 			mockOS.EXPECT().MkdirAll(targetPath, os.FileMode(0750)).Return(nil)
-			mockMounter.EXPECT().FormatAndMount(devicePath, targetPath, fstype, mountOptions).Return(errors.New("failed to mount volume"))
+			mockMounter.EXPECT().FormatAndMountSensitiveWithFormatOptions(devicePath, targetPath, fstype, mountOptions, nil, nil).Return(errors.New("failed to mount volume"))
 			_, err := drv.NodeStageVolume(ctx, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Failed to mount volume"))
@@ -126,7 +126,7 @@ var _ = Describe("Node", func() {
 		It("should stage the volume", func(ctx SpecContext) {
 			mockMounter.EXPECT().IsLikelyNotMountPoint(targetPath).Return(true, nil)
 			mockOS.EXPECT().MkdirAll(targetPath, os.FileMode(0750)).Return(nil)
-			mockMounter.EXPECT().FormatAndMount(devicePath, targetPath, fstype, mountOptions).Return(nil)
+			mockMounter.EXPECT().FormatAndMountSensitiveWithFormatOptions(devicePath, targetPath, fstype, mountOptions, nil, nil).Return(nil)
 			_, err := drv.NodeStageVolume(ctx, req)
 			Expect(err).NotTo(HaveOccurred())
 		})

@@ -58,18 +58,18 @@ func (mr *MockMountWrapperMockRecorder) CanSafelySkipMountPointCheck() *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CanSafelySkipMountPointCheck", reflect.TypeOf((*MockMountWrapper)(nil).CanSafelySkipMountPointCheck))
 }
 
-// FormatAndMount mocks base method.
-func (m *MockMountWrapper) FormatAndMount(source, target, fstype string, options []string) error {
+// FormatAndMountSensitiveWithFormatOptions mocks base method.
+func (m *MockMountWrapper) FormatAndMountSensitiveWithFormatOptions(source, target, fstype string, options, sensitiveOptions, formatOptions []string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FormatAndMount", source, target, fstype, options)
+	ret := m.ctrl.Call(m, "FormatAndMountSensitiveWithFormatOptions", source, target, fstype, options, sensitiveOptions, formatOptions)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// FormatAndMount indicates an expected call of FormatAndMount.
-func (mr *MockMountWrapperMockRecorder) FormatAndMount(source, target, fstype, options any) *gomock.Call {
+// FormatAndMountSensitiveWithFormatOptions indicates an expected call of FormatAndMountSensitiveWithFormatOptions.
+func (mr *MockMountWrapperMockRecorder) FormatAndMountSensitiveWithFormatOptions(source, target, fstype, options, sensitiveOptions, formatOptions any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FormatAndMount", reflect.TypeOf((*MockMountWrapper)(nil).FormatAndMount), source, target, fstype, options)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FormatAndMountSensitiveWithFormatOptions", reflect.TypeOf((*MockMountWrapper)(nil).FormatAndMountSensitiveWithFormatOptions), source, target, fstype, options, sensitiveOptions, formatOptions)
 }
 
 // GetMountRefs mocks base method.
