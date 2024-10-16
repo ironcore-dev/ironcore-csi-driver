@@ -5,8 +5,8 @@ go 1.23.0
 require (
 	github.com/container-storage-interface/spec v1.9.0
 	github.com/dell/gocsi v1.11.0
-	github.com/ironcore-dev/controller-utils v0.9.3
-	github.com/ironcore-dev/ironcore v0.1.2
+	github.com/ironcore-dev/controller-utils v0.9.4
+	github.com/ironcore-dev/ironcore v0.2.0
 	github.com/onsi/ginkgo/v2 v2.20.2
 	github.com/onsi/gomega v1.34.2
 	go.uber.org/mock v0.4.0
@@ -30,7 +30,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.8.0 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
@@ -40,7 +40,7 @@ require (
 	github.com/go-logr/zapr v1.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
-	github.com/go-openapi/swag v0.22.3 // indirect
+	github.com/go-openapi/swag v0.22.4 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -94,9 +94,9 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.29.2 // indirect
-	k8s.io/apiserver v0.29.4 // indirect
-	k8s.io/component-base v0.29.4 // indirect
+	k8s.io/apiextensions-apiserver v0.29.7 // indirect
+	k8s.io/apiserver v0.29.7 // indirect
+	k8s.io/component-base v0.29.7 // indirect
 	k8s.io/kube-aggregator v0.29.4 // indirect
 	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.28.0 // indirect
