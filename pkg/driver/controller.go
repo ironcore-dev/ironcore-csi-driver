@@ -57,6 +57,11 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		fstype = FSTypeExt4
 	}
 
+	mkfsOptions, ok := params[ParameterMkfsOptions]
+	if !ok {
+		mkfsOptions = ""
+	}
+
 	volumeClass, ok := params[ParameterType]
 	if !ok {
 		return nil, status.Errorf(codes.Internal, "Required parameter %s is missing", ParameterType)
@@ -136,6 +141,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 				ParameterVolumePool:   volumePoolName,
 				ParameterCreationTime: time.Unix(volume.CreationTimestamp.Unix(), 0).String(),
 				ParameterFSType:       fstype,
+				ParameterMkfsOptions:  mkfsOptions,
 			},
 			ContentSource:      req.GetVolumeContentSource(),
 			AccessibleTopology: accessibleTopology,
@@ -467,7 +473,7 @@ func validateDeviceName(volume *storagev1alpha1.Volume, machine *computev1alpha1
 			}
 		}
 	}
-	return "", fmt.Errorf("failed to get device name of volume %s name from machine %s", client.ObjectKeyFromObject(volume), client.ObjectKeyFromObject(machine))
+	return "", fmt.Errorf("failed to get device name of volume %s from machine %s", client.ObjectKeyFromObject(volume), client.ObjectKeyFromObject(machine))
 }
 
 func isValidVolumeCapabilities(volCaps []*csi.VolumeCapability) bool {

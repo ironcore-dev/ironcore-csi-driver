@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/sys/unix"
@@ -33,7 +34,8 @@ var (
 
 func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	klog.InfoS("Staging volume on node ", "Volume", req.GetVolumeId(), "StagingTargetPath", req.GetStagingTargetPath())
-	fstype := req.GetVolumeContext()[ParameterFSType]
+	volumeContext := req.GetVolumeContext()
+	fstype := volumeContext[ParameterFSType]
 	devicePath := req.PublishContext[ParameterDeviceName]
 
 	klog.InfoS("Check if the device path exists")
@@ -42,15 +44,9 @@ func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 			// We will requeue here since the device path is not ready yet.
 			return nil, status.Errorf(codes.Unavailable, "Device path %s does not exist: %v", devicePath, err)
 		} else {
-			return nil, status.Errorf(codes.Internal, "Failed to determine wether the device path %s exists: %v", devicePath, err)
+			return nil, status.Errorf(codes.Internal, "Failed to determine whether the device path %s exists: %v", devicePath, err)
 		}
 	}
-
-	readOnly := false
-	if req.GetVolumeContext()["readOnly"] == "true" {
-		readOnly = true
-	}
-	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
 
 	targetPath := req.GetStagingTargetPath()
 	klog.InfoS("Validate mount point", "MountPoint", targetPath)
@@ -68,16 +64,27 @@ func (d *driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 		return nil, status.Errorf(codes.Internal, "Failed to create target directory %s for volume %s: %v", targetPath, req.GetVolumeId(), err)
 	}
 
-	var options []string
+	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
 
-	if readOnly {
+	readOnly, ok := volumeContext[ParameterReadOnly]
+	readOnlyFlag := ok && readOnly == "true"
+
+	var options []string
+	if readOnlyFlag {
 		options = append(options, "ro")
 	} else {
 		options = append(options, "rw")
 	}
 	options = append(options, mountOptions...)
+
+	var formatOptions []string
+	mkfsOptions, ok := volumeContext[ParameterMkfsOptions]
+	if ok && mkfsOptions != "" {
+		formatOptions = append(formatOptions, strings.Split(mkfsOptions, " ")...)
+	}
+
 	klog.InfoS("Format and mount the volume")
-	if err = d.mounter.FormatAndMount(devicePath, targetPath, fstype, options); err != nil {
+	if err = d.mounter.FormatAndMountSensitiveWithFormatOptions(devicePath, targetPath, fstype, options, nil, formatOptions); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to mount volume %s [%s] to %s: %v", devicePath, fstype, targetPath, err)
 	}
 	klog.InfoS("Staged volume on node", "Volume", req.GetVolumeId())
