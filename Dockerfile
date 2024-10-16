@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.23.1 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.23.2 AS builder
 ARG DEBIAN_FRONTEND=noninteractive
 ARG GOARCH=''
 
@@ -37,11 +37,11 @@ FROM gcr.io/distroless/base-debian11 AS distroless-base
 
 # The distroless amd64 image has a target triplet of x86_64
 FROM distroless-base AS distroless-amd64
-ENV LIB_DIR_PREFIX x86_64
+ENV LIB_DIR_PREFIX="x86_64"
 
 # The distroless arm64 image has a target triplet of aarch64
 FROM distroless-base AS distroless-arm64
-ENV LIB_DIR_PREFIX aarch64
+ENV LIB_DIR_PREFIX="aarch64"
 
 FROM distroless-$TARGETARCH AS output-image
 
