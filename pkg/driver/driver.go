@@ -24,6 +24,9 @@ type driver struct {
 	ironcoreClient client.Client
 	config         *options.Config
 	name           string
+	csi.UnimplementedControllerServer
+	csi.UnimplementedIdentityServer
+	csi.UnimplementedNodeServer
 }
 
 // Driver is the CSI Mock driver provider.
