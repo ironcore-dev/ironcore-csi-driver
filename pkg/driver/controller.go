@@ -30,7 +30,7 @@ var (
 	// volumeCaps represents how the volume could be accessed.
 	// It is SINGLE_NODE_WRITER since an ironcore volume could only be
 	// attached to a single node at any given time.
-	volumeCaps = []csi.VolumeCapability_AccessMode{
+	volumeCaps = []*csi.VolumeCapability_AccessMode{
 		{
 			Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 		},
@@ -279,22 +279,22 @@ func (d *driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 }
 
 func (d *driver) ControllerGetVolume(ctx context.Context, req *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
-	klog.V(4).InfoS("ControllerGetVolume: called", "args", *req)
+	klog.V(4).InfoS("ControllerGetVolume: called", "args", req)
 	return nil, status.Errorf(codes.Unimplemented, "Method ControllerGetVolume not implemented")
 }
 
 func (d *driver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
-	klog.V(4).InfoS("ListVolumes: called", "args", *req)
+	klog.V(4).InfoS("ListVolumes: called", "args", req)
 	return nil, status.Errorf(codes.Unimplemented, "Method ListVolumes not implemented")
 }
 
 func (d *driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
-	klog.V(4).InfoS("ListSnapshots: called", "args", *req)
+	klog.V(4).InfoS("ListSnapshots: called", "args", req)
 	return nil, status.Errorf(codes.Unimplemented, "Method ListSnapshots not implemented")
 }
 
 func (d *driver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
-	klog.V(4).InfoS("GetCapacity: called", "args", *req)
+	klog.V(4).InfoS("GetCapacity: called", "args", req)
 	return nil, status.Errorf(codes.Unimplemented, "Method GetCapacity not implemented")
 }
 
@@ -309,7 +309,7 @@ func (d *driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequ
 }
 
 func (d *driver) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
-	klog.InfoS("ControllerExpandVolume: called", "args", *req)
+	klog.InfoS("ControllerExpandVolume: called", "args", req)
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
@@ -368,7 +368,7 @@ func (d *driver) ControllerModifyVolume(ctx context.Context, req *csi.Controller
 }
 
 func (d *driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	klog.InfoS("ValidateVolumeCapabilities: called", "args", *req)
+	klog.InfoS("ValidateVolumeCapabilities: called", "args", req)
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
@@ -397,7 +397,7 @@ func (d *driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.Valida
 }
 
 func (d *driver) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
-	klog.InfoS("ControllerGetCapabilities: called", "args", *req)
+	klog.InfoS("ControllerGetCapabilities: called", "args", req)
 	var caps []*csi.ControllerServiceCapability
 	for _, cap := range controllerCaps {
 		c := &csi.ControllerServiceCapability{

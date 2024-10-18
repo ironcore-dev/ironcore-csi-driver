@@ -223,7 +223,7 @@ func (d *driver) NodeUnpublishVolume(_ context.Context, req *csi.NodeUnpublishVo
 }
 
 func (d *driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
-	klog.InfoS("NodeExpandVolume: called", "args", *req)
+	klog.InfoS("NodeExpandVolume: called", "args", req)
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "VolumeID not provided")
