@@ -111,10 +111,10 @@ MOCKGEN ?= $(LOCALBIN)/mockgen
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 
 ## Tool Versions
-KUSTOMIZE_VERSION ?= v5.0.0
+KUSTOMIZE_VERSION ?= v5.5.0
 ADDLICENSE_VERSION ?= v1.1.1
-MOCKGEN_VERSION ?= v0.4.0
-GOIMPORTS_VERSION ?= v0.25.0
+MOCKGEN_VERSION ?= v0.5.0
+GOIMPORTS_VERSION ?= v0.26.0
 GOLANGCI_LINT_VERSION ?= v1.61.0
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
