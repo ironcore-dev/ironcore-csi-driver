@@ -26,6 +26,7 @@ import (
 type MockOSWrapper struct {
 	ctrl     *gomock.Controller
 	recorder *MockOSWrapperMockRecorder
+	isgomock struct{}
 }
 
 // MockOSWrapperMockRecorder is the mock recorder for MockOSWrapper.

@@ -25,6 +25,7 @@ type MockMountWrapper struct {
 	mount.Interface
 	ctrl     *gomock.Controller
 	recorder *MockMountWrapperMockRecorder
+	isgomock struct{}
 }
 
 // MockMountWrapperMockRecorder is the mock recorder for MockMountWrapper.
@@ -221,6 +222,7 @@ func (mr *MockMountWrapperMockRecorder) Unmount(target any) *gomock.Call {
 type MockResizefs struct {
 	ctrl     *gomock.Controller
 	recorder *MockResizefsMockRecorder
+	isgomock struct{}
 }
 
 // MockResizefsMockRecorder is the mock recorder for MockResizefs.
