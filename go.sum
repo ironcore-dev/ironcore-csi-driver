@@ -72,8 +72,8 @@ github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 h1:YBftPWNWd4WwGqtY2yeZL2ef8rH
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0/go.mod h1:YN5jB8ie0yfIUg6VvR9Kz84aCaG7AsGZnLjhHbUqwPg=
 github.com/imdario/mergo v0.3.13 h1:lFzP57bqS/wsqKssCGmtLAb8A0wKjLGrve2q3PPVcBk=
 github.com/imdario/mergo v0.3.13/go.mod h1:4lJ1jqUDcsbIECGy0RUJAXNIhg+6ocWgb1ALK2O4oXg=
-github.com/ironcore-dev/controller-utils v0.9.4 h1:l+lXzDyTfDEvAn0o9KOX0JdeTf6uI0VKN9yVnl9jLM4=
-github.com/ironcore-dev/controller-utils v0.9.4/go.mod h1:0MS4W51EAEQo/nfajSaCj4RClju4MXv6IFGb+nDv2AA=
+github.com/ironcore-dev/controller-utils v0.9.5 h1:vdUnCNolC0uDMZy5d8Noib5kdqdK9YpelVSgPc30qTc=
+github.com/ironcore-dev/controller-utils v0.9.5/go.mod h1:pzrmJmc6LXtn48cTAgKHm5i8ry6q1Qw7SUh0XaYfIP4=
 github.com/ironcore-dev/ironcore v0.2.0 h1:HETSSh46t+aKbJZql5dcbXBRUjHSwHYy7ZixN24vdnM=
 github.com/ironcore-dev/ironcore v0.2.0/go.mod h1:wlvF43Afs1OpO0w6ZIXw+YaLnfBOfrEi9f4/MBdR1mc=
 github.com/josharian/intern v1.0.0 h1:vlS4z54oSdjm0bgjRigI+G1HpF+tI+9rE5LLzOg8HmY=
