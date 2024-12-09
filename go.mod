@@ -12,7 +12,7 @@ require (
 	go.uber.org/mock v0.5.0
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/sys v0.27.0
-	google.golang.org/grpc v1.68.0
+	google.golang.org/grpc v1.68.1
 	k8s.io/api v0.30.4
 	k8s.io/apimachinery v0.30.4
 	k8s.io/client-go v0.30.4
