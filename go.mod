@@ -5,7 +5,7 @@ go 1.23.0
 require (
 	github.com/container-storage-interface/spec v1.11.0
 	github.com/dell/gocsi v1.12.0
-	github.com/ironcore-dev/controller-utils v0.9.6
+	github.com/ironcore-dev/controller-utils v0.9.7
 	github.com/ironcore-dev/ironcore v0.2.2-0.20241219143123-dfcc3c94da5b
 	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
@@ -13,13 +13,13 @@ require (
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/sys v0.28.0
 	google.golang.org/grpc v1.69.2
-	k8s.io/api v0.31.0
-	k8s.io/apimachinery v0.31.0
-	k8s.io/client-go v0.31.0
+	k8s.io/api v0.31.4
+	k8s.io/apimachinery v0.31.4
+	k8s.io/client-go v0.31.4
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/mount-utils v0.31.0
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
-	sigs.k8s.io/controller-runtime v0.19.0
+	sigs.k8s.io/controller-runtime v0.19.4
 )
 
 require (
@@ -97,9 +97,9 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.31.0 // indirect
-	k8s.io/apiserver v0.31.0 // indirect
-	k8s.io/component-base v0.31.0 // indirect
+	k8s.io/apiextensions-apiserver v0.31.4 // indirect
+	k8s.io/apiserver v0.31.4 // indirect
+	k8s.io/component-base v0.31.4 // indirect
 	k8s.io/kube-aggregator v0.31.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.30.3 // indirect
