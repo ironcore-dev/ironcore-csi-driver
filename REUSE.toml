@@ -16,7 +16,8 @@ path = [
     "config/**",
     "go.mod",
     "go.sum",
-    "hack/**"
+    "hack/**",
+    "REUSE.toml"
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2023 SAP SE or an SAP affiliate company and IronCore contributors"
