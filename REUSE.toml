@@ -4,7 +4,20 @@ SPDX-PackageSupplier = "IronCore authors <ospo@sap.com>"
 SPDX-PackageDownloadLocation = "https://github.com/ironcore-dev/ironcore-csi-driver"
 
 [[annotations]]
-path = [".github/**", ".gitignore", ".golangci.yaml", "CODEOWNERS", "CODE_OF_CONDUCT.md", "Dockerfile", "Makefile", "PROJECT", "config/**", "go.mod", "go.sum", "hack/**"]
+path = [
+    ".github/**",
+    ".gitignore",
+    ".golangci.yaml",
+    "CODEOWNERS",
+    "CODE_OF_CONDUCT.md",
+    "Dockerfile",
+    "Makefile",
+    "PROJECT",
+    "config/**",
+    "go.mod",
+    "go.sum",
+    "hack/**"
+]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2023 SAP SE or an SAP affiliate company and IronCore contributors"
 SPDX-License-Identifier = "Apache-2.0"
