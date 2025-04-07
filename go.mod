@@ -8,7 +8,7 @@ require (
 	github.com/ironcore-dev/controller-utils v0.9.8
 	github.com/ironcore-dev/ironcore v0.2.3
 	github.com/onsi/ginkgo/v2 v2.23.4
-	github.com/onsi/gomega v1.36.3
+	github.com/onsi/gomega v1.37.0
 	go.uber.org/mock v0.5.0
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/sys v0.32.0
