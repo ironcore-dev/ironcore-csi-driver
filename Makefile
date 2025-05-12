@@ -115,7 +115,7 @@ KUSTOMIZE_VERSION ?= v5.5.0
 ADDLICENSE_VERSION ?= v1.1.1
 MOCKGEN_VERSION ?= v0.5.0
 GOIMPORTS_VERSION ?= v0.31.0
-GOLANGCI_LINT_VERSION ?= v2.0
+GOLANGCI_LINT_VERSION ?= v2.1
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
