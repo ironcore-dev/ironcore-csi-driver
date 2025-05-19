@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/container-storage-interface/spec v1.11.0
-	github.com/dell/gocsi v1.13.0
+	github.com/dell/gocsi v1.14.0
 	github.com/ironcore-dev/controller-utils v0.9.9
 	github.com/ironcore-dev/ironcore v0.2.3
 	github.com/onsi/ginkgo/v2 v2.23.4
@@ -86,11 +86,11 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go4.org/netipx v0.0.0-20220812043211-3cc044ffd68d // indirect
-	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/oauth2 v0.26.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
-	golang.org/x/term v0.30.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
+	golang.org/x/term v0.31.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.7.0 // indirect
 	golang.org/x/tools v0.31.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
