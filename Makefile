@@ -40,8 +40,6 @@ help: ## Display this help.
 
 BINARY_NAME=ironcore-csi-driver
 
-BUILDARGS ?=
-
 clean:
 	rm -f $(BINARY_NAME)
 
@@ -57,7 +55,7 @@ build-linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $(BINARY_NAME) -v ./cmd/
 
 docker-build:
-	$(CONTAINER_TOOL) build $(BUILDARGS) -t ${IMG} -f Dockerfile . --load
+	$(CONTAINER_TOOL) build -t ${IMG} .
 
 docker-push:
 	$(CONTAINER_TOOL) push ${IMG}
