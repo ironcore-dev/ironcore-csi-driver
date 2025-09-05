@@ -64,10 +64,10 @@ docker-push:
 
 deploy:
 	cd config/manager && $(KUSTOMIZE) edit set image ironcore-csi-driver=${IMG}
-	kubectl apply -k config/default
+	$(KUBECTL) apply -k config/default
 
 undeploy:
-	kubectl delete -k  config/default
+	$(KUBECTL) delete -k  config/default
 
 .PHONY: fmt
 fmt: goimports ## Run goimports against code.
@@ -107,6 +107,7 @@ $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
 ## Tool Binaries
+KUBECTL ?= kubectl
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 ADDLICENSE ?= $(LOCALBIN)/addlicense
