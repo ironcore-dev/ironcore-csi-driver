@@ -31,7 +31,7 @@
 - Check that the volume has been created, staged and published
 
     ```
-    kubectl describe pod pod-demo   | grep Volume
+    kubectl describe pod pod-demo | grep Volume
     ```
 
 - Check if the volume is mounted by creating a file
@@ -59,6 +59,22 @@
 - To delete the volume, delete the `Pod` that is using the volume and finally, delete the `PVC`
 
     ```
-    kubectl delete pvc pvc-demo
     kubectl delete pod pod-demo
+    kubectl delete pvc pvc-demo
+    ```
+
+## Create volumeSnapshot
+- To create a volumeSnapshot first follow the steps above to [create a volume](#create-volume)
+- Create a volumeSnapshot
+
+    ```
+    kubectl apply -f ironcore-csi-driver/config/samples/snapshot.yaml
+    ```
+
+## Delete volumeSnapshot
+
+- Delete the volumeSnapshot
+
+    ```
+    kubectl delete volumesnapshot snapshot-demo
     ```
