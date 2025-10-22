@@ -176,7 +176,7 @@ func waitForVolumeAvailability(ctx context.Context, ironcoreClient client.Client
 func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	klog.InfoS("Deleting volume", "Volume", req.GetVolumeId())
 	if req.GetVolumeId() == "" {
-		return nil, status.Errorf(codes.Internal, "Required parameter 'volumeID' is missing")
+		return nil, status.Errorf(codes.InvalidArgument, "Required parameter 'volumeID' is missing")
 	}
 	vol := &storagev1alpha1.Volume{
 		ObjectMeta: metav1.ObjectMeta{
@@ -310,6 +310,9 @@ func (d *driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 		}
 		return nil, status.Errorf(codes.Internal, "failed to get source volume with ID %q: %v", sourceVolumeID, err)
 	}
+	if volume.Status.State != storagev1alpha1.VolumeStateAvailable {
+		return nil, status.Errorf(codes.FailedPrecondition, "source volume is not in available state, current state: %s", volume.Status.State)
+	}
 
 	volumeSnapshot := &storagev1alpha1.VolumeSnapshot{
 		TypeMeta: metav1.TypeMeta{
@@ -364,7 +367,7 @@ func waitForVolumeSnapshotReady(ctx context.Context, ironcoreClient client.Clien
 	})
 
 	if wait.Interrupted(err) {
-		return fmt.Errorf("volume snapshot %s did not reach '%s' state within the defined timeout: %w", client.ObjectKeyFromObject(vs), storagev1alpha1.VolumeStateAvailable, err)
+		return fmt.Errorf("volume snapshot %s did not reach '%s' state within the defined timeout: %w", client.ObjectKeyFromObject(vs), storagev1alpha1.VolumeSnapshotStateReady, err)
 	}
 
 	return err
@@ -373,7 +376,7 @@ func waitForVolumeSnapshotReady(ctx context.Context, ironcoreClient client.Clien
 func (d *driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 	klog.InfoS("Deleting volume snapshot", "VolumeSnapshot", req.GetSnapshotId())
 	if req.GetSnapshotId() == "" {
-		return nil, status.Errorf(codes.Internal, "Required parameter 'snapshotID' is missing")
+		return nil, status.Errorf(codes.InvalidArgument, "Required parameter 'snapshotID' is missing")
 	}
 	volumeSnapshot := &storagev1alpha1.VolumeSnapshot{
 		ObjectMeta: metav1.ObjectMeta{
