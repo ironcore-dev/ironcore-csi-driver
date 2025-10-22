@@ -84,12 +84,9 @@ var _ = Describe("Controller", func() {
 			))
 
 			By("patching the volume state to make it available")
-			volumeBase := volume.DeepCopy()
-			volume.Status.State = storagev1alpha1.VolumeStateAvailable
-			Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
-			Eventually(Object(volume)).Should(SatisfyAll(
-				HaveField("Status.State", storagev1alpha1.VolumeStateAvailable),
-			))
+			Eventually(UpdateStatus(volume, func() {
+				volume.Status.State = storagev1alpha1.VolumeStateAvailable
+			})).Should(Succeed())
 		}()
 
 		By("creating a Volume")
@@ -161,12 +158,9 @@ var _ = Describe("Controller", func() {
 			))
 
 			By("patching the volume state to make it available")
-			volumeBase := volume.DeepCopy()
-			volume.Status.State = storagev1alpha1.VolumeStateAvailable
-			Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
-			Eventually(Object(volume)).Should(SatisfyAll(
-				HaveField("Status.State", storagev1alpha1.VolumeStateAvailable),
-			))
+			Eventually(UpdateStatus(volume, func() {
+				volume.Status.State = storagev1alpha1.VolumeStateAvailable
+			})).Should(Succeed())
 		}()
 
 		By("creating a Volume")
@@ -237,12 +231,9 @@ var _ = Describe("Controller", func() {
 				HaveField("Status.State", storagev1alpha1.VolumeSnapshotStatePending),
 			))
 			By("patching the volume snapshot state to make it ready")
-			vsBase := vs.DeepCopy()
-			vs.Status.State = storagev1alpha1.VolumeSnapshotStateReady
-			Expect(k8sClient.Status().Patch(ctx, vs, client.MergeFrom(vsBase))).To(Succeed())
-			Eventually(Object(vs)).Should(SatisfyAll(
-				HaveField("Status.State", storagev1alpha1.VolumeSnapshotStateReady),
-			))
+			Eventually(UpdateStatus(vs, func() {
+				vs.Status.State = storagev1alpha1.VolumeSnapshotStateReady
+			})).Should(Succeed())
 		}()
 		By("creating a Volume snapshot")
 		response, err := drv.CreateSnapshot(ctx, &csi.CreateSnapshotRequest{
@@ -294,12 +285,9 @@ var _ = Describe("Controller", func() {
 			))
 
 			By("patching the volume state to make it available")
-			volumeBase := volume.DeepCopy()
-			volume.Status.State = storagev1alpha1.VolumeStateAvailable
-			Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
-			Eventually(Object(volume)).Should(SatisfyAll(
-				HaveField("Status.State", storagev1alpha1.VolumeStateAvailable),
-			))
+			Eventually(UpdateStatus(volume, func() {
+				volume.Status.State = storagev1alpha1.VolumeStateAvailable
+			})).Should(Succeed())
 		}()
 
 		By("creating a Volume")
@@ -425,12 +413,9 @@ var _ = Describe("Controller", func() {
 			))
 
 			By("patching the volume state to make it available")
-			volumeBase := volume.DeepCopy()
-			volume.Status.State = storagev1alpha1.VolumeStateAvailable
-			Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
-			Eventually(Object(volume)).Should(SatisfyAll(
-				HaveField("Status.State", storagev1alpha1.VolumeStateAvailable),
-			))
+			Eventually(UpdateStatus(volume, func() {
+				volume.Status.State = storagev1alpha1.VolumeStateAvailable
+			})).Should(Succeed())
 		}()
 
 		By("creating a Volume")

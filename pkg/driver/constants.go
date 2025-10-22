@@ -45,7 +45,7 @@ const (
 
 	// Constants for volume/snapshot polling mechanism
 
-	waitInitDelay   = 1 * time.Second // Initial delay before starting to poll for volume/Snapshot status
+	waitInitDelay   = 1 * time.Second // Initial delay before starting to poll for volume/snapshot status
 	waitFactor      = 1.1             // Factor by which the delay increases with each poll attempt
-	waitActiveSteps = 5               // Number of consecutive active steps to wait for volume/Snapshot status change
+	waitActiveSteps = 5               // Number of consecutive active steps to wait for volume/snapshot status change
 )
