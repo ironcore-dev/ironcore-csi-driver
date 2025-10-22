@@ -364,7 +364,7 @@ func waitForVolumeSnapshotReady(ctx context.Context, ironcoreClient client.Clien
 	})
 
 	if wait.Interrupted(err) {
-		return fmt.Errorf("volume snapshot %s did not reach '%s' state within the defined timeout: %w", client.ObjectKeyFromObject(vs), storagev1alpha1.VolumeStateAvailable, err)
+		return fmt.Errorf("volume snapshot %s did not reach '%s' state within the defined timeout: %w", client.ObjectKeyFromObject(vs), storagev1alpha1.VolumeSnapshotStateReady, err)
 	}
 
 	return err
