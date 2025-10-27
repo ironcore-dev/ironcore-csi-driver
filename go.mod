@@ -3,11 +3,11 @@ module github.com/ironcore-dev/ironcore-csi-driver
 go 1.25
 
 require (
-	github.com/container-storage-interface/spec v1.11.0
+	github.com/container-storage-interface/spec v1.12.0
 	github.com/dell/gocsi v1.15.0
 	github.com/ironcore-dev/controller-utils v0.9.9
 	github.com/ironcore-dev/ironcore v0.2.3
-	github.com/onsi/ginkgo/v2 v2.26.0
+	github.com/onsi/ginkgo/v2 v2.27.1
 	github.com/onsi/gomega v1.38.2
 	go.uber.org/mock v0.6.0
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
