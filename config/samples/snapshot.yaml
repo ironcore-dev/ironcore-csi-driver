@@ -1,0 +1,8 @@
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: snapshot-demo
+spec:
+  volumeSnapshotClassName: ironcore-storageclass-demo # must be same as storageClassName as Ironcore does not have a separate volumeSnapshot class
+  source:
+    persistentVolumeClaimName: pvc-demo

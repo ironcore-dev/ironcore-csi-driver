@@ -38,13 +38,14 @@ const (
 	// ParameterMkfsOptions is the name of the parameter used to specify the options for the mkfs command
 	ParameterMkfsOptions = "mkfs_options"
 
-	CSIDriverName    = "csi.ironcore.dev"
-	topologyKey      = "topology." + CSIDriverName + "/zone"
-	volumeFieldOwner = client.FieldOwner("csi.ironcore.dev/volume")
+	CSIDriverName      = "csi.ironcore.dev"
+	topologyKey        = "topology." + CSIDriverName + "/zone"
+	volumeFieldOwner   = client.FieldOwner("csi.ironcore.dev/volume")
+	snapshotFieldOwner = client.FieldOwner("csi.ironcore.dev/snapshot")
 
-	// Constants for volume polling mechanism
+	// Constants for volume/snapshot polling mechanism
 
-	waitVolumeInitDelay   = 1 * time.Second // Initial delay before starting to poll for volume status
-	waitVolumeFactor      = 1.1             // Factor by which the delay increases with each poll attempt
-	waitVolumeActiveSteps = 5               // Number of consecutive active steps to wait for volume status change
+	waitInitDelay   = 1 * time.Second // Initial delay before starting to poll for volume/snapshot status
+	waitFactor      = 1.1             // Factor by which the delay increases with each poll attempt
+	waitActiveSteps = 5               // Number of consecutive active steps to wait for volume/snapshot status change
 )
