@@ -34,6 +34,7 @@ var _ = Describe("Controller", func() {
 		volume                = &storagev1alpha1.Volume{}
 		volumePool            = &storagev1alpha1.VolumePool{}
 		volumeClassExpandOnly = &storagev1alpha1.VolumeClass{}
+		volSize               = int64(5 * 1024 * 1024 * 1024)
 	)
 
 	BeforeEach(func(ctx SpecContext) {
@@ -64,8 +65,6 @@ var _ = Describe("Controller", func() {
 		DeferCleanup(k8sClient.Delete, volumeClassExpandOnly)
 
 		By("creating a volume through the csi driver")
-		volSize := int64(5 * 1024 * 1024 * 1024)
-
 		// Start a go routine to patch the created Volume to an available state in order to succeed
 		// the CreateVolume call as it waits for a Volume to reach an available state.
 		wg.Add(1)
@@ -85,12 +84,9 @@ var _ = Describe("Controller", func() {
 			))
 
 			By("patching the volume state to make it available")
-			volumeBase := volume.DeepCopy()
-			volume.Status.State = storagev1alpha1.VolumeStateAvailable
-			Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
-			Eventually(Object(volume)).Should(SatisfyAll(
-				HaveField("Status.State", storagev1alpha1.VolumeStateAvailable),
-			))
+			Eventually(UpdateStatus(volume, func() {
+				volume.Status.State = storagev1alpha1.VolumeStateAvailable
+			})).Should(Succeed())
 		}()
 
 		By("creating a Volume")
@@ -145,8 +141,6 @@ var _ = Describe("Controller", func() {
 
 	It("should not assign the volume to a volume pool if the pool is not available", func(ctx SpecContext) {
 		By("creating a volume through the csi driver")
-		volSize := int64(5 * 1024 * 1024 * 1024)
-
 		wg.Add(1)
 		go func() {
 			defer GinkgoRecover()
@@ -164,12 +158,9 @@ var _ = Describe("Controller", func() {
 			))
 
 			By("patching the volume state to make it available")
-			volumeBase := volume.DeepCopy()
-			volume.Status.State = storagev1alpha1.VolumeStateAvailable
-			Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
-			Eventually(Object(volume)).Should(SatisfyAll(
-				HaveField("Status.State", storagev1alpha1.VolumeStateAvailable),
-			))
+			Eventually(UpdateStatus(volume, func() {
+				volume.Status.State = storagev1alpha1.VolumeStateAvailable
+			})).Should(Succeed())
 		}()
 
 		By("creating a Volume")
@@ -222,10 +213,61 @@ var _ = Describe("Controller", func() {
 		wg.Wait()
 	})
 
+	It("should create and delete a volume snapshot", func(ctx SpecContext) {
+		By("creating a Volume snapshot through the csi driver")
+		wg.Add(1)
+		go func() {
+			defer GinkgoRecover()
+			defer wg.Done()
+
+			By("waiting for the volume snapshot to be created")
+			vs := &storagev1alpha1.VolumeSnapshot{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: ns.Name,
+					Name:      "snapshot-test",
+				},
+			}
+			Eventually(Object(vs)).Should(SatisfyAll(
+				HaveField("Status.State", storagev1alpha1.VolumeSnapshotStatePending),
+			))
+			By("patching the volume snapshot state to make it ready")
+			Eventually(UpdateStatus(vs, func() {
+				vs.Status.State = storagev1alpha1.VolumeSnapshotStateReady
+			})).Should(Succeed())
+		}()
+		By("creating a Volume snapshot")
+		response, err := drv.CreateSnapshot(ctx, &csi.CreateSnapshotRequest{
+			Name:           "snapshot-test",
+			SourceVolumeId: volume.Name,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(response.Snapshot).To(SatisfyAll(
+			HaveField("SnapshotId", "snapshot-test"),
+			HaveField("SourceVolumeId", volume.Name),
+			HaveField("CreationTime", Not(BeNil())),
+			HaveField("ReadyToUse", true),
+		))
+
+		By("deleting the volumesnapshot through the csi driver")
+		_, err = drv.DeleteSnapshot(ctx, &csi.DeleteSnapshotRequest{
+			SnapshotId: "snapshot-test",
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		By("waiting for the volume snapshot to be deleted")
+		deletedVolumeSnapshot := &storagev1alpha1.VolumeSnapshot{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: ns.Name,
+				Name:      "snapshot-test",
+			},
+		}
+		Eventually(Get(deletedVolumeSnapshot)).Should(Satisfy(apierrors.IsNotFound))
+
+		wg.Wait()
+	})
+
 	It("should delete a volume", func(ctx SpecContext) {
 		By("creating a volume through the csi driver")
-		volSize := int64(5 * 1024 * 1024 * 1024)
-
 		wg.Add(1)
 		go func() {
 			defer GinkgoRecover()
@@ -243,12 +285,9 @@ var _ = Describe("Controller", func() {
 			))
 
 			By("patching the volume state to make it available")
-			volumeBase := volume.DeepCopy()
-			volume.Status.State = storagev1alpha1.VolumeStateAvailable
-			Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
-			Eventually(Object(volume)).Should(SatisfyAll(
-				HaveField("Status.State", storagev1alpha1.VolumeStateAvailable),
-			))
+			Eventually(UpdateStatus(volume, func() {
+				volume.Status.State = storagev1alpha1.VolumeStateAvailable
+			})).Should(Succeed())
 		}()
 
 		By("creating a Volume")
@@ -323,7 +362,6 @@ var _ = Describe("Controller", func() {
 
 	It("should fail to expand the volume size", func(ctx SpecContext) {
 		By("resizing the volume with new volume size lesser than the existing volume size")
-		volSize := int64(5 * 1024 * 1024 * 1024)
 		newVolumeSize := int64(3 * 1024 * 1024 * 1024)
 		_, err := drv.ControllerExpandVolume(ctx, &csi.ControllerExpandVolumeRequest{
 			VolumeId: volume.Name,
@@ -358,8 +396,6 @@ var _ = Describe("Controller", func() {
 		DeferCleanup(k8sClient.Delete, volumeClass)
 
 		By("creating a volume with volume class other than expand only")
-		volSize := int64(5 * 1024 * 1024 * 1024)
-
 		wg.Add(1)
 		go func() {
 			defer GinkgoRecover()
@@ -377,12 +413,9 @@ var _ = Describe("Controller", func() {
 			))
 
 			By("patching the volume state to make it available")
-			volumeBase := volume.DeepCopy()
-			volume.Status.State = storagev1alpha1.VolumeStateAvailable
-			Expect(k8sClient.Status().Patch(ctx, volume, client.MergeFrom(volumeBase))).To(Succeed())
-			Eventually(Object(volume)).Should(SatisfyAll(
-				HaveField("Status.State", storagev1alpha1.VolumeStateAvailable),
-			))
+			Eventually(UpdateStatus(volume, func() {
+				volume.Status.State = storagev1alpha1.VolumeStateAvailable
+			})).Should(Succeed())
 		}()
 
 		By("creating a Volume")
@@ -543,6 +576,13 @@ var _ = Describe("Controller", func() {
 					},
 				},
 			},
+			{
+				Type: &csi.ControllerServiceCapability_Rpc{
+					Rpc: &csi.ControllerServiceCapability_RPC{
+						Type: csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
+					},
+				},
+			},
 		}
 		Expect(res.Capabilities).To(Equal(expectedCaps))
 	})
@@ -590,14 +630,6 @@ var _ = Describe("Controller", func() {
 
 		Entry("GetCapacity", func(ctx SpecContext) (interface{}, error) {
 			return drv.GetCapacity(ctx, &csi.GetCapacityRequest{})
-		}),
-
-		Entry("CreateSnapshot", func(ctx SpecContext) (interface{}, error) {
-			return drv.CreateSnapshot(ctx, &csi.CreateSnapshotRequest{})
-		}),
-
-		Entry("DeleteSnapshot", func(ctx SpecContext) (interface{}, error) {
-			return drv.DeleteSnapshot(ctx, &csi.DeleteSnapshotRequest{})
 		}),
 
 		Entry("ControllerModifyVolume", func(ctx SpecContext) (interface{}, error) {

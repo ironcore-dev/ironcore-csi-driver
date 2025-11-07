@@ -16,6 +16,7 @@ import (
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -41,6 +42,7 @@ var (
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
 		csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
+		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 	}
 )
 
@@ -67,7 +69,7 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		return nil, status.Errorf(codes.Internal, "Required parameter %s is missing", ParameterType)
 	}
 
-	volumePoolName := req.GetParameters()[ParameterVolumePool]
+	volumePoolName := params[ParameterVolumePool]
 	var accessibleTopology []*csi.Topology
 
 	if volumePoolName == "" {
@@ -149,14 +151,11 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	}, nil
 }
 
-// waitForVolumeAvailability is a helper function that waits for a volume to become available.
-// It uses an exponential backoff strategy to periodically check the status of the volume.
-// The function returns an error if the volume does not become available within the specified number of attempts.
 func waitForVolumeAvailability(ctx context.Context, ironcoreClient client.Client, volume *storagev1alpha1.Volume) error {
 	backoff := wait.Backoff{
-		Duration: waitVolumeInitDelay,
-		Factor:   waitVolumeFactor,
-		Steps:    waitVolumeActiveSteps,
+		Duration: waitInitDelay,
+		Factor:   waitFactor,
+		Steps:    waitActiveSteps,
 	}
 
 	err := wait.ExponentialBackoffWithContext(ctx, backoff, func(ctx context.Context) (bool, error) {
@@ -177,7 +176,7 @@ func waitForVolumeAvailability(ctx context.Context, ironcoreClient client.Client
 func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	klog.InfoS("Deleting volume", "Volume", req.GetVolumeId())
 	if req.GetVolumeId() == "" {
-		return nil, status.Errorf(codes.Internal, "Required parameter 'volumeID' is missing")
+		return nil, status.Errorf(codes.InvalidArgument, "Required parameter 'volumeID' is missing")
 	}
 	vol := &storagev1alpha1.Volume{
 		ObjectMeta: metav1.ObjectMeta{
@@ -299,13 +298,97 @@ func (d *driver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (
 }
 
 func (d *driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
-	klog.V(4).InfoS("CreateSnapshot: called", "args", req)
-	return nil, status.Errorf(codes.Unimplemented, "Method CreateSnapshot not implemented")
+	klog.InfoS("Creating volume snapshot", "VolumeSnapshot", req.GetName())
+	sourceVolumeID := req.GetSourceVolumeId()
+	if sourceVolumeID == "" {
+		return nil, status.Error(codes.InvalidArgument, "source volumeID not provided")
+	}
+	volume := &storagev1alpha1.Volume{}
+	if err := d.ironcoreClient.Get(ctx, client.ObjectKey{Namespace: d.config.DriverNamespace, Name: sourceVolumeID}, volume); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, status.Error(codes.NotFound, "source volume not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get source volume with ID %q: %v", sourceVolumeID, err)
+	}
+	if volume.Status.State != storagev1alpha1.VolumeStateAvailable {
+		return nil, status.Errorf(codes.FailedPrecondition, "source volume is not in available state, current state: %s", volume.Status.State)
+	}
+
+	volumeSnapshot := &storagev1alpha1.VolumeSnapshot{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: storagev1alpha1.SchemeGroupVersion.String(),
+			Kind:       "VolumeSnapshot",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: d.config.DriverNamespace,
+			Name:      req.GetName(),
+		},
+		Spec: storagev1alpha1.VolumeSnapshotSpec{
+			VolumeRef: &corev1.LocalObjectReference{
+				Name: sourceVolumeID,
+			},
+		},
+	}
+
+	klog.InfoS("Applying volume snapshot", "VolumeSnapshot", client.ObjectKeyFromObject(volumeSnapshot))
+	if err := d.ironcoreClient.Patch(ctx, volumeSnapshot, client.Apply, snapshotFieldOwner, client.ForceOwnership); err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to patch volume snapshot %s: %v", client.ObjectKeyFromObject(volumeSnapshot), err)
+	}
+
+	klog.InfoS("Applied volume snapshot", "VolumeSnapshot", client.ObjectKeyFromObject(volumeSnapshot))
+
+	if err := waitForVolumeSnapshotReady(ctx, d.ironcoreClient, volumeSnapshot); err != nil {
+		return nil, fmt.Errorf("failed to confirm readiness of the volume snapshot: %w", err)
+	}
+	klog.InfoS("Volume snapshot is ready", "VolumeSnapshot", client.ObjectKeyFromObject(volumeSnapshot))
+	return &csi.CreateSnapshotResponse{
+		Snapshot: &csi.Snapshot{
+			SnapshotId:     req.GetName(),
+			SourceVolumeId: sourceVolumeID,
+			CreationTime:   timestamppb.New(time.Unix(volumeSnapshot.CreationTimestamp.Unix(), 0)),
+			ReadyToUse:     true,
+		},
+	}, nil
+}
+
+func waitForVolumeSnapshotReady(ctx context.Context, ironcoreClient client.Client, vs *storagev1alpha1.VolumeSnapshot) error {
+	backoff := wait.Backoff{
+		Duration: waitInitDelay,
+		Factor:   waitFactor,
+		Steps:    waitActiveSteps,
+	}
+
+	err := wait.ExponentialBackoffWithContext(ctx, backoff, func(ctx context.Context) (bool, error) {
+		err := ironcoreClient.Get(ctx, client.ObjectKey{Namespace: vs.Namespace, Name: vs.Name}, vs)
+		if err == nil && vs.Status.State == storagev1alpha1.VolumeSnapshotStateReady {
+			return true, nil
+		}
+		return false, err
+	})
+
+	if wait.Interrupted(err) {
+		return fmt.Errorf("volume snapshot %s did not reach '%s' state within the defined timeout: %w", client.ObjectKeyFromObject(vs), storagev1alpha1.VolumeSnapshotStateReady, err)
+	}
+
+	return err
 }
 
 func (d *driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
-	klog.V(4).InfoS("DeleteSnapshot: called", "args", req)
-	return nil, status.Errorf(codes.Unimplemented, "Method DeleteSnapshot not implemented")
+	klog.InfoS("Deleting volume snapshot", "VolumeSnapshot", req.GetSnapshotId())
+	if req.GetSnapshotId() == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Required parameter 'snapshotID' is missing")
+	}
+	volumeSnapshot := &storagev1alpha1.VolumeSnapshot{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: d.config.DriverNamespace,
+			Name:      req.GetSnapshotId(),
+		},
+	}
+	if err := d.ironcoreClient.Delete(ctx, volumeSnapshot); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to delete volume snapshot %s: %v", client.ObjectKeyFromObject(volumeSnapshot), err)
+	}
+	klog.InfoS("Deleted volume snapshot", "VolumeSnapshot", req.GetSnapshotId())
+	return &csi.DeleteSnapshotResponse{}, nil
 }
 
 func (d *driver) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
