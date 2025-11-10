@@ -11,9 +11,9 @@ require (
 	github.com/onsi/gomega v1.38.2
 	go.uber.org/mock v0.6.0
 	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
-	golang.org/x/sys v0.37.0
+	golang.org/x/sys v0.38.0
 	google.golang.org/grpc v1.76.0
-	google.golang.org/protobuf v1.36.9
+	google.golang.org/protobuf v1.36.10
 	k8s.io/api v0.33.3
 	k8s.io/apimachinery v0.33.3
 	k8s.io/client-go v0.33.3
