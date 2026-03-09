@@ -1,6 +1,6 @@
 module github.com/ironcore-dev/ironcore-csi-driver
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/container-storage-interface/spec v1.12.0
@@ -11,8 +11,8 @@ require (
 	github.com/onsi/gomega v1.39.1
 	go.uber.org/mock v0.6.0
 	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
-	golang.org/x/sys v0.41.0
-	google.golang.org/grpc v1.79.1
+	golang.org/x/sys v0.42.0
+	google.golang.org/grpc v1.79.2
 	google.golang.org/protobuf v1.36.11
 	k8s.io/api v0.33.3
 	k8s.io/apimachinery v0.33.3
