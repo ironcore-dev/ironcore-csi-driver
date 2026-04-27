@@ -342,6 +342,14 @@ var _ = Describe("Controller", func() {
 		wg.Wait()
 	})
 
+	It("should succeed when deleting a non-existent volume", func(ctx SpecContext) {
+		By("deleting a volume that does not exist")
+		_, err := drv.DeleteVolume(ctx, &csi.DeleteVolumeRequest{
+			VolumeId: "non-existent-volume",
+		})
+		Expect(err).NotTo(HaveOccurred())
+	})
+
 	It("should expand the volume size", func(ctx SpecContext) {
 		By("resizing the volume")
 		newVolumeSize := int64(10 * 1024 * 1024 * 1024)

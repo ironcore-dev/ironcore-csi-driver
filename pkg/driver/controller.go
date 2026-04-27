@@ -185,6 +185,10 @@ func (d *driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 		},
 	}
 	if err := d.ironcoreClient.Delete(ctx, vol); err != nil {
+		if apierrors.IsNotFound(err) {
+			klog.InfoS("Volume not found, assuming already deleted", "Volume", req.GetVolumeId())
+			return &csi.DeleteVolumeResponse{}, nil
+		}
 		return nil, status.Errorf(codes.Internal, "Failed to delete volume %s: %v", client.ObjectKeyFromObject(vol), err)
 	}
 	klog.InfoS("Deleted volume", "Volume", req.GetVolumeId())
