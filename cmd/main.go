@@ -7,13 +7,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/dell/gocsi"
 	csictx "github.com/dell/gocsi/context"
+	csiutils "github.com/dell/gocsi/utils/csi"
 	"github.com/ironcore-dev/controller-utils/configutils"
 	"github.com/ironcore-dev/ironcore-csi-driver/cmd/options"
 	"github.com/ironcore-dev/ironcore-csi-driver/pkg/driver"
@@ -43,10 +43,11 @@ func init() {
 	flag.StringVar(&targetKubeconfig, "target-kubeconfig", "", "Path pointing to the target kubeconfig.")
 	flag.StringVar(&ironcoreKubeconfig, "ironcore-kubeconfig", "", "Path pointing to the ironcore kubeconfig.")
 	flag.StringVar(&driverName, "driver-name", driver.CSIDriverName, "Override the default driver name.")
-	flag.Parse()
 }
 
 func main() {
+	flag.Parse()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -155,14 +156,13 @@ func buildKubernetesClient(kubeconfig string) (client.Client, error) {
 }
 
 func removeUnixSocketIfExists(endpoint string) error {
-	u, err := url.Parse(endpoint)
+	proto, addr, err := csiutils.ParseProtoAddr(endpoint)
 	if err != nil {
 		return fmt.Errorf("could not parse CSI endpoint: %w", err)
 	}
 
-	if u.Scheme == "unix" {
-		err = common.CleanupSocketIfExists(u.Path)
-		if err != nil {
+	if proto == "unix" {
+		if err := common.CleanupSocketIfExists(addr); err != nil {
 			return fmt.Errorf("error cleaning up socket: %w", err)
 		}
 	}
