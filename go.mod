@@ -7,12 +7,12 @@ require (
 	github.com/dell/gocsi v1.15.0
 	github.com/ironcore-dev/controller-utils v0.10.0
 	github.com/ironcore-dev/ironcore v0.2.5-0.20250922113334-4bd651cc2bc8
-	github.com/onsi/ginkgo/v2 v2.28.3
-	github.com/onsi/gomega v1.40.0
+	github.com/onsi/ginkgo/v2 v2.29.0
+	github.com/onsi/gomega v1.41.0
 	go.uber.org/mock v0.6.0
 	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
 	golang.org/x/sys v0.44.0
-	google.golang.org/grpc v1.81.0
+	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.11
 	k8s.io/api v0.33.3
 	k8s.io/apimachinery v0.33.3
