@@ -13,6 +13,7 @@ import (
 	computev1alpha1 "github.com/ironcore-dev/ironcore/api/compute/v1alpha1"
 	corev1alpha1 "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	storagev1alpha1 "github.com/ironcore-dev/ironcore/api/storage/v1alpha1"
+	storagev1alpha1ac "github.com/ironcore-dev/ironcore/client-go/applyconfigurations/storage/v1alpha1"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -122,9 +123,27 @@ func (d *driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		}
 	}
 
+	volumeSpec := storagev1alpha1ac.VolumeSpec().
+		WithResources(corev1alpha1.ResourceList{
+			corev1alpha1.ResourceStorage: *resource.NewQuantity(volSizeBytes, resource.BinarySI),
+		}).
+		WithVolumeClassRef(corev1.LocalObjectReference{
+			Name: volumeClass,
+		})
+	if volumePoolName != "" {
+		volumeSpec = volumeSpec.WithVolumePoolRef(corev1.LocalObjectReference{
+			Name: volumePoolName,
+		})
+	}
+
+	volumeApplyConfig := storagev1alpha1ac.Volume(req.GetName(), d.config.DriverNamespace).
+		WithKind("Volume").
+		WithAPIVersion(storagev1alpha1.SchemeGroupVersion.String()).
+		WithSpec(volumeSpec)
+
 	klog.InfoS("Applying volume", "Volume", client.ObjectKeyFromObject(volume))
-	if err := d.ironcoreClient.Patch(ctx, volume, client.Apply, volumeFieldOwner, client.ForceOwnership); err != nil {
-		return nil, status.Errorf(codes.Internal, "Failed to patch volume %s: %v", client.ObjectKeyFromObject(volume), err)
+	if err := d.ironcoreClient.Apply(ctx, volumeApplyConfig, client.FieldOwner(volumeFieldOwner), client.ForceOwnership); err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to apply volume %s: %v", client.ObjectKeyFromObject(volume), err)
 	}
 
 	if err := waitForVolumeAvailability(ctx, d.ironcoreClient, volume); err != nil {
@@ -319,24 +338,22 @@ func (d *driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 	}
 
 	volumeSnapshot := &storagev1alpha1.VolumeSnapshot{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: storagev1alpha1.SchemeGroupVersion.String(),
-			Kind:       "VolumeSnapshot",
-		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: d.config.DriverNamespace,
 			Name:      req.GetName(),
 		},
-		Spec: storagev1alpha1.VolumeSnapshotSpec{
-			VolumeRef: &corev1.LocalObjectReference{
-				Name: sourceVolumeID,
-			},
-		},
 	}
 
+	volumeSnapshotApplyConfig := storagev1alpha1ac.VolumeSnapshot(req.GetName(), d.config.DriverNamespace).
+		WithSpec(storagev1alpha1ac.VolumeSnapshotSpec().
+			WithVolumeRef(corev1.LocalObjectReference{
+				Name: sourceVolumeID,
+			}),
+		)
+
 	klog.InfoS("Applying volume snapshot", "VolumeSnapshot", client.ObjectKeyFromObject(volumeSnapshot))
-	if err := d.ironcoreClient.Patch(ctx, volumeSnapshot, client.Apply, snapshotFieldOwner, client.ForceOwnership); err != nil {
-		return nil, status.Errorf(codes.Internal, "Failed to patch volume snapshot %s: %v", client.ObjectKeyFromObject(volumeSnapshot), err)
+	if err := d.ironcoreClient.Apply(ctx, volumeSnapshotApplyConfig, client.FieldOwner(snapshotFieldOwner), client.ForceOwnership); err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to apply volume snapshot %s/%s: %v", d.config.DriverNamespace, req.GetName(), err)
 	}
 
 	klog.InfoS("Applied volume snapshot", "VolumeSnapshot", client.ObjectKeyFromObject(volumeSnapshot))
