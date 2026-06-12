@@ -5,13 +5,13 @@ go 1.26
 require (
 	github.com/container-storage-interface/spec v1.12.0
 	github.com/dell/gocsi v1.17.0
-	github.com/ironcore-dev/controller-utils v0.11.1-0.20260521082229-5437e1aa60a3
-	github.com/ironcore-dev/ironcore v0.3.1-0.20260526070152-ddfd5b329c48
+	github.com/ironcore-dev/controller-utils v0.12.0
+	github.com/ironcore-dev/ironcore v0.4.1
 	github.com/onsi/ginkgo/v2 v2.29.0
 	github.com/onsi/gomega v1.41.0
 	go.uber.org/mock v0.6.0
 	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
-	golang.org/x/sys v0.45.0
+	golang.org/x/sys v0.46.0
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.11
 	k8s.io/api v0.35.3
@@ -97,7 +97,7 @@ require (
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/term v0.42.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
