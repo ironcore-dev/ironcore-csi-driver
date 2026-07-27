@@ -1,8 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+
+namespace: ironcore-csi
+
 resources:
 - ../manager
-namespace: ironcore-csi
-patchesStrategicMerge:
-- controller_setenv_replicas.yaml
-- node_setenv.yaml
+
+patches:
+- path: controller_setenv_replicas.yaml
+- path: node_setenv.yaml
