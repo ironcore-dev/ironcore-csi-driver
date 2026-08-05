@@ -174,7 +174,6 @@ func SetupTest() (*corev1.Namespace, *driver) {
 				Namespace: ns.Name,
 			},
 			Spec: computev1alpha1.MachineSpec{
-				Image: "gardenlinux",
 				MachineClassRef: corev1.LocalObjectReference{
 					Name: "t3-small",
 				},
