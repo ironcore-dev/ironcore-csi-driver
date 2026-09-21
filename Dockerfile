@@ -28,12 +28,12 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GO111MODULE=on go build -ldflags="-s -w" -a -o ironcore-csi-driver cmd/main.go
 
 # Start from Kubernetes Debian base.
-FROM registry.k8s.io/build-image/debian-base:bullseye-v1.4.3 AS debian
+FROM registry.k8s.io/build-image/debian-base:bookworm-v1.0.8 AS debian
 # Install necessary dependencies
 RUN clean-install util-linux e2fsprogs mount ca-certificates udev xfsprogs xxd bash
 
 # Since we're leveraging apt to pull in dependencies, we use `gcr.io/distroless/base` because it includes glibc.
-FROM gcr.io/distroless/base-debian11 AS distroless-base
+FROM gcr.io/distroless/base-debian12 AS distroless-base
 
 # The distroless amd64 image has a target triplet of x86_64
 FROM distroless-base AS distroless-amd64
@@ -75,9 +75,10 @@ COPY --from=debian /bin/ln /bin/ln
 COPY --from=debian /bin/udevadm /bin/udevadm
 
 # Copy shared libraries into distroless base.
-COPY --from=debian /lib/${LIB_DIR_PREFIX}-linux-gnu/libpcre.so.3 \
-                   /lib/${LIB_DIR_PREFIX}-linux-gnu/libselinux.so.1 \
+COPY --from=debian /lib/${LIB_DIR_PREFIX}-linux-gnu/libselinux.so.1 \
                    /lib/${LIB_DIR_PREFIX}-linux-gnu/libtinfo.so.6 \
+                   /lib/${LIB_DIR_PREFIX}-linux-gnu/libcap.so.2 \
+                   /lib/${LIB_DIR_PREFIX}-linux-gnu/libzstd.so.1 \
                    /lib/${LIB_DIR_PREFIX}-linux-gnu/libe2p.so.2 \
                    /lib/${LIB_DIR_PREFIX}-linux-gnu/libcom_err.so.2 \
                    /lib/${LIB_DIR_PREFIX}-linux-gnu/libdevmapper.so.1.02.1 \
@@ -94,10 +95,14 @@ COPY --from=debian /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libblkid.so.1 \
                    /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libuuid.so.1 \
                    /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libacl.so.1 \
                    /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libattr.so.1 \
-                   /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libicudata.so.67 \
-                   /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libicui18n.so.67 \
-                   /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libicuuc.so.67 \
+                   /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libicudata.so.72 \
+                   /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libicui18n.so.72 \
+                   /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libicuuc.so.72 \
                    /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libkmod.so.2 \
+                   /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/liburcu.so.8 \
+                   /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libedit.so.2 \
+                   /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libbsd.so.0 \
+                   /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libmd.so.0 \
                    /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libpcre2-8.so.0 \
                    /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/libstdc++.so.6 /usr/lib/${LIB_DIR_PREFIX}-linux-gnu/
 
