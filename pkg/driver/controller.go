@@ -6,6 +6,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -14,7 +15,6 @@ import (
 	corev1alpha1 "github.com/ironcore-dev/ironcore/api/core/v1alpha1"
 	storagev1alpha1 "github.com/ironcore-dev/ironcore/api/storage/v1alpha1"
 	storagev1alpha1ac "github.com/ironcore-dev/ironcore/client-go/applyconfigurations/storage/v1alpha1"
-	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
