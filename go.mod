@@ -8,10 +8,10 @@ require (
 	github.com/ironcore-dev/brokers v0.0.0-20260928082849-628cc25fd8ca
 	github.com/ironcore-dev/controller-utils v0.14.1-0.20260904065051-9ddd709051f4
 	github.com/ironcore-dev/ironcore v0.8.1-0.20260924093634-7346f4f9b904
-	github.com/onsi/ginkgo/v2 v2.33.1
+	github.com/onsi/ginkgo/v2 v2.34.0
 	github.com/onsi/gomega v1.44.0
 	go.uber.org/mock v0.6.0
-	golang.org/x/sys v0.49.0
+	golang.org/x/sys v0.50.0
 	google.golang.org/grpc v1.85.0
 	google.golang.org/protobuf v1.36.12
 	k8s.io/api v0.37.0
