@@ -3,8 +3,8 @@ module github.com/ironcore-dev/ironcore-csi-driver
 go 1.27
 
 require (
-	github.com/container-storage-interface/spec v1.13.0
-	github.com/dell/gocsi v1.18.0
+	github.com/container-storage-interface/spec v1.14.0
+	github.com/dell/gocsi v1.18.1
 	github.com/ironcore-dev/brokers v0.0.0-20260928082849-628cc25fd8ca
 	github.com/ironcore-dev/controller-utils v0.14.1-0.20260904065051-9ddd709051f4
 	github.com/ironcore-dev/ironcore v0.8.1-0.20260924093634-7346f4f9b904
